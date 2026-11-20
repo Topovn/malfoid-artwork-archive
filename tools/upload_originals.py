@@ -21,11 +21,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -34,15 +36,30 @@ RELEASES = ROOT / "data" / "releases.json"
 DEFAULT_REPO = "Topovn/malfoid-gallery"
 TAG_PREFIX = "media-"
 ASSETS_PER_RELEASE = 900  # GitHub allows 1000; keep headroom
-UPLOAD_BATCH = 25
+UPLOAD_BATCH = 10
+BATCH_PAUSE = 2.0  # seconds between batches, to stay under GitHub's content-creation limits
 MAX_ASSET_BYTES = 2 * 1024**3
+RATE_LIMITED = re.compile(r"rate limit|secondary|abuse|HTTP 403|HTTP 429|HTTP 50[234]", re.I)
 
 
-def gh(*args: str, check: bool = True) -> subprocess.CompletedProcess:
-    r = subprocess.run(["gh", *args], capture_output=True, text=True)
+def gh(*args: str, check: bool = True, attempts: int = 12) -> subprocess.CompletedProcess:
+    """Run gh, waiting out rate limits and transient server errors instead of giving up."""
+    wait = 60.0
+    for attempt in range(1, attempts + 1):
+        r = subprocess.run(["gh", *args], capture_output=True, text=True)
+        if r.returncode == 0 or not RATE_LIMITED.search(r.stderr) or attempt == attempts:
+            break
+        print(f"  GitHub limit hit ({r.stderr.strip().splitlines()[-1][:120]}), waiting {wait:.0f}s...", flush=True)
+        time.sleep(wait)
+        wait = min(wait * 2, 900)
     if check and r.returncode != 0:
         sys.exit(f"gh {' '.join(args[:3])} failed:\n{r.stderr.strip()}")
     return r
+
+
+def tag_assets(repo: str, tag: str) -> dict[str, int]:
+    v = gh("release", "view", tag, "--repo", repo, "--json", "assets")
+    return {a["name"]: a["size"] for a in json.loads(v.stdout)["assets"]}
 
 
 def safe_asset_name(item: dict) -> str:
@@ -56,11 +73,7 @@ def remote_assets(repo: str) -> dict[str, dict[str, int]]:
     """Map each media-* tag to {asset name: size} as GitHub reports it."""
     r = gh("release", "list", "--repo", repo, "--limit", "1000", "--json", "tagName")
     tags = sorted(t["tagName"] for t in json.loads(r.stdout or "[]") if t["tagName"].startswith(TAG_PREFIX))
-    out = {}
-    for tag in tags:
-        v = gh("release", "view", tag, "--repo", repo, "--json", "assets")
-        out[tag] = {a["name"]: a["size"] for a in json.loads(v.stdout)["assets"]}
-    return out
+    return {tag: tag_assets(repo, tag) for tag in tags}
 
 
 def main() -> int:
@@ -80,6 +93,17 @@ def main() -> int:
     assets: dict[str, dict] = record["assets"]  # local filename -> {"tag", "name"}
 
     remote = remote_assets(args.repo)
+
+    def save_confirmed() -> None:
+        """Write only files GitHub actually holds, so the site never links to a missing original."""
+        confirmed = {f: e for f, e in assets.items() if e["name"] in remote.get(e["tag"], {})}
+        out = {"repo": record["repo"], "assets": confirmed}
+        tmp = RELEASES.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(out, indent=1, sort_keys=True))
+        os.replace(tmp, RELEASES)
+
+    # Drop stale records from an interrupted run before planning.
+    save_confirmed()
 
     # Local files for every work, and their GitHub-safe names.
     local = {}
@@ -148,19 +172,31 @@ def main() -> int:
                 remote[tag] = {}
             for start in range(0, len(files), UPLOAD_BATCH):
                 batch = files[start:start + UPLOAD_BATCH]
-                paths = []
-                for f in batch:
-                    link = stage / assets[f]["name"]
-                    link.unlink(missing_ok=True)
-                    link.symlink_to(local[f][0])
-                    paths.append(str(link))
-                gh("release", "upload", tag, "--repo", args.repo, *paths)
-                for p in paths:
-                    Path(p).unlink()
+                for attempt in range(3):
+                    # After a failure, part of the batch may already be on GitHub; skip those.
+                    todo = [f for f in batch if assets[f]["name"] not in remote[tag]]
+                    if not todo:
+                        break
+                    paths = []
+                    for f in todo:
+                        link = stage / assets[f]["name"]
+                        link.unlink(missing_ok=True)
+                        link.symlink_to(local[f][0])
+                        paths.append(str(link))
+                    r = gh("release", "upload", tag, "--repo", args.repo, *paths, check=attempt == 2)
+                    for p_ in paths:
+                        Path(p_).unlink(missing_ok=True)
+                    if r.returncode == 0:
+                        for f in todo:
+                            remote[tag][assets[f]["name"]] = local[f][0].stat().st_size
+                        break
+                    remote[tag] = tag_assets(args.repo, tag)
+                save_confirmed()
                 print(f"  {tag}: uploaded {min(start + UPLOAD_BATCH, len(files))}/{len(files)}", flush=True)
+                time.sleep(BATCH_PAUSE)
 
             # Record the names GitHub actually stored, in case it rewrote any.
-            got = remote_assets(args.repo)[tag]
+            got = remote[tag] = tag_assets(args.repo, tag)
             for f in files:
                 want = assets[f]["name"]
                 if want in got:
@@ -172,13 +208,12 @@ def main() -> int:
                     assets[f]["name"] = match[0]
                 else:
                     print(f"  WARNING: could not find {want} in {tag} after upload")
-            RELEASES.write_text(json.dumps(record, indent=1, sort_keys=True))
+            save_confirmed()
 
     # Only keep records for assets that exist, so a failed upload is retried next run.
-    final = remote_assets(args.repo)
-    record["assets"] = {f: e for f, e in assets.items() if e["name"] in final.get(e["tag"], {})}
-    RELEASES.write_text(json.dumps(record, indent=1, sort_keys=True))
-    print(f"Recorded {len(record['assets'])} uploaded files in {RELEASES.relative_to(ROOT)}.")
+    remote = remote_assets(args.repo)
+    save_confirmed()
+    print(f"Recorded {len(json.loads(RELEASES.read_text())['assets'])} uploaded files in {RELEASES.relative_to(ROOT)}.")
 
     print("Rebuilding the manifest...")
     subprocess.run([sys.executable, str(ROOT / "tools" / "build_malfoid_gallery.py"), "--src", str(src)], check=True)

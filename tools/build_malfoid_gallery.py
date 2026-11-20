@@ -63,10 +63,23 @@ def read_csv(path: Path) -> list[dict]:
         return list(csv.DictReader(fh))
 
 
-def make_thumb(job: tuple[str, str, str]) -> tuple[str, int, int, str]:
-    """Return (thumb name, width, height, error) for one source file."""
+def video_seconds(src: str) -> float | None:
+    """Video length in seconds, or None if ffprobe is missing or can't tell."""
+    try:
+        r = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", src],
+            capture_output=True, text=True,
+        )
+        return float(r.stdout.strip())
+    except (OSError, ValueError):
+        return None
+
+
+def make_thumb(job: tuple[str, str, str]) -> tuple[str, int, int, float | None, str]:
+    """Return (thumb name, width, height, video seconds or None, error) for one source file."""
     src, dst, kind = job
     src_p, dst_p = Path(src), Path(dst)
+    seconds = video_seconds(src) if kind == "video" else None
     try:
         if not (dst_p.exists() and dst_p.stat().st_mtime >= src_p.stat().st_mtime):
             tmp = dst_p.with_name(dst_p.name + ".tmp")
@@ -81,7 +94,7 @@ def make_thumb(job: tuple[str, str, str]) -> tuple[str, int, int, str]:
                     if r.returncode == 0 and frame.exists():
                         break
                 else:
-                    return dst_p.name, 0, 0, r.stderr.strip()[:200]
+                    return dst_p.name, 0, 0, seconds, r.stderr.strip()[:200]
                 src = str(frame)
             try:
                 with Image.open(src) as im:
@@ -95,9 +108,9 @@ def make_thumb(job: tuple[str, str, str]) -> tuple[str, int, int, str]:
                     Path(src).unlink(missing_ok=True)
             os.replace(tmp, dst_p)
         with Image.open(dst_p) as im:
-            return dst_p.name, im.width, im.height, ""
+            return dst_p.name, im.width, im.height, seconds, ""
     except Exception as exc:  # noqa: BLE001 - report and keep going
-        return dst_p.name, 0, 0, str(exc)[:200]
+        return dst_p.name, 0, 0, seconds, str(exc)[:200]
 
 
 def main() -> int:
@@ -136,8 +149,8 @@ def main() -> int:
     results = {}
     errors = []
     with ProcessPoolExecutor() as pool:
-        for i, (name, w, h, err) in enumerate(pool.map(make_thumb, jobs, chunksize=16), 1):
-            results[name] = (w, h)
+        for i, (name, w, h, seconds, err) in enumerate(pool.map(make_thumb, jobs, chunksize=16), 1):
+            results[name] = (w, h, seconds)
             if err:
                 errors.append((name, err))
             if i % 500 == 0:
@@ -163,7 +176,7 @@ def main() -> int:
     items = []
     for p, lost in files:
         ext = p.suffix.lower().lstrip(".")
-        w, h = results.get(f"{p.name}.webp", (0, 0))
+        w, h, seconds = results.get(f"{p.name}.webp", (0, 0, None))
         if not w:
             continue
         handle, tweet, idx = parse_name(p.stem)
@@ -182,6 +195,8 @@ def main() -> int:
             "p": posted_ms(tweet),
             "d": added_ms(p),
         }
+        if seconds is not None:
+            item["s"] = round(seconds)  # video length, used to keep long videos off the home shelves
         if lost:
             item["l"] = meta.get("reason") or "Tweet no longer available"
             # Moving a file into _LostTweets resets its timestamps, so prefer the logged download time.
