@@ -83,11 +83,12 @@ def main() -> int:
             "thumb": f"early/{thumb.name}", "full": f"early/{full.name}",
             "w": w, "h": h, "fw": fw, "fh": fh,
         })
-        # Only works the owner chose to credit carry an artist name and links.
+        # Only works the owner chose to credit carry an artist name; a source link is published when given.
+        # Private reposter wording lives in "note" and is never published.
         if meta.get("credit"):
             entries[-1]["credit"] = {"name": meta["credit"]["name"], "url": meta["credit"]["url"]}
-            if meta.get("source", "").startswith("https://"):
-                entries[-1]["source"] = meta["source"]
+        if meta.get("source", "").startswith("https://"):
+            entries[-1]["source"] = meta["source"]
 
     for stale in OUT_DIR.iterdir():
         if stale.name not in wanted:

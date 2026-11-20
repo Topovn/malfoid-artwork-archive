@@ -1,40 +1,41 @@
 {
- "_note": "Works shown only on the Timeline. 'dir' is the folder inside Malfoid/ (default '_Early Arts'). Entries without 'credit' are anonymous: their filename handles are reposters, so nothing identifying is published. Entries with 'credit' are published with that artist name and links. 'source' on anonymous entries is the reposter's wording, kept private.",
+ "_note": "Works shown only on the Timeline. 'dir' is the folder inside Malfoid/ (default '_Early Arts'). Entries without 'credit' are anonymous: their filename handles are reposters, so no names are published. 'credit' (artist name and link) and 'source' (an https link) are published; 'note' is private and never published.",
  "works": {
   "Papa_Ph0-2107441303034495447-01.jpg": {
    "year": 2008,
    "label": "2008",
-   "source": "2008 art has been recovered"
+   "note": "2008 art has been recovered"
   },
   "Papa_Ph0-2107443691803791815-01.jpg": {
    "year": 2009,
    "label": "2009",
-   "source": "And one from 2009!"
+   "note": "And one from 2009!"
   },
   "7Cleofas-2121926991385436486-01.jpg": {
-   "year": 2014,
-   "label": "2014",
-   "source": "Tumblr post from January 2014 (questionableliterarymerit / rule63rules), per the owner"
+   "year": 2011,
+   "label": "2011",
+   "note": "Reposter said 2011 or 2014; the owner confirmed 2011. 'source' is published at the owner's request.",
+   "source": "https://www.tumblr.com/questionableliterarymerit/72657725340/rule63rules-image-rule-63d-draco-malfoy"
   },
   "Papa_Ph0-2107320137246470622-01.jpg": {
    "year": 2012,
    "label": "2012",
-   "source": "Update: 2012 Malfoid art"
+   "note": "Update: 2012 Malfoid art"
   },
   "Papa_Ph0-2107227302795051224-01.jpg": {
    "year": 2013,
    "label": "2013",
-   "source": "traced all the way back in 2013 on Tumblr"
+   "note": "traced all the way back in 2013 on Tumblr"
   },
   "Papa_Ph0-2107227302795051224-02.jpg": {
    "year": 2013,
    "label": "2013",
-   "source": "traced all the way back in 2013 on Tumblr"
+   "note": "traced all the way back in 2013 on Tumblr"
   },
   "Papa_Ph0-2107227302795051224-03.jpg": {
    "year": 2013,
    "label": "2013",
-   "source": "traced all the way back in 2013 on Tumblr"
+   "note": "traced all the way back in 2013 on Tumblr"
   },
   "[ねむ] - HPログ (86588589) p04.jpg": {
    "year": 2020,

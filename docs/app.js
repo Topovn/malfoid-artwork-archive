@@ -720,6 +720,21 @@
     viewerReturnFocus = null;
   });
 
+  // Names the site a source link opens, from its host.
+  const SOURCE_SITES = [
+    [/(^|\.)pixiv\.net$/, "Pixiv"],
+    [/(^|\.)tumblr\.com$/, "Tumblr"],
+    [/(^|\.)(x|twitter)\.com$/, "X"],
+  ];
+  function sourceLabel(url) {
+    let host = "";
+    try {
+      host = new URL(url).hostname.toLowerCase();
+    } catch {}
+    const site = SOURCE_SITES.find(([re]) => re.test(host));
+    return site ? `View on ${site[1]} ↗` : "View source ↗";
+  }
+
   // Early art carries no artist, tweet or file details: only the image and its year.
   function renderEarlyViewer(it) {
     el.viewerNote.hidden = true;
@@ -750,7 +765,7 @@
     el.viewerTweet.hidden = !it.source;
     if (it.source) {
       el.viewerTweet.href = it.source;
-      el.viewerTweet.textContent = /pixiv\.net/i.test(it.source) ? "View on Pixiv ↗" : "View source ↗";
+      el.viewerTweet.textContent = sourceLabel(it.source);
     }
     el.viewerDanbooru.hidden = true;
     el.viewerMore.hidden = true;
