@@ -1519,7 +1519,7 @@
       if (!res.ok) throw new Error(res.status + " " + res.statusText);
       data = await res.json();
     } catch (err) {
-      el.heroMeta.textContent = "Couldn't load the gallery index. Try reloading the page.";
+      el.heroMeta.textContent = "Couldn't load the archive index. Try reloading the page.";
       console.error(err);
       return;
     }

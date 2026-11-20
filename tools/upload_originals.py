@@ -33,7 +33,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = ROOT / "data" / "manifest.json"
 RELEASES = ROOT / "data" / "releases.json"
-DEFAULT_REPO = "Topovn/malfoid-gallery"
+DEFAULT_REPO = "Topovn/malfoid-artwork-archive"
 TAG_PREFIX = "media-"
 ASSETS_PER_RELEASE = 900  # GitHub allows 1000; keep headroom
 UPLOAD_BATCH = 10
