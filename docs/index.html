@@ -150,6 +150,31 @@
         <div class="shelf-track" id="pick-track"></div>
       </section>
 
+      <section class="fun-fact" id="fun-fact" aria-labelledby="fun-title">
+        <div class="shelf-head">
+          <div>
+            <h2 id="fun-title">Fun Fact</h2>
+            <p class="shelf-sub">I'm the one who gave @Ni7NiA7 the idea for this art</p>
+          </div>
+        </div>
+        <div class="fun-fact-body">
+          <figure class="fun-tweet">
+            <blockquote>
+              <p class="fun-tweet-author"><strong>Topo</strong> <span>@Topovn</span></p>
+              <p class="fun-tweet-text">@Ni7NiA7 I love your chibi Malfoids, can you draw her in this Adomination meme? With the flag being 🍏 or something too</p>
+            </blockquote>
+            <figcaption><a href="https://x.com/Topovn/status/2112585612322902144" target="_blank" rel="noopener noreferrer">View on X ↗</a></figcaption>
+          </figure>
+          <span class="fun-fact-arrow" aria-hidden="true">→</span>
+          <figure class="fun-art">
+            <button type="button" class="fun-art-open" id="fun-art-open" data-file="Ni7NiA7-2113016585950789961-01.jpg" aria-label="Open the artwork by @Ni7NiA7">
+              <img src="thumbs/Ni7NiA7-2113016585950789961-01.jpg.webp" alt="" width="400" height="400" loading="lazy" decoding="async">
+            </button>
+            <figcaption><span>@Ni7NiA7</span> <a href="https://x.com/Ni7NiA7/status/2113016585950789961" target="_blank" rel="noopener noreferrer">View on X ↗</a></figcaption>
+          </figure>
+        </div>
+      </section>
+
       <section class="timeline" id="timeline" aria-labelledby="timeline-title">
         <div class="shelf-head">
           <div>
@@ -285,6 +310,21 @@
         <label class="field field-search">
           <span class="field-label">Find an artist</span>
           <input id="artist-q" type="search" placeholder="Artist handle" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="field field-inline">
+          <span class="field-label">Followers</span>
+          <span class="select">
+            <select id="artist-followers">
+              <option value="">All followers</option>
+              <option value="0">Under 2K</option>
+              <option value="2k">2K–5K</option>
+              <option value="5k">5K–10K</option>
+              <option value="10k">10K–20K</option>
+              <option value="20k">20K–50K</option>
+              <option value="50k">50K–100K</option>
+              <option value="100k">100K+</option>
+            </select>
+          </span>
         </label>
         <label class="field field-inline">
           <span class="field-label">Order</span>

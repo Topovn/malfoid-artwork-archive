@@ -38,6 +38,7 @@
     empty: $("#empty"),
     artistQ: $("#artist-q"),
     artistSort: $("#artist-sort"),
+    artistFollowers: $("#artist-followers"),
     artistCount: $("#artist-count"),
     artists: $("#artists"),
     viewer: $("#viewer"),
@@ -69,6 +70,16 @@
     "2k": [2000, 5000],
     "200": [200, 2000],
     "0": [0, 200],
+  };
+  // Artists "Followers" filter, same rules: artists without a count match none.
+  const FOLLOWER_RANGES = {
+    "0": [0, 2000],
+    "2k": [2000, 5000],
+    "5k": [5000, 10000],
+    "10k": [10000, 20000],
+    "20k": [20000, 50000],
+    "50k": [50000, 100000],
+    "100k": [100000, Infinity],
   };
   let items = [];
   const itemByFile = new Map();
@@ -860,6 +871,14 @@
     renderViewerPick(it);
   }
 
+  // The Fun Fact artwork opens in the viewer like any card; the section hides if the work leaves the archive.
+  function setupFunFact() {
+    const btn = $("#fun-art-open");
+    const it = itemByFile.get(btn.dataset.file);
+    $("#fun-fact").hidden = !it;
+    if (it) btn.addEventListener("click", () => openViewer(0, [it], btn));
+  }
+
   function renderViewerPick(it) {
     const b = $("#viewer-pick");
     b.hidden = !picksEditable || !it;
@@ -1466,6 +1485,8 @@
     const q = el.artistQ.value.trim().toLowerCase().replace(/^@/, "");
     let list = [...artistStats.values()];
     if (q) list = list.filter((a) => a.key.includes(q) || a.formers.some((old) => old.includes(q)));
+    const range = FOLLOWER_RANGES[el.artistFollowers.value];
+    if (range) list = list.filter((a) => a.followers != null && a.followers >= range[0] && a.followers < range[1]);
     const by = el.artistSort.value;
     list.sort((a, b) =>
       by === "name"
@@ -1646,6 +1667,7 @@
   });
   el.artistQ.addEventListener("input", renderArtists);
   el.artistSort.addEventListener("change", renderArtists);
+  el.artistFollowers.addEventListener("change", renderArtists);
 
   window.addEventListener("keydown", (e) => {
     if (e.key === "/" && !el.viewer.open && document.activeElement.tagName !== "INPUT" && (state.view === "gallery" || state.view === "artists")) {
@@ -1744,6 +1766,7 @@
 
     applyFilters();
     renderPickShelf();
+    setupFunFact();
     buildShelves();
     buildTimeline();
     buildTimelineView();

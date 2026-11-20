@@ -763,6 +763,45 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 .shelf-head h2 a:hover { color: var(--accent); }
 .shelf-head h2 a:hover::after { margin-left: 4px; }
 .shelf-sub { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+
+/* Fun Fact: the request tweet beside the artwork it led to */
+.fun-fact { margin: 12px 0 44px; }
+.fun-fact-body { display: flex; align-items: center; gap: 20px; margin-top: 16px; }
+.fun-fact-body figure { margin: 0; }
+.fun-fact-body figcaption { margin-top: 10px; color: var(--muted); font-size: 14px; }
+.fun-fact-body figcaption a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.fun-fact-body figcaption a:hover { text-decoration: underline; }
+.fun-tweet { flex: 0 1 420px; min-width: 0; }
+.fun-tweet blockquote {
+  margin: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.fun-tweet-author { margin: 0 0 8px; }
+.fun-tweet-author span { margin-left: 4px; color: var(--muted); }
+.fun-tweet-text { margin: 0; font-size: 16px; line-height: 1.5; }
+.fun-fact-arrow { flex: none; color: var(--accent); font-size: 26px; font-weight: 600; }
+.fun-art { flex: 0 0 240px; }
+.fun-art-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+.fun-art-open img { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; transition: transform 0.2s; }
+.fun-art-open:hover img { transform: scale(1.03); }
+@media (max-width: 640px) {
+  .fun-fact-body { flex-direction: column; align-items: stretch; gap: 12px; }
+  .fun-tweet, .fun-art { flex: none; }
+  .fun-fact-arrow { align-self: center; transform: rotate(90deg); }
+  .fun-art { width: min(100%, 320px); align-self: center; }
+}
 .shelf-controls { display: flex; align-items: center; gap: 8px; flex: none; }
 .shelf-btn, .shelf-shuffle {
   height: 40px;
