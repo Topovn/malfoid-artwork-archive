@@ -169,6 +169,10 @@ def main() -> int:
     # Approximate like counts from tools/fetch_likes.py.
     likes_path = DATA / "likes.json"
     likes = json.loads(likes_path.read_text()) if likes_path.exists() else {}
+    # Current handles from tools/trace_handles.py, keyed by lowercased saved handle.
+    handles_path = DATA / "handles.json"
+    handles = json.loads(handles_path.read_text()) if handles_path.exists() else {}
+
     # Approximate follower counts from tools/fetch_followers.py, keyed by lowercased handle.
     followers_path = DATA / "followers.json"
     followers = json.loads(followers_path.read_text()) if followers_path.exists() else {}
@@ -204,6 +208,13 @@ def main() -> int:
                 item["d"] = int(datetime.strptime(meta["downloaded"], "%Y-%m-%d %H:%M").timestamp() * 1000)
             except (KeyError, ValueError):
                 pass
+        # Show renamed artists under their current handle; "o" keeps the saved one for search.
+        # Two saved handles of one account resolve to the same current handle, so they merge.
+        current = handles.get(handle.lower(), {}).get("current")
+        if current and current != handle:
+            item["a"] = current
+            if current.lower() != handle.lower():
+                item["o"] = handle
         if tweet in danbooru:
             item["b"] = danbooru[tweet]
         if tweet in likes and likes[tweet].get("likes") is not None:

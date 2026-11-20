@@ -27,6 +27,9 @@
     likes: $("#likes"),
     kind: $("#kind"),
     sort: $("#sort"),
+    reshuffle: $("#reshuffle"),
+    perPage: $("#per-page"),
+    pager: $("#pager"),
     count: $("#count"),
     activeArtist: $("#active-artist"),
     artistList: $("#artist-list"),
@@ -52,7 +55,9 @@
   };
 
   const VIEWS = ["home", "gallery", "timeline", "artists"];
-  const state = { q: "", artist: "", likes: "", kind: "", sort: "added", view: "home" };
+  const state = { q: "", artist: "", likes: "", kind: "", sort: "added", seed: 0, page: 1, view: "home" };
+  const PER_PAGE_OPTIONS = [50, 100, 150, 200];
+  const DEFAULT_PER_PAGE = 100;
   // Gallery "Likes" filter: at least the first number and fewer than the second. Works without a count match none.
   const LIKE_RANGES = {
     "50k": [50000, Infinity],
@@ -67,7 +72,12 @@
   let items = [];
   const itemByFile = new Map();
   let artistStats = new Map(); // lowercased handle -> {key, handle, count, latest, cover}
+  const formerHandles = new Map(); // lowercased former handle -> lowercased current handle
+  const resolveHandle = (h) => formerHandles.get(h) || h;
   let filtered = [];
+  let pageStart = 0; // index in `filtered` of the first work on the current gallery page
+  let lastFilterKey = null;
+  let perPage = readPerPage();
   let viewerList = [];
   let viewerIndex = -1;
   let viewerReturnFocus = null;
@@ -95,6 +105,42 @@
   const profileUrl = (it) => `https://x.com/${encodeURIComponent(it.a)}`;
   const isSafeUrl = (u) => /^https?:\/\//i.test(u);
 
+  // ---------- Paging and random order ----------
+
+  // Per page is a per-viewer preference; storage can be missing or blocked, so it falls back to the default.
+  function readPerPage() {
+    try {
+      const n = Number(localStorage.getItem("perPage"));
+      return PER_PAGE_OPTIONS.includes(n) ? n : DEFAULT_PER_PAGE;
+    } catch {
+      return DEFAULT_PER_PAGE;
+    }
+  }
+
+  function savePerPage(n) {
+    try {
+      localStorage.setItem("perPage", String(n));
+    } catch {}
+  }
+
+  const newSeed = () => 1 + Math.floor(Math.random() * (2 ** 32 - 1));
+
+  // A stable pseudo-random rank per work for a given seed, so Random keeps its order across pages and filters.
+  function fileHash(it) {
+    if (it._h === undefined) {
+      let h = 0x811c9dc5; // FNV-1a
+      for (let i = 0; i < it.f.length; i++) h = Math.imul(h ^ it.f.charCodeAt(i), 0x01000193);
+      it._h = h >>> 0;
+    }
+    return it._h;
+  }
+  function randomRank(it, seed) {
+    let h = (fileHash(it) ^ seed) >>> 0; // murmur3 finalizer
+    h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+    h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+    return (h ^ (h >>> 16)) >>> 0;
+  }
+
   // ---------- URL state ----------
 
   function readUrl() {
@@ -107,8 +153,13 @@
     // Old links may name an order or range that no longer exists.
     if (![...el.sort.options].some((o) => o.value === state.sort)) state.sort = "added";
     if (!Object.hasOwn(LIKE_RANGES, state.likes)) state.likes = "";
+    const seed = Number(p.get("seed"));
+    state.seed = Number.isInteger(seed) && seed > 0 && seed < 2 ** 32 ? seed : 0;
+    if (state.sort === "random" && !state.seed) state.seed = newSeed();
+    const page = Number(p.get("page"));
+    state.page = Number.isInteger(page) && page >= 1 ? page : 1; // clamped to the last page once results are known
     const hash = location.hash.slice(1);
-    const hasFilters = ["q", "artist", "likes", "type", "sort"].some((k) => p.has(k));
+    const hasFilters = ["q", "artist", "likes", "type", "sort", "page"].some((k) => p.has(k));
     state.view = VIEWS.includes(hash) ? hash : hasFilters ? "gallery" : "home";
     return p.get("work");
   }
@@ -121,6 +172,8 @@
       if (state.likes) p.set("likes", state.likes);
       if (state.kind) p.set("type", state.kind);
       if (state.sort !== "added") p.set("sort", state.sort);
+      if (state.sort === "random") p.set("seed", state.seed);
+      if (state.page > 1) p.set("page", state.page);
     }
     if (work) p.set("work", work);
     const qs = p.toString();
@@ -132,6 +185,8 @@
     el.q.value = state.q;
     el.likes.value = state.likes;
     el.sort.value = state.sort;
+    el.perPage.value = String(perPage);
+    el.reshuffle.hidden = state.sort !== "random";
     for (const b of el.kind.querySelectorAll("button[role=radio]")) {
       b.setAttribute("aria-checked", String(b.dataset.kind === state.kind));
     }
@@ -145,8 +200,9 @@
     const q = raw.replace(/^@/, "");
     const qLoose = q.replace(/[_.\s]/g, "");
     // "@handle" matches that artist exactly when it exists, otherwise any handle starting with it.
-    const exactHandle = exact && artistStats.has(q);
-    const artist = state.artist.toLowerCase();
+    const exactHandle = exact && (artistStats.has(q) || formerHandles.has(q));
+    // Old links may name an artist by a handle they have since changed.
+    const artist = resolveHandle(state.artist.toLowerCase());
     const [minLikes, maxLikes] = LIKE_RANGES[state.likes] || [];
 
     const out = items.filter((it) => {
@@ -154,8 +210,14 @@
       if (state.likes && (it.v == null || it.v < minLikes || it.v >= maxLikes)) return false;
       if (state.kind === "lost" ? !it.l : state.kind === "pick" ? !pickSet.has(it.f) : state.kind && it.k !== state.kind) return false;
       if (q) {
-        if (exact) return exactHandle ? it._al === q : it._al.startsWith(q);
-        return it._al.includes(q) || (qLoose && it._an.includes(qLoose)) || (it.t && it.t.includes(q));
+        // An exact former handle finds the whole artist, including works saved under the new handle.
+        if (exact) return exactHandle ? it._al === resolveHandle(q) : it._al.startsWith(q) || it._ao.startsWith(q);
+        return (
+          it._al.includes(q) ||
+          it._ao.includes(q) ||
+          (qLoose && (it._an.includes(qLoose) || it._aon.includes(qLoose))) ||
+          (it.t && it.t.includes(q))
+        );
       }
       return true;
     });
@@ -170,8 +232,18 @@
       artist: (a, b) => (a._al < b._al ? -1 : a._al > b._al ? 1 : b.p - a.p || byFile(a, b)),
       name: (a, b) => nameCollator.compare(a.f, b.f) || byFile(a, b),
     };
-    out.sort(sorters[state.sort] || sorters.added);
+    if (state.sort === "random") {
+      const rank = new Map(out.map((it) => [it, randomRank(it, state.seed)]));
+      out.sort((a, b) => rank.get(a) - rank.get(b) || byFile(a, b));
+    } else {
+      out.sort(sorters[state.sort] || sorters.added);
+    }
     filtered = out;
+
+    // Any change to what is shown, or its order, starts again from page 1.
+    const key = [state.q, state.artist, state.likes, state.kind, state.sort, state.seed].join("\u0000");
+    if (lastFilterKey !== null && key !== lastFilterKey) state.page = 1;
+    lastFilterKey = key;
 
     const total = numberFmt.format(items.length);
     const artistsShown = new Set(out.map((it) => it._al)).size;
@@ -182,7 +254,76 @@
     el.empty.hidden = out.length > 0;
 
     renderArtistChip();
-    grid.setData(filtered);
+    renderPage();
+  }
+
+  // Shows the current page of `filtered` in the grid, after clamping the page number to what exists.
+  function renderPage() {
+    const pages = Math.max(1, Math.ceil(filtered.length / perPage));
+    state.page = Math.min(Math.max(1, state.page), pages);
+    pageStart = (state.page - 1) * perPage;
+    grid.setData(filtered.slice(pageStart, pageStart + perPage));
+    renderPager(pages);
+  }
+
+  // Page numbers to show: the first, the last, and a window around the current one, with gaps as null.
+  function pageNumbers(current, pages) {
+    const keep = new Set([1, pages, current - 1, current, current + 1]);
+    if (current <= 3) [2, 3, 4].forEach((n) => keep.add(n));
+    if (current >= pages - 2) [pages - 1, pages - 2, pages - 3].forEach((n) => keep.add(n));
+    const nums = [...keep].filter((n) => n >= 1 && n <= pages).sort((a, b) => a - b);
+    const out = [];
+    nums.forEach((n, i) => {
+      if (i && n - nums[i - 1] > 1) out.push(n - nums[i - 1] === 2 ? n - 1 : null);
+      out.push(n);
+    });
+    return out;
+  }
+
+  function renderPager(pages) {
+    const hadFocus = el.pager.contains(document.activeElement);
+    el.pager.replaceChildren();
+    el.pager.hidden = pages <= 1;
+    if (pages <= 1) return;
+    const button = (label, page, aria) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      b.dataset.page = page;
+      if (aria) b.setAttribute("aria-label", aria);
+      return b;
+    };
+    const prev = button("‹ Previous", state.page - 1, "Previous page");
+    prev.className = "pager-step";
+    prev.disabled = state.page === 1;
+    const list = document.createElement("span");
+    list.className = "pager-pages";
+    for (const n of pageNumbers(state.page, pages)) {
+      if (n === null) {
+        const gap = document.createElement("span");
+        gap.className = "pager-gap";
+        gap.textContent = "…";
+        list.append(gap);
+        continue;
+      }
+      const b = button(String(n), n, `Page ${n}`);
+      if (n === state.page) b.setAttribute("aria-current", "page");
+      list.append(b);
+    }
+    const next = button("Next ›", state.page + 1, "Next page");
+    next.className = "pager-step";
+    next.disabled = state.page === pages;
+    el.pager.append(prev, list, next);
+    if (hadFocus) el.pager.querySelector('[aria-current="page"]').focus({ preventScroll: true });
+  }
+
+  function goToPage(page) {
+    state.page = page;
+    renderPage();
+    writeUrl();
+    // Back to the top of the results, just below the sticky top bar.
+    const bar = document.querySelector(".topbar").offsetHeight;
+    window.scrollTo({ top: el.count.getBoundingClientRect().top + window.scrollY - bar - 16 });
   }
 
   function renderArtistChip() {
@@ -563,10 +704,11 @@
     return { setData, schedule, relayout, scrollToIndex, scrollToGroup, groupAt, focusIndex };
   }
 
+  // The gallery grid holds one page; the viewer steps through every filtered work, across pages.
   const grid = makeVirtualGrid({
     container: el.grid,
     isActive: () => state.view === "gallery",
-    onOpen: (i, list, btn) => openViewer(i, list, btn),
+    onOpen: (i, list, btn) => openViewer(pageStart + i, filtered, btn),
   });
 
   const tlGrid = makeVirtualGrid({
@@ -599,12 +741,21 @@
   el.viewer.addEventListener("close", () => {
     el.viewerMedia.replaceChildren(); // stops any playing video
     document.documentElement.style.overflow = "";
-    writeUrl();
     const g = state.view === "gallery" && viewerList === filtered ? grid : state.view === "timeline" && viewerList === tlView.list ? tlGrid : null;
+    // The viewer may have stepped onto another page; show that page so the work is visible.
+    if (g === grid && viewerIndex >= 0) {
+      const page = Math.floor(viewerIndex / perPage) + 1;
+      if (page !== state.page) {
+        state.page = page;
+        renderPage();
+      }
+    }
+    writeUrl();
     if (g) {
-      g.scrollToIndex(viewerIndex);
+      const local = g === grid ? viewerIndex - pageStart : viewerIndex;
+      g.scrollToIndex(local);
       g.schedule();
-      requestAnimationFrame(() => g.focusIndex(viewerIndex));
+      requestAnimationFrame(() => g.focusIndex(local));
     } else if (viewerReturnFocus && viewerReturnFocus.isConnected) {
       viewerReturnFocus.focus({ preventScroll: true });
     }
@@ -666,6 +817,7 @@
     const rows = [
       ["Likes", it.v != null ? `About ${fmtLikes(it.v)}` : "Unknown"],
       ["Artist followers", followers != null ? `About ${fmtLikes(followers)}` : "Unknown"],
+      ...(it.o ? [["Saved as", "@" + it.o]] : []),
       ["Posted", fmtDate(it.p)],
       ["Added", fmtDate(it.d)],
       ["Tweet ID", it.t || "Unknown"],
@@ -1304,7 +1456,7 @@
   function renderArtists() {
     const q = el.artistQ.value.trim().toLowerCase().replace(/^@/, "");
     let list = [...artistStats.values()];
-    if (q) list = list.filter((a) => a.key.includes(q));
+    if (q) list = list.filter((a) => a.key.includes(q) || a.formers.some((old) => old.includes(q)));
     const by = el.artistSort.value;
     list.sort((a, b) =>
       by === "name"
@@ -1440,8 +1592,28 @@
   });
   el.sort.addEventListener("change", () => {
     state.sort = el.sort.value;
+    if (state.sort === "random") state.seed = newSeed();
+    syncControls();
     applyFilters();
     writeUrl();
+  });
+  el.reshuffle.addEventListener("click", () => {
+    state.seed = newSeed();
+    applyFilters();
+    writeUrl();
+  });
+  el.perPage.addEventListener("change", () => {
+    // Keep the first work of the current page in view under the new page size.
+    const first = pageStart;
+    perPage = Number(el.perPage.value);
+    savePerPage(perPage);
+    state.page = Math.floor(first / perPage) + 1;
+    renderPage();
+    writeUrl();
+  });
+  el.pager.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-page]");
+    if (b && !b.disabled) goToPage(Number(b.dataset.page));
   });
   el.kind.addEventListener("click", (e) => {
     const b = e.target.closest("button[role=radio]");
@@ -1531,16 +1703,21 @@
     for (const it of items) {
       it._al = it.a.toLowerCase();
       it._an = it._al.replace(/[_.]/g, ""); // lets "kuyou" find "__k_u_y_o_u__"
+      it._ao = it.o ? it.o.toLowerCase() : ""; // the handle the file was saved under, if the artist renamed
+      it._aon = it._ao.replace(/[_.]/g, "");
+      if (it._ao) formerHandles.set(it._ao, it._al);
       const s = artistStats.get(it._al);
       if (!s) {
         const fo = followers[it._al] ?? null;
-        artistStats.set(it._al, { key: it._al, handle: it.a, count: 1, latest: it.d, cover: it, followers: fo });
+        artistStats.set(it._al, { key: it._al, handle: it.a, count: 1, latest: it.d, cover: it, followers: fo, formers: [] });
       }
       else {
         s.count++;
         if (it.d > s.latest) s.latest = it.d;
         if (it.k === "art" && s.cover.k !== "art") s.cover = it;
       }
+      const stats = artistStats.get(it._al);
+      if (it._ao && !stats.formers.includes(it._ao)) stats.formers.push(it._ao);
     }
 
     renderHero(data);
@@ -1560,12 +1737,19 @@
     buildTimeline();
     buildTimelineView();
     showView();
+    // Rewrite the address with the settled state: a clamped page, a generated Random seed, dropped junk params.
+    writeUrl();
 
     if (workParam) {
       const list = state.view === "timeline" ? tlView.list : filtered;
       const idx = list.findIndex((it) => it.f === workParam);
       if (idx >= 0) {
-        if (state.view === "gallery") grid.scrollToIndex(idx);
+        if (state.view === "gallery") {
+          // Open on the page that holds the work.
+          state.page = Math.floor(idx / perPage) + 1;
+          renderPage();
+          grid.scrollToIndex(idx - pageStart);
+        }
         if (state.view === "timeline") tlGrid.scrollToIndex(idx);
         openViewer(idx, list);
       }
