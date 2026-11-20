@@ -461,7 +461,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 .badge-lost { background: #b86e00; margin-left: auto; }
 .has-pick .badges { right: 46px; }
 
-/* My Pick hearts */
+/* My Personal Pick hearts */
 .pick-btn, .pick-badge {
   position: absolute;
   top: 6px;
@@ -548,7 +548,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   color: var(--muted);
   font-size: 14px;
 }
-.footer p { margin: 0; }
+.footer p { max-width: 80ch; margin: 0; }
 .footer p + p { margin-top: 6px; }
 .footer a { color: inherit; }
 

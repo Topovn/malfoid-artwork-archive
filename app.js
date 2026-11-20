@@ -13,7 +13,7 @@
   const NEW_MAX = 200; // New Malfoid: every work under this many likes
   const SMALL_FOLLOWERS = 2000; // Small Artists: fewer followers than this (and not in New Malfoid)
   const SHELF_SIZE = 30; // works shown at once in the shuffled shelves
-  const LONG_VIDEO = 30; // videos this many seconds or longer stay off the home shelves (My Pick excepted)
+  const LONG_VIDEO = 30; // videos this many seconds or longer stay off the home shelves (My Personal Pick excepted)
   const TIMEZONE = "Australia/Sydney"; // days on the timeline, as in the original dashboard
   const TIMELINE_START = "2026-09-01";
   const TIMELINE_VIEW_END = "2026-10-01"; // the Timeline tab covers the early days, before the October wave
@@ -24,7 +24,7 @@
     heroMeta: $("#hero-meta"),
     lostNote: $("#lost-note"),
     q: $("#q"),
-    fmt: $("#fmt"),
+    likes: $("#likes"),
     kind: $("#kind"),
     sort: $("#sort"),
     count: $("#count"),
@@ -52,7 +52,18 @@
   };
 
   const VIEWS = ["home", "gallery", "timeline", "artists"];
-  const state = { q: "", artist: "", fmt: "", kind: "", sort: "added", view: "home" };
+  const state = { q: "", artist: "", likes: "", kind: "", sort: "added", view: "home" };
+  // Gallery "Likes" filter: at least the first number and fewer than the second. Works without a count match none.
+  const LIKE_RANGES = {
+    "50k": [50000, Infinity],
+    "30k": [30000, 50000],
+    "20k": [20000, 30000],
+    "10k": [10000, 20000],
+    "5k": [5000, 10000],
+    "2k": [2000, 5000],
+    "200": [200, 2000],
+    "0": [0, 200],
+  };
   let items = [];
   const itemByFile = new Map();
   let artistStats = new Map(); // lowercased handle -> {key, handle, count, latest, cover}
@@ -66,6 +77,8 @@
   const dateFmt = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric" });
   const fmtDate = (ms) => (ms ? dateFmt.format(new Date(ms)) : "Unknown");
   const fmtLikes = (n) => compactFmt.format(n);
+  // File-name order as macOS Finder shows it: case-insensitive, numbers by value, "_" before digits and letters.
+  const nameCollator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
   const plural = (n, one, many) => `${numberFmt.format(n)} ${n === 1 ? one : many}`;
 
   const thumbUrl = (it) => "thumbs/" + encodeURIComponent(it.f) + ".webp";
@@ -88,13 +101,14 @@
     const p = new URLSearchParams(location.search);
     state.q = p.get("q") || "";
     state.artist = p.get("artist") || "";
-    state.fmt = p.get("format") || "";
+    state.likes = p.get("likes") || "";
     state.kind = p.get("type") || "";
     state.sort = p.get("sort") || "added";
-    // Old links may name an order that no longer exists.
+    // Old links may name an order or range that no longer exists.
     if (![...el.sort.options].some((o) => o.value === state.sort)) state.sort = "added";
+    if (!Object.hasOwn(LIKE_RANGES, state.likes)) state.likes = "";
     const hash = location.hash.slice(1);
-    const hasFilters = ["q", "artist", "format", "type", "sort"].some((k) => p.has(k));
+    const hasFilters = ["q", "artist", "likes", "type", "sort"].some((k) => p.has(k));
     state.view = VIEWS.includes(hash) ? hash : hasFilters ? "gallery" : "home";
     return p.get("work");
   }
@@ -104,7 +118,7 @@
     if (state.view === "gallery") {
       if (state.q) p.set("q", state.q);
       if (state.artist) p.set("artist", state.artist);
-      if (state.fmt) p.set("format", state.fmt);
+      if (state.likes) p.set("likes", state.likes);
       if (state.kind) p.set("type", state.kind);
       if (state.sort !== "added") p.set("sort", state.sort);
     }
@@ -116,7 +130,7 @@
 
   function syncControls() {
     el.q.value = state.q;
-    el.fmt.value = state.fmt;
+    el.likes.value = state.likes;
     el.sort.value = state.sort;
     for (const b of el.kind.querySelectorAll("button[role=radio]")) {
       b.setAttribute("aria-checked", String(b.dataset.kind === state.kind));
@@ -133,11 +147,12 @@
     // "@handle" matches that artist exactly when it exists, otherwise any handle starting with it.
     const exactHandle = exact && artistStats.has(q);
     const artist = state.artist.toLowerCase();
+    const [minLikes, maxLikes] = LIKE_RANGES[state.likes] || [];
 
     const out = items.filter((it) => {
       if (artist && it._al !== artist) return false;
-      if (state.fmt && it.x !== state.fmt && !(state.fmt === "jpg" && it.x === "jpeg")) return false;
-      if (state.kind === "lost" ? !it.l : state.kind && it.k !== state.kind) return false;
+      if (state.likes && (it.v == null || it.v < minLikes || it.v >= maxLikes)) return false;
+      if (state.kind === "lost" ? !it.l : state.kind === "pick" ? !pickSet.has(it.f) : state.kind && it.k !== state.kind) return false;
       if (q) {
         if (exact) return exactHandle ? it._al === q : it._al.startsWith(q);
         return it._al.includes(q) || (qLoose && it._an.includes(qLoose)) || (it.t && it.t.includes(q));
@@ -153,6 +168,7 @@
       liked: (a, b) => (b.v ?? -1) - (a.v ?? -1) || (a.t < b.t ? -1 : a.t > b.t ? 1 : 0) || a.i - b.i || byFile(a, b),
       oldest: (a, b) => (a.p || Infinity) - (b.p || Infinity) || byFile(a, b),
       artist: (a, b) => (a._al < b._al ? -1 : a._al > b._al ? 1 : b.p - a.p || byFile(a, b)),
+      name: (a, b) => nameCollator.compare(a.f, b.f) || byFile(a, b),
     };
     out.sort(sorters[state.sort] || sorters.added);
     filtered = out;
@@ -225,11 +241,11 @@
       (it.v != null ? `, about ${fmtLikes(it.v)} likes` : "") +
       (it.k === "anim" ? ", animation" : "") +
       (it.l ? ", lost tweet" : "") +
-      (pickSet.has(it.f) ? ", in My Pick" : "")
+      (pickSet.has(it.f) ? ", in My Personal Pick" : "")
     );
   }
 
-  // ---------- My Pick ----------
+  // ---------- My Personal Pick ----------
   // The list lives in data/picks.json. It can only be changed through tools/serve.py, the owner's
   // local server, which marks data/picks.json with an X-Malfoid-Edit header and accepts PUT /api/picks.
   // Everywhere else (GitHub Pages, a plain static server) picks are read-only.
@@ -282,7 +298,7 @@
     const on = pickSet.has(it.f);
     if (pickEl.tagName === "BUTTON") {
       pickEl.setAttribute("aria-pressed", String(on));
-      pickEl.setAttribute("aria-label", on ? "Remove from My Pick" : "Add to My Pick");
+      pickEl.setAttribute("aria-label", on ? "Remove from My Personal Pick" : "Add to My Personal Pick");
     } else {
       pickEl.hidden = !on;
     }
@@ -293,6 +309,7 @@
     for (const pickEl of document.querySelectorAll(".pick-btn, .pick-badge")) if (pickEl._item) setPick(pickEl, pickEl._item);
     for (const hit of document.querySelectorAll(".card-hit")) if (hit._item) hit.setAttribute("aria-label", cardLabel(hit._item));
     renderPickShelf(true);
+    if (state.kind === "pick") applyFilters();
     if (el.viewer.open) renderViewerPick(viewerList[viewerIndex]);
   }
 
@@ -307,7 +324,7 @@
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       })
       .catch(async (err) => {
-        console.error("Couldn't save My Pick:", err);
+        console.error("Couldn't save My Personal Pick:", err);
         // Fall back to whatever the server holds, or to the list before this change.
         try {
           const res = await fetch("api/picks", { cache: "no-store" });
@@ -688,7 +705,7 @@
     if (b.hidden) return;
     const on = pickSet.has(it.f);
     b.setAttribute("aria-pressed", String(on));
-    b.querySelector("span").textContent = on ? "Remove from My Pick" : "Add to My Pick";
+    b.querySelector("span").textContent = on ? "Remove from My Personal Pick" : "Add to My Personal Pick";
   }
 
   function preloadNeighbours(index) {
@@ -712,7 +729,7 @@
     if (state.view === "gallery") {
       setArtist(showAll ? "" : it.a);
     } else {
-      showGallery({ artist: it.a, q: "", fmt: "", kind: "" });
+      showGallery({ artist: it.a, q: "", likes: "", kind: "" });
     }
     // The close handler scrolls back to this work in the new list.
     viewerList = filtered;
@@ -882,7 +899,11 @@
 
   $("#fame-link").addEventListener("click", (e) => {
     e.preventDefault();
-    showGallery({ sort: "liked", q: "", artist: "", fmt: "", kind: "" });
+    showGallery({ sort: "liked", q: "", artist: "", likes: "", kind: "" });
+  });
+  $("#pick-link").addEventListener("click", (e) => {
+    e.preventDefault();
+    showGallery({ kind: "pick", q: "", artist: "", likes: "" });
   });
 
   for (const shelf of document.querySelectorAll(".shelf")) {
@@ -1412,8 +1433,8 @@
       writeUrl();
     }, 120);
   });
-  el.fmt.addEventListener("change", () => {
-    state.fmt = el.fmt.value;
+  el.likes.addEventListener("change", () => {
+    state.likes = el.likes.value;
     applyFilters();
     writeUrl();
   });
