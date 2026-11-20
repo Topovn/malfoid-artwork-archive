@@ -769,7 +769,8 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 
 /* Fun Fact: the request tweet beside the artwork it led to */
 .fun-fact { margin: 12px 0 44px; }
-.fun-fact-body { display: flex; align-items: center; gap: 20px; margin-top: 16px; }
+/* Bottom-aligned so both "View on X" links share a line; the art's bottom margin (quote card padding + border) lines it up with the meme. */
+.fun-fact-body { display: flex; align-items: flex-end; gap: 20px; margin-top: 16px; }
 .fun-fact-body figure { margin: 0; }
 .fun-fact-body figcaption { margin-top: 10px; color: var(--muted); font-size: 14px; }
 .fun-fact-body figcaption a { color: var(--accent); font-weight: 600; text-decoration: none; }
@@ -794,11 +795,13 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   border: 1px solid var(--border);
   border-radius: 12px;
 }
-.fun-fact-arrow { flex: none; color: var(--accent); font-size: 26px; font-weight: 600; }
-.fun-art { flex: 0 0 240px; }
+/* Centered on the 320px images: caption (21px) + art offset (27px) + half an image (160px) - half the arrow (16px). */
+.fun-fact-arrow { flex: none; align-self: flex-end; margin-bottom: 192px; color: var(--accent); font-size: 26px; font-weight: 600; line-height: 32px; }
+.fun-art { flex: 0 0 320px; } /* same width as .fun-tweet-media, so the request and the result compare 1:1 */
 .fun-art-open {
   display: block;
   width: 100%;
+  margin-bottom: 27px; /* 17px card offset + the caption's 10px top margin, which collapses into this one */
   padding: 0;
   border: 0;
   border-radius: var(--radius);
@@ -811,8 +814,9 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 @media (max-width: 640px) {
   .fun-fact-body { flex-direction: column; align-items: stretch; gap: 12px; }
   .fun-tweet, .fun-art { flex: none; }
-  .fun-fact-arrow { align-self: center; transform: rotate(90deg); }
+  .fun-fact-arrow { align-self: center; margin-bottom: 0; transform: rotate(90deg); }
   .fun-art { width: min(100%, 320px); align-self: center; }
+  .fun-art-open { margin-bottom: 0; }
 }
 .shelf-controls { display: flex; align-items: center; gap: 8px; flex: none; }
 .shelf-btn, .shelf-shuffle {
