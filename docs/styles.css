@@ -785,6 +785,15 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 .fun-tweet-author { margin: 0 0 8px; }
 .fun-tweet-author span { margin-left: 4px; color: var(--muted); }
 .fun-tweet-text { margin: 0; font-size: 16px; line-height: 1.5; }
+.fun-tweet-media {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
 .fun-fact-arrow { flex: none; color: var(--accent); font-size: 26px; font-weight: 600; }
 .fun-art { flex: 0 0 240px; }
 .fun-art-open {
