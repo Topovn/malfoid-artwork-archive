@@ -176,8 +176,9 @@ def main() -> int:
             for start in range(0, len(files), UPLOAD_BATCH):
                 batch = files[start:start + UPLOAD_BATCH]
                 for attempt in range(3):
-                    # After a failure, part of the batch may already be on GitHub; skip those.
-                    todo = [f for f in batch if assets[f]["name"] not in remote[tag]]
+                    # After a failure, part of the batch may already be on GitHub; skip those,
+                    # and skip files the owner moved or deleted since this run started.
+                    todo = [f for f in batch if assets[f]["name"] not in remote[tag] and local[f][0].exists()]
                     if not todo:
                         break
                     paths = []
