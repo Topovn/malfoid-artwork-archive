@@ -1415,6 +1415,9 @@
     btn.addEventListener("click", () => openViewer(index, tlView.list, btn));
     card.append(btn);
     if (it._early) {
+      // Early screenshots keep their own shape, uncropped.
+      card.classList.add("tl-card-early");
+      if (it.e.w > 0 && it.e.h > 0) card.style.aspectRatio = `${it.e.w} / ${it.e.h}`;
       img.src = it.e.thumb;
       btn.setAttribute("aria-label", `Early Malfoid art, ${it.label}`);
       return card;

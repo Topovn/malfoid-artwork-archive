@@ -130,12 +130,20 @@ def main() -> int:
         if m and row.get("Danbooru"):
             danbooru[m.group(1)] = row["Danbooru"]
 
+    # Works the owner keeps off the site (wrong attribution and the like); the source files stay put.
+    exclude_path = DATA / "exclude.json"
+    exclude = json.loads(exclude_path.read_text()) if exclude_path.exists() else {}
+    excluded_handles = {h.lower() for h in exclude.get("handles", [])}
+    excluded_files = set(exclude.get("files", []))
+
     files: list[tuple[Path, bool]] = []
     for folder, lost in ((src, False), (src / LOST_DIR, True)):
         if not folder.is_dir():
             continue
         for p in sorted(folder.iterdir()):
             ext = p.suffix.lower().lstrip(".")
+            if p.name in excluded_files or parse_name(p.stem)[0].lower() in excluded_handles:
+                continue
             if p.is_file() and not p.name.startswith(".") and ext in IMAGE_EXTS | VIDEO_EXTS:
                 files.append((p, lost))
 
