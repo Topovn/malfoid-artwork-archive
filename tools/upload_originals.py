@@ -36,8 +36,8 @@ RELEASES = ROOT / "data" / "releases.json"
 DEFAULT_REPO = "Topovn/malfoid-artwork-archive"
 TAG_PREFIX = "media-"
 ASSETS_PER_RELEASE = 900  # GitHub allows 1000; keep headroom
-UPLOAD_BATCH = 10
-BATCH_PAUSE = 2.0  # seconds between batches, to stay under GitHub's content-creation limits
+UPLOAD_BATCH = 5
+BATCH_PAUSE = 45.0  # seconds between batches: about 400 uploads an hour, under GitHub's content-creation limit
 MAX_ASSET_BYTES = 2 * 1024**3
 RATE_LIMITED = re.compile(r"rate limit|secondary|abuse|HTTP 403|HTTP 429|HTTP 50[234]", re.I)
 
@@ -65,7 +65,10 @@ def tag_assets(repo: str, tag: str) -> dict[str, int]:
 def safe_asset_name(item: dict) -> str:
     """A name GitHub will not rewrite: starts with a digit, only [A-Za-z0-9._-]."""
     ext = item["x"]
-    stem = f"{item['t']}-{item['i']:02d}-{item['a']}" if item["t"] else f"0-{Path(item['f']).stem}"
+    # Use the handle the file was saved under ("o" when the build shows a renamed artist's current handle),
+    # so asset names never change when an artist renames their account.
+    saved = item.get("o") or item["a"]
+    stem = f"{item['t']}-{item['i']:02d}-{saved}" if item["t"] else f"0-{Path(item['f']).stem}"
     return re.sub(r"[^A-Za-z0-9._-]", "-", stem) + "." + ext
 
 
