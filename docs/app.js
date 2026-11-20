@@ -1243,7 +1243,7 @@
     e.preventDefault();
     showGallery({ kind: "pick", q: "", artist: "", likes: "", followers: "" });
   });
-  for (const [id, likes] of [["#big-link", "5k"], ["#gems-link", "2k"], ["#hidden-link", "200"]]) {
+  for (const [id, likes] of [["#big-link", "5k"], ["#gems-link", "2k"], ["#hidden-link", "200"], ["#buried-link", "0"]]) {
     $(id).addEventListener("click", (e) => {
       e.preventDefault();
       gallerySeed = newSeed();
