@@ -21,7 +21,7 @@
   color-scheme: light;
 }
 
-/* Dark theme: follows the system unless the visitor picks one with the top-bar switch. */
+/* Dark theme: default since theme.js sets data-theme; this block covers a system-dark fallback. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #111513;
