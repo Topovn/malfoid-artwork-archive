@@ -12,10 +12,10 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=2">
+  <link rel="stylesheet" href="styles.css?v=9">
   <script src="theme.js?v=2"></script>
   <script src="config.js"></script>
-  <script src="app.js" defer></script>
+  <script src="app.js?v=12" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -46,8 +46,8 @@
     <section class="hero">
       <h1>The Malfoid Artwork Archive</h1>
       <p class="hero-meta" id="hero-meta">Loading the collection…</p>
-      <p class="hero-coverage" id="tl-coverage" hidden><span>Below are all the works I can find predates Oct 2026, counting all the platforms, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed any, especially those predates <strong>Sept 23 2026</strong></span></p>
-      <p class="hero-coverage" id="x-coverage"><span>Covers hand-drawn artwork posted on Twitter (X) only. NO AI arts and NO 18+ arts. Art on Pixiv, Instagram and other sites isn't tracked since I'm too lazy to manually tag. This is not every art out there on Twitter nor I have every pieces of every artists in this folder, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed your art</span></p>
+      <p class="hero-coverage" id="tl-coverage" hidden><span>Below are all the works I can find predates Oct 2026, counting all the platforms, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed any, especially those predates September 23 2026</span></p>
+      <p class="hero-coverage" id="x-coverage"><span>Covers hand-drawn artwork posted on Twitter (X) only. NO AI arts, 18+ comes later if there's a demand for it. Art on Pixiv, Instagram and other sites isn't tracked since I'm too lazy to manually tag<br>This is not every art out there on Twitter nor I have every pieces of every artists in this folder, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed your art or you found any 18+ arts that doesnt belong here</span></p>
     </section>
 
     <section id="view-home" class="view">
@@ -113,8 +113,8 @@
       <section class="shelf" id="small-artists" aria-labelledby="small-title">
         <div class="shelf-head">
           <div>
-            <h2 id="small-title">Small Artists</h2>
-            <p class="shelf-sub">Artists with under 2,000 followers, showing each one's best</p>
+            <h2 id="small-title"><a href="?followers=0&amp;sort=liked#gallery" id="small-link">Small Artists</a></h2>
+            <p class="shelf-sub">Artists with under 2,000 followers, showing their best work</p>
           </div>
           <div class="shelf-controls">
             <button type="button" class="shelf-shuffle" data-shuffle="small">Shuffle</button>
@@ -128,13 +128,13 @@
       <section class="shelf" id="new-malfoid" aria-labelledby="new-title">
         <div class="shelf-head">
           <div>
-            <h2 id="new-title">New Malfoid</h2>
-            <p class="shelf-sub">Artists whose works all have under 200 likes, showing each one's best</p>
+            <h2 id="new-title">New Malfoid artworks</h2>
+            <p class="shelf-sub">Works under 200 likes, one per artist</p>
           </div>
           <div class="shelf-controls">
             <button type="button" class="shelf-shuffle" data-shuffle="new">Shuffle</button>
-            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll New Malfoid left">‹</button>
-            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll New Malfoid right">›</button>
+            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll New Malfoid artworks left">‹</button>
+            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll New Malfoid artworks right">›</button>
           </div>
         </div>
         <div class="shelf-track" id="new-track"></div>
@@ -168,14 +168,14 @@
                 <p class="idea-tweet-text">@Ni7NiA7 I love your chibi Malfoids, can you draw her in this Adomination meme? With the flag being 🍏 or something too</p>
                 <img class="idea-tweet-media" src="fun/tweet-image.webp" alt="The Adomination meme the tweet links: a chibi Ado peeking over a globe with an Ado flag" width="554" height="554" loading="lazy" decoding="async">
               </blockquote>
-              <figcaption><a href="https://x.com/Topovn/status/2112585612322902144" target="_blank" rel="noopener noreferrer">View on X ↗</a></figcaption>
+              <figcaption><a href="https://x.com/Topovn/status/2112585612322902144" target="_blank" rel="noopener noreferrer">View on Twitter ↗</a></figcaption>
             </figure>
             <span class="idea-arrow" aria-hidden="true">→</span>
             <figure class="idea-art">
               <button type="button" class="idea-art-open" id="ideas-art-open" data-file="Ni7NiA7-2113016585950789961-01.jpg" aria-label="Open the artwork by @Ni7NiA7">
                 <img src="thumbs/Ni7NiA7-2113016585950789961-01.jpg.webp" alt="" width="400" height="400" loading="lazy" decoding="async">
               </button>
-              <figcaption><span>@Ni7NiA7</span> <a href="https://x.com/Ni7NiA7/status/2113016585950789961" target="_blank" rel="noopener noreferrer">View on X ↗</a></figcaption>
+              <figcaption><span>@Ni7NiA7</span> <a href="https://x.com/Ni7NiA7/status/2113016585950789961" target="_blank" rel="noopener noreferrer">View on Twitter ↗</a></figcaption>
             </figure>
           </div>
           <div class="idea-pair">
@@ -185,17 +185,18 @@
                 <p class="idea-tweet-text">@hallowleaf I have a great idea for Potter family and I would love to see it in your artstyle 🙏 Ratatouille came out in 2007, Lily should still be &lt;10 years old. She would definitely watched this and would definitely nag her dad to sit on his shoulder, tugging his hair while he cooks</p>
                 <img class="idea-tweet-media" src="fun/potter-idea.webp" alt="Ratatouille reference image attached to the idea" width="408" height="150" loading="lazy" decoding="async">
               </blockquote>
-              <figcaption><a href="https://x.com/Topovn/status/2120739396861538576" target="_blank" rel="noopener noreferrer">View on X ↗</a></figcaption>
+              <figcaption><a href="https://x.com/Topovn/status/2120739396861538576" target="_blank" rel="noopener noreferrer">View on Twitter ↗</a></figcaption>
             </figure>
             <span class="idea-arrow" aria-hidden="true">→</span>
             <figure class="idea-art">
-              <a class="idea-art-link" href="https://x.com/hallowleaf/status/2122431288212635668/photo/1" target="_blank" rel="noopener noreferrer" aria-label="Open the artwork by @hallowleaf on X">
+              <a class="idea-art-link" href="https://x.com/hallowleaf/status/2122431288212635668/photo/1" target="_blank" rel="noopener noreferrer" aria-label="Open the artwork by @hallowleaf on Twitter">
                 <img src="fun/potter-art.webp" alt="Fan art by @hallowleaf of Lily sitting on Harry's shoulders, tugging his hair while he cooks" width="1401" height="2048" loading="lazy" decoding="async">
               </a>
-              <figcaption><span>@hallowleaf</span> <a href="https://x.com/hallowleaf/status/2122431288212635668/photo/1" target="_blank" rel="noopener noreferrer">View on X ↗</a></figcaption>
+              <figcaption><span>@hallowleaf</span> <a href="https://x.com/hallowleaf/status/2122431288212635668/photo/1" target="_blank" rel="noopener noreferrer">View on Twitter ↗</a></figcaption>
             </figure>
           </div>
         </div>
+        <p class="ideas-note">I'm currently doing a Malfoid doing Vocaloid daily challenge on my Twitter for 30+ days, if you are interested you can follow me to see what I draw next!</p>
       </section>
 
       <section class="timeline" id="timeline" aria-labelledby="timeline-title">
@@ -258,7 +259,6 @@
         </div>
         <button type="button" class="shelf-shuffle" id="random-shuffle">Shuffle</button>
       </div>
-      <div class="status"><p id="random-count" aria-live="polite"></p></div>
       <div id="random-grid" class="grid" aria-label="Random works"></div>
     </section>
 
@@ -284,6 +284,21 @@
           </span>
         </label>
         <label class="field field-inline">
+          <span class="field-label">Followers</span>
+          <span class="select">
+            <select id="followers">
+              <option value="">All followers</option>
+              <option value="0">Under 2K</option>
+              <option value="2k">2K–5K</option>
+              <option value="5k">5K–10K</option>
+              <option value="10k">10K–20K</option>
+              <option value="20k">20K–50K</option>
+              <option value="50k">50K–100K</option>
+              <option value="100k">100K+</option>
+            </select>
+          </span>
+        </label>
+        <label class="field field-inline">
           <span class="field-label">Order</span>
           <span class="select">
             <select id="sort">
@@ -291,6 +306,7 @@
               <option value="newest">Newest posted</option>
               <option value="liked">Most liked</option>
               <option value="name">File name</option>
+              <option value="shuffle">Random</option>
             </select>
           </span>
         </label>
@@ -302,6 +318,8 @@
               <option value="100">100</option>
               <option value="150">150</option>
               <option value="200">200</option>
+              <option value="250">250</option>
+              <option value="300">300</option>
             </select>
           </span>
         </label>
@@ -368,6 +386,7 @@
               <option value="likes">Most total likes</option>
               <option value="name">A–Z</option>
               <option value="recent">Recently added</option>
+              <option value="random" selected>Random</option>
             </select>
           </span>
         </label>
@@ -381,7 +400,7 @@
     <p>This site is an unofficial, non-commercial collection of fan art I found on Twitter, with the help of <a href="https://github.com/EltonChou/TwitterMediaHarvest" target="_blank" rel="noopener noreferrer">Twitter Media Harvest extension</a></p>
     <p>Harry Potter and related names are trademarks of Warner Bros. Entertainment Inc. This site is not affiliated with, endorsed or sponsored by Warner Bros., Wizarding World Digital or J.K. Rowling</p>
     <p>All works belong to their original creators. Icon art by <a href="https://x.com/redteneri" target="_blank" rel="noopener noreferrer">@redteneri</a></p>
-    <p>For more Malfoid fan works, see <a href="https://malfoid.com/" target="_blank" rel="noopener noreferrer">Malfoid.com</a> and the <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/" target="_blank" rel="noopener noreferrer">Malfoid Index</a></p>
+    <p>For more Malfoid fan works, see <a href="https://malfoid.com/" target="_blank" rel="noopener noreferrer">Malfoid.com</a> and the <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/" target="_blank" rel="noopener noreferrer">Malfoid Index</a> where <a href="https://x.com/rhedak1" target="_blank" rel="noopener noreferrer">@rhedak</a> archive all Malfoid media</p>
   </footer>
 
   <dialog id="viewer" class="viewer" aria-label="Work viewer">
@@ -399,7 +418,7 @@
       <dl class="viewer-meta" id="viewer-meta"></dl>
       <div class="viewer-actions">
         <button class="btn btn-pick" id="viewer-pick" type="button" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.6-4.6-9.5-9.3C1.1 7.8 3.2 4 6.9 4c2.1 0 3.5 1.1 5.1 3.1C13.6 5.1 15 4 17.1 4c3.7 0 5.8 3.8 4.4 7.2-1.9 4.7-9.5 9.3-9.5 9.3z"/></svg><span>Add to My Personal Pick</span></button>
-        <a class="btn btn-primary" id="viewer-tweet" target="_blank" rel="noopener noreferrer">View tweet on X ↗</a>
+        <a class="btn btn-primary" id="viewer-tweet" target="_blank" rel="noopener noreferrer">View tweet on Twitter ↗</a>
         <a class="btn" id="viewer-danbooru" target="_blank" rel="noopener noreferrer" hidden>View on Danbooru ↗</a>
         <button class="btn" id="viewer-more" type="button"></button>
       </div>

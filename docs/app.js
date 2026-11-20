@@ -7,12 +7,13 @@
   );
   const CELL_RATIO = 1.25; // height / width of a grid cell
   const OVERSCAN = 2; // rows rendered above and below the viewport
-  const FAME_MIN = 50000; // Hall of Fame: more likes than this
+  const FAME_SIZE = 50; // Hall of Fame: 50 works
   // Gem shelves, one work per artist: at least the first number of likes and fewer than the second.
   const GEM_RANGES = { big: [5000, 10000], gems: [2000, 5000], hidden: [200, 2000] };
   const NEW_MAX = 200; // New Malfoid: every work under this many likes
   const SMALL_FOLLOWERS = 2000; // Small Artists: fewer followers than this (and not in New Malfoid)
   const SHELF_SIZE = 30; // works shown at once in the shuffled shelves
+  const RANDOM_SHELF_SIZE = 20; // works shown at once in Big Gems, Gems, Hidden Gems and New Malfoid
   const RANDOM_SIZE = 50; // works shown in the Random tab, one per artist
   const LONG_VIDEO = 30; // videos this many seconds or longer count as Videos (see isVideo)
   const VIDEO_ARTISTS = new Set(["alessandro49472"]); // every work by these artists counts as Videos
@@ -27,10 +28,10 @@
     lostNote: $("#lost-note"),
     q: $("#q"),
     likes: $("#likes"),
+    followers: $("#followers"),
     kind: $("#kind"),
     sort: $("#sort"),
     perPage: $("#per-page"),
-    randomCount: $("#random-count"),
     randomGrid: $("#random-grid"),
     pager: $("#pager"),
     count: $("#count"),
@@ -58,8 +59,8 @@
   };
 
   const VIEWS = ["home", "random", "gallery", "timeline", "artists"];
-  const state = { q: "", artist: "", likes: "", kind: "", sort: "added", seed: 0, page: 1, view: "home" };
-  const PER_PAGE_OPTIONS = [50, 100, 150, 200];
+  const state = { q: "", artist: "", likes: "", followers: "", kind: "", sort: "shuffle", seed: 0, page: 1, view: "home" };
+  const PER_PAGE_OPTIONS = [50, 100, 150, 200, 250, 300];
   const DEFAULT_PER_PAGE = 100;
   // Gallery "Likes" filter: at least the first number and fewer than the second. Works without a count match none.
   const LIKE_RANGES = {
@@ -71,7 +72,7 @@
     "200": [200, 2000],
     "0": [0, 200],
   };
-  // Artists "Followers" filter, same rules: artists without a count match none.
+  // "Followers" filter in Artists and Gallery, same rules: artists without a count match none.
   const FOLLOWER_RANGES = {
     "0": [0, 2000],
     "2k": [2000, 5000],
@@ -94,6 +95,8 @@
   let viewerList = [];
   let viewerIndex = -1;
   let viewerReturnFocus = null;
+  let viewerPushed = false; // the open viewer owns a history entry that closing should leave
+  let restoring = false; // history restoration must not write more history entries
 
   const numberFmt = new Intl.NumberFormat("en-US");
   const compactFmt = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1, roundingMode: "trunc" }); // 1,950 reads 1.9K, never "2K" for an under-2,000 work
@@ -144,6 +147,9 @@
   }
 
   const newSeed = () => 1 + Math.floor(Math.random() * (2 ** 32 - 1));
+  // Random orders: fresh on each load and each time Random is picked, steady while paging or filtering.
+  let gallerySeed = newSeed();
+  let artistSeed = newSeed();
 
   // Stable pseudo-random ranks: one set survives reloads, Shuffle picks a new seed.
   function stringHash(s) {
@@ -166,49 +172,64 @@
 
   // ---------- URL state ----------
 
+  let lastUrl = location.pathname + location.search + location.hash;
+
   function readUrl() {
     const p = new URLSearchParams(location.search);
     state.q = p.get("q") || "";
     state.artist = p.get("artist") || "";
     state.likes = p.get("likes") || "";
+    state.followers = p.get("followers") || "";
     state.kind = p.get("type") || "";
     const legacyRandom = p.get("sort") === "random";
-    state.sort = p.get("sort") || "added";
+    state.sort = p.get("sort") || "shuffle";
     // Old links may name an order or range that no longer exists.
-    if (![...el.sort.options].some((o) => o.value === state.sort)) state.sort = "added";
+    if (![...el.sort.options].some((o) => o.value === state.sort)) state.sort = "shuffle";
     if (state.likes === "30k") state.likes = "20k"; // 30K-50K folded into 20K-50K
     if (!Object.hasOwn(LIKE_RANGES, state.likes)) state.likes = "";
+    if (!Object.hasOwn(FOLLOWER_RANGES, state.followers)) state.followers = "";
     const seed = Number(p.get("seed"));
     state.seed = Number.isInteger(seed) && seed > 0 && seed < 2 ** 32 ? seed : 0;
     const page = Number(p.get("page"));
     state.page = Number.isInteger(page) && page >= 1 ? page : 1; // clamped to the last page once results are known
     const hash = location.hash.slice(1);
-    const hasFilters = ["q", "artist", "likes", "type", "sort", "page"].some((k) => p.has(k));
+    const hasFilters = ["q", "artist", "likes", "followers", "type", "sort", "page"].some((k) => p.has(k));
     state.view = legacyRandom ? "random" : VIEWS.includes(hash) ? hash : hasFilters ? "gallery" : "home";
     if (state.view === "random" && !state.seed) state.seed = newSeed();
     return p.get("work");
   }
 
-  function writeUrl(work) {
+  // `push` adds a history entry for a user action; the default replaces the current one.
+  function writeUrl(work, push = false) {
     const p = new URLSearchParams();
     if (state.view === "gallery") {
       if (state.q) p.set("q", state.q);
       if (state.artist) p.set("artist", state.artist);
       if (state.likes) p.set("likes", state.likes);
+      if (state.followers) p.set("followers", state.followers);
       if (state.kind) p.set("type", state.kind);
-      if (state.sort !== "added") p.set("sort", state.sort);
+      if (state.sort !== "shuffle") p.set("sort", state.sort);
       if (state.page > 1) p.set("page", state.page);
     }
     if (state.view === "random") p.set("seed", state.seed);
     if (work) p.set("work", work);
     const qs = p.toString();
     const hash = state.view === "home" ? "" : "#" + state.view;
-    history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "") + hash);
+    const url = location.pathname + (qs ? "?" + qs : "") + hash;
+    const current = location.pathname + location.search + location.hash;
+    if (url === current) {
+      lastUrl = current;
+      return;
+    }
+    lastUrl = url;
+    if (push) history.pushState(null, "", url);
+    else history.replaceState(null, "", url);
   }
 
   function syncControls() {
     el.q.value = state.q;
     el.likes.value = state.likes;
+    el.followers.value = state.followers;
     el.sort.value = state.sort;
     el.perPage.value = String(perPage);
     for (const b of el.kind.querySelectorAll("button[role=radio]")) {
@@ -228,10 +249,15 @@
     // Old links may name an artist by a handle they have since changed.
     const artist = resolveHandle(state.artist.toLowerCase());
     const [minLikes, maxLikes] = LIKE_RANGES[state.likes] || [];
+    const [minFollowers, maxFollowers] = FOLLOWER_RANGES[state.followers] || [];
 
     const out = items.filter((it) => {
       if (artist && it._al !== artist) return false;
       if (state.likes && (it.v == null || it.v < minLikes || it.v >= maxLikes)) return false;
+      if (state.followers) {
+        const f = artistStats.get(it._al)?.followers;
+        if (f == null || f < minFollowers || f >= maxFollowers) return false;
+      }
       const kindOk =
         state.kind === "lost" ? !!it.l
         : state.kind === "pick" ? pickSet.has(it.f)
@@ -261,12 +287,13 @@
       oldest: (a, b) => (postedMs(a) || Infinity) - (postedMs(b) || Infinity) || byFile(a, b),
       artist: (a, b) => (a._al < b._al ? -1 : a._al > b._al ? 1 : postedMs(b) - postedMs(a) || byFile(a, b)),
       name: (a, b) => nameCollator.compare(a.f, b.f) || byFile(a, b),
+      shuffle: (a, b) => randomRank(a, gallerySeed) - randomRank(b, gallerySeed) || byFile(a, b),
     };
     out.sort(sorters[state.sort] || sorters.added);
     filtered = out;
 
     // Any change to what is shown, or its order, starts again from page 1.
-    const key = [state.q, state.artist, state.likes, state.kind, state.sort].join("\u0000");
+    const key = [state.q, state.artist, state.likes, state.followers, state.kind, state.sort, state.sort === "shuffle" ? gallerySeed : 0].join("\u0000");
     if (lastFilterKey !== null && key !== lastFilterKey) state.page = 1;
     lastFilterKey = key;
 
@@ -278,7 +305,7 @@
         : `${numberFmt.format(out.length)} of ${total} works · ${plural(artistsShown, "artist", "artists")}`;
     el.empty.hidden = out.length > 0;
 
-    renderArtistChip();
+    renderChips();
     renderPage();
   }
 
@@ -345,30 +372,35 @@
   function goToPage(page) {
     state.page = page;
     renderPage();
-    writeUrl();
+    writeUrl(undefined, true);
     // Back to the top of the results, just below the sticky top bar.
     const bar = document.querySelector(".topbar").offsetHeight;
     window.scrollTo({ top: el.count.getBoundingClientRect().top + window.scrollY - bar - 16 });
   }
 
-  function renderArtistChip() {
+  // The follower range shows as a plain label (changed from the Followers select); the artist chip can be cleared.
+  function renderChips() {
     el.activeArtist.replaceChildren();
-    if (!state.artist) {
-      el.activeArtist.hidden = true;
-      return;
+    if (state.followers) {
+      const chip = document.createElement("span");
+      chip.className = "chip chip-label";
+      chip.textContent = `${el.followers.selectedOptions[0].textContent} followers`;
+      el.activeArtist.append(chip);
     }
-    const stats = artistStats.get(state.artist.toLowerCase());
-    const chip = document.createElement("span");
-    chip.className = "chip";
-    chip.textContent = "@" + (stats ? stats.handle : state.artist);
-    const x = document.createElement("button");
-    x.type = "button";
-    x.setAttribute("aria-label", "Show all artists");
-    x.textContent = "✕";
-    x.addEventListener("click", () => setArtist(""));
-    chip.append(x);
-    el.activeArtist.append(chip);
-    el.activeArtist.hidden = false;
+    if (state.artist) {
+      const stats = artistStats.get(state.artist.toLowerCase());
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.textContent = "@" + (stats ? stats.handle : state.artist);
+      const x = document.createElement("button");
+      x.type = "button";
+      x.setAttribute("aria-label", "Show all artists");
+      x.textContent = "✕";
+      x.addEventListener("click", () => setArtist(""));
+      chip.append(x);
+      el.activeArtist.append(chip);
+    }
+    el.activeArtist.hidden = !el.activeArtist.children.length;
   }
 
   function setArtist(handle) {
@@ -376,7 +408,7 @@
     if (handle) state.q = "";
     syncControls();
     applyFilters();
-    writeUrl();
+    writeUrl(undefined, true);
   }
 
   function showGallery(changes) {
@@ -385,7 +417,7 @@
     syncControls();
     showView();
     applyFilters();
-    writeUrl();
+    writeUrl(undefined, true);
     window.scrollTo({ top: 0 });
   }
 
@@ -691,19 +723,18 @@
       .slice(0, RANDOM_SIZE)
       .map(({ group }) => group.reduce((best, it) => (!best || randomRank(it, seed) < randomRank(best, seed) ? it : best), null))
       .sort((a, b) => randomRank(a, seed) - randomRank(b, seed) || (a.f < b.f ? -1 : 1));
-    el.randomCount.textContent = `${plural(randomList.length, "work", "works")} · ${plural(randomList.length, "artist", "artists")}`;
     randomGrid.setData(randomList);
   }
 
   function shuffleRandom() {
     state.seed = newSeed();
     renderRandom();
-    writeUrl();
+    writeUrl(undefined, true);
   }
 
   // ---------- Viewer ----------
 
-  function openViewer(index, list = viewerList, from = null) {
+  function openViewer(index, list = viewerList, from = null, push = true) {
     if (index < 0 || index >= list.length) return;
     viewerList = list;
     viewerIndex = index;
@@ -714,19 +745,25 @@
       el.viewer.showModal();
       document.documentElement.style.overflow = "hidden";
     }
-    writeUrl(it.f);
+    if (push) viewerPushed = true;
+    writeUrl(it.f, push);
     preloadNeighbours(index);
   }
 
-  function closeViewer() {
-    if (el.viewer.open) el.viewer.close();
+  function closeViewer(suppressHistory = false) {
+    if (!el.viewer.open) return;
+    if (suppressHistory) restoring = true;
+    el.viewer.close();
+    if (suppressHistory) restoring = false;
   }
 
   el.viewer.addEventListener("close", () => {
     el.viewerMedia.replaceChildren(); // stops any playing video
     document.documentElement.style.overflow = "";
+    const pushClose = viewerPushed && !restoring;
+    viewerPushed = false;
     if (state.view === "timeline" && viewerList === tlView.list) {
-      writeUrl();
+      if (!restoring) writeUrl(undefined, pushClose);
       requestAnimationFrame(() => focusTimelineCard(viewerIndex));
       viewerReturnFocus = null;
       return;
@@ -743,7 +780,7 @@
         renderPage();
       }
     }
-    writeUrl();
+    if (!restoring) writeUrl(undefined, pushClose);
     if (g) {
       const local = g === grid ? viewerIndex - pageStart : viewerIndex;
       g.scrollToIndex(local);
@@ -760,7 +797,7 @@
     [/(^|\.)pixiv\.net$/, "Pixiv"],
     [/(^|\.)tumblr\.com$/, "Tumblr"],
     [/(^|\.)novelpia\.com$/, "Novelpia"],
-    [/(^|\.)(x|twitter)\.com$/, "X"],
+    [/(^|\.)(x|twitter)\.com$/, "Twitter"],
   ];
   function sourceLabel(url) {
     let host = "";
@@ -883,11 +920,16 @@
       el.viewerMeta.append(dt, dd);
     }
 
+    // A lost tweet whose artist still has an account (a follower count was found) links to that profile instead.
     const tUrl = tweetUrl(it);
+    const artistAlive = artistStats.get(it._al)?.followers != null;
     el.viewerTweet.hidden = !tUrl;
     if (tUrl) {
-      el.viewerTweet.href = tUrl;
-      el.viewerTweet.textContent = it.l ? "Try the original tweet ↗" : "View tweet on X ↗";
+      el.viewerTweet.href = it.l && artistAlive ? profileUrl(it) : tUrl;
+      el.viewerTweet.textContent =
+        !it.l ? "View tweet on Twitter ↗"
+        : artistAlive ? "View Artist Profile on Twitter ↗"
+        : "Try the original tweet ↗";
     }
     el.viewerDanbooru.hidden = !(it.b && isSafeUrl(it.b));
     if (!el.viewerDanbooru.hidden) el.viewerDanbooru.href = it.b;
@@ -941,12 +983,12 @@
     if (state.view === "gallery") {
       setArtist(showAll ? "" : it.a);
     } else {
-      showGallery({ artist: it.a, q: "", likes: "", kind: "" });
+      showGallery({ artist: it.a, q: "", likes: "", followers: "", kind: "" });
     }
     // The close handler scrolls back to this work in the new list.
     viewerList = filtered;
     viewerIndex = filtered.indexOf(it);
-    closeViewer();
+    closeViewer(true); // setArtist/showGallery already recorded the new view
   });
   el.viewer.addEventListener("keydown", (e) => {
     if (e.target instanceof HTMLVideoElement && (e.key === "ArrowLeft" || e.key === "ArrowRight")) return;
@@ -972,8 +1014,11 @@
 
   const shelves = { pick: [], fame: [], big: [], gems: [], hidden: [], small: [], new: [] };
   const shelfPools = { big: [], gems: [], hidden: [], small: [], new: [] };
+  // Shelves that draw a fresh set on every load (Shuffle picks another), one artist at a time, and how many they show.
+  const RANDOM_SHELVES = { big: RANDOM_SHELF_SIZE, gems: RANDOM_SHELF_SIZE, hidden: RANDOM_SHELF_SIZE, new: RANDOM_SHELF_SIZE };
+  const shelfSeeds = Object.fromEntries(Object.keys(RANDOM_SHELVES).map((k) => [k, newSeed()]));
 
-  // A small seeded shuffle, so the shelves change once a day and stay put on reload.
+  // A small seeded shuffle, so Small Artists changes once a day and stays put on reload.
   function seededShuffle(list, seed) {
     const out = list.slice();
     let s = seed >>> 0 || 1;
@@ -995,39 +1040,56 @@
     }
     const tweets = [...byTweet.values()];
 
-    shelves.fame = tweets.filter((it) => it.v > FAME_MIN).sort((a, b) => b.v - a.v);
+    shelves.fame = tweets
+      .filter((it) => it.v != null)
+      .sort((a, b) => b.v - a.v)
+      .slice(0, FAME_SIZE);
 
     const bestByArtist = new Map(); // artist -> most-liked tweet
-    const bestGem = Object.fromEntries(Object.keys(GEM_RANGES).map((k) => [k, new Map()])); // shelf -> artist -> most-liked tweet in range
     for (const it of tweets) {
       const best = bestByArtist.get(it._al);
       if (!best || it.v > best.v) bestByArtist.set(it._al, it);
-      for (const [k, [min, max]] of Object.entries(GEM_RANGES)) {
-        if (it.v < min || it.v >= max) continue;
-        const gem = bestGem[k].get(it._al);
-        if (!gem || it.v > gem.v) bestGem[k].set(it._al, it);
-      }
     }
-    // New Malfoid and Small Artists each show an artist's best work, so those artists stay off the gem shelves.
+    // Small Artists shows an artist's best work, so those artists stay off the gem shelves.
+    // The gem shelves and New Malfoid draw from every work in their like range, one artist at a time.
     const bests = [...bestByArtist.values()];
-    shelfPools.new = bests.filter((it) => it.v < NEW_MAX);
+    shelfPools.new = tweets.filter((it) => it.v < NEW_MAX);
     shelfPools.small = bests.filter(
       (it) => it.v >= NEW_MAX && (artistStats.get(it._al).followers ?? Infinity) < SMALL_FOLLOWERS
     );
     const small = new Set(shelfPools.small.map((it) => it._al));
-    for (const k of Object.keys(GEM_RANGES)) shelfPools[k] = [...bestGem[k].values()].filter((it) => !small.has(it._al));
+    for (const [k, [min, max]] of Object.entries(GEM_RANGES)) {
+      shelfPools[k] = tweets.filter((it) => it.v >= min && it.v < max && !small.has(it._al));
+    }
 
-    const day = Math.floor(Date.now() / 864e5);
-    shuffleShelf("big", day * 17 + 7);
-    shuffleShelf("gems", day * 11 + 1);
-    shuffleShelf("hidden", day);
-    shuffleShelf("small", day * 7 + 3);
-    shuffleShelf("new", day * 13 + 5);
+    for (const name of Object.keys(RANDOM_SHELVES)) shuffleShelf(name, shelfSeeds[name]);
+    shuffleShelf("small", Math.floor(Date.now() / 864e5) * 7 + 3);
     renderShelf("fame");
+  }
 
+  // One artist max: pick artists with the seed, then one of that artist's works in the pool, in shuffled order.
+  function shuffleOnePerArtist(name, seed) {
+    shelfSeeds[name] = seed;
+    const byArtist = new Map();
+    for (const it of shelfPools[name]) {
+      let group = byArtist.get(it._al);
+      if (!group) byArtist.set(it._al, (group = []));
+      group.push(it);
+    }
+    shelves[name] = [...byArtist.entries()]
+      .map(([key, group]) => ({ key, rank: artistRank(key, seed), group }))
+      .sort((a, b) => a.rank - b.rank || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+      .slice(0, RANDOM_SHELVES[name])
+      .map(({ group }) => group.reduce((best, it) => (!best || randomRank(it, seed) < randomRank(best, seed) ? it : best), null))
+      .sort((a, b) => randomRank(a, seed) - randomRank(b, seed) || (a.f < b.f ? -1 : 1));
+    renderShelf(name);
   }
 
   function shuffleShelf(name, seed) {
+    if (Object.hasOwn(RANDOM_SHELVES, name)) {
+      shuffleOnePerArtist(name, seed ?? newSeed());
+      return;
+    }
     shelves[name] = seededShuffle(shelfPools[name], seed ?? Math.random() * 2 ** 32)
       .slice(0, SHELF_SIZE)
       .sort((a, b) => b.v - a.v);
@@ -1111,18 +1173,24 @@
 
   $("#fame-link").addEventListener("click", (e) => {
     e.preventDefault();
-    showGallery({ sort: "liked", q: "", artist: "", likes: "", kind: "" });
+    showGallery({ sort: "liked", q: "", artist: "", likes: "", followers: "", kind: "" });
   });
   $("#pick-link").addEventListener("click", (e) => {
     e.preventDefault();
-    showGallery({ kind: "pick", q: "", artist: "", likes: "" });
+    showGallery({ kind: "pick", q: "", artist: "", likes: "", followers: "" });
   });
   for (const [id, likes] of [["#big-link", "5k"], ["#gems-link", "2k"], ["#hidden-link", "200"]]) {
     $(id).addEventListener("click", (e) => {
       e.preventDefault();
-      showGallery({ likes, q: "", artist: "", kind: "", sort: "added", page: 1 });
+      gallerySeed = newSeed();
+      showGallery({ likes, q: "", artist: "", followers: "", kind: "", sort: "shuffle", page: 1 });
     });
   }
+  // Every work by the Small Artists shelf's artists (under 2K followers), strongest first.
+  $("#small-link").addEventListener("click", (e) => {
+    e.preventDefault();
+    showGallery({ followers: "0", likes: "", sort: "liked", q: "", artist: "", kind: "", page: 1 });
+  });
 
   for (const shelf of document.querySelectorAll(".shelf")) {
     const track = shelf.querySelector(".shelf-track");
@@ -1633,6 +1701,8 @@
         ? (b.followers ?? -1) - (a.followers ?? -1) || (a.key < b.key ? -1 : 1)
         : by === "likes"
         ? b.likes - a.likes || (a.key < b.key ? -1 : 1)
+        : by === "random"
+        ? artistRank(a.key, artistSeed) - artistRank(b.key, artistSeed) || (a.key < b.key ? -1 : 1)
         : b.count - a.count || (a.key < b.key ? -1 : 1)
     );
     el.artistCount.textContent = plural(list.length, "artist", "artists");
@@ -1677,9 +1747,12 @@
     }
     const count = document.createElement("span");
     count.className = "artist-count";
-    count.textContent = numberFmt.format(a.count);
+    count.textContent = plural(a.count, "work", "works");
     btn.append(img, text, count);
-    btn.addEventListener("click", () => showGallery({ artist: a.handle, q: "" }));
+    // Keeps the Artists view's follower range, so its chip carries over; the likes range is cleared.
+    btn.addEventListener("click", () =>
+      showGallery({ artist: a.handle, q: "", likes: "", followers: el.artistFollowers.value })
+    );
     li.append(btn);
     return li;
   }
@@ -1704,28 +1777,72 @@
     if (state.view === "home") requestAnimationFrame(drawChart);
   }
 
+  // Entering Random, or Gallery and Artists while ordered randomly, deals a fresh shuffle.
   function enterView(view) {
     if (view === "random") state.seed = newSeed();
+    const shuffleGallery = view === "gallery" && state.sort === "shuffle";
+    const shuffleArtists = view === "artists" && el.artistSort.value === "random";
+    const artistsShown = el.artists.childElementCount > 0; // otherwise showView renders them
+    if (shuffleGallery) gallerySeed = newSeed();
+    if (shuffleArtists) artistSeed = newSeed();
     state.view = view;
     showView(); // the grid must be visible before it measures itself
     if (view === "random") renderRandom();
+    if (shuffleGallery) applyFilters();
+    if (shuffleArtists && artistsShown) renderArtists();
   }
 
-  // Back/forward and hand-edited links that only change the #view.
-  window.addEventListener("hashchange", () => {
-    const hash = location.hash.slice(1);
-    const view = VIEWS.includes(hash) ? hash : "home";
-    if (view === state.view) return;
-    enterView(view);
-    if (view === "random") writeUrl();
-    window.scrollTo({ top: 0 });
-  });
+  // Back/forward and hand-edited links rebuild the whole state from the address bar.
+  function restoreFromUrl() {
+    const url = location.pathname + location.search + location.hash;
+    if (url === lastUrl) return; // popstate and hashchange can both fire for one traversal
+    lastUrl = url;
+
+    const work = readUrl();
+    const page = state.page;
+    syncControls();
+    applyFilters(); // may reset the page when the filter key changed
+    state.page = page; // the URL's page wins on history navigation
+    renderPage();
+    if (state.view === "random") renderRandom();
+    showView();
+
+    const list =
+      state.view === "random" ? randomList
+      : state.view === "timeline" ? tlView.list
+      : state.view === "gallery" ? filtered
+      : null;
+    const idx = work && list ? list.findIndex((it) => it.f === work) : -1;
+    viewerPushed = false;
+    restoring = true; // opening or closing the viewer here must not write history
+    if (idx >= 0) {
+      if (state.view === "gallery") {
+        state.page = Math.floor(idx / perPage) + 1;
+        renderPage();
+        grid.scrollToIndex(idx - pageStart);
+      } else if (state.view === "random") {
+        randomGrid.scrollToIndex(idx);
+      } else if (state.view === "timeline") {
+        $(`#tl-list .tl-card[data-index="${idx}"]`)?.scrollIntoView({ block: "center" });
+      }
+      openViewer(idx, list, null, false);
+    } else if (el.viewer.open) {
+      el.viewer.close();
+    }
+    restoring = false;
+
+    // A Random link without a seed gets one, recorded without adding another entry.
+    if (state.view === "random" && !new URLSearchParams(location.search).has("seed")) writeUrl();
+  }
+
+  window.addEventListener("popstate", restoreFromUrl);
+  window.addEventListener("hashchange", restoreFromUrl);
 
   for (const a of document.querySelectorAll(".nav a[data-view], .brand")) {
     a.addEventListener("click", (e) => {
       e.preventDefault();
       enterView(a.dataset.view || "home");
-      writeUrl();
+      writeUrl(undefined, true);
       window.scrollTo({ top: 0 });
     });
   }
@@ -1758,6 +1875,11 @@
   let searchTimer = 0;
   el.q.addEventListener("input", () => {
     clearTimeout(searchTimer);
+    if (state.artist) {
+      state.artist = ""; // typing a search replaces the artist filter, chip included
+      applyFilters();
+      writeUrl(undefined, true); // same history step as dismissing the chip with ✕
+    }
     searchTimer = setTimeout(() => {
       state.q = el.q.value;
       applyFilters();
@@ -1767,13 +1889,19 @@
   el.likes.addEventListener("change", () => {
     state.likes = el.likes.value;
     applyFilters();
-    writeUrl();
+    writeUrl(undefined, true);
+  });
+  el.followers.addEventListener("change", () => {
+    state.followers = el.followers.value;
+    applyFilters();
+    writeUrl(undefined, true);
   });
   el.sort.addEventListener("change", () => {
     state.sort = el.sort.value;
+    if (state.sort === "shuffle") gallerySeed = newSeed();
     syncControls();
     applyFilters();
-    writeUrl();
+    writeUrl(undefined, true);
   });
   $("#random-shuffle").addEventListener("click", shuffleRandom);
   el.perPage.addEventListener("change", () => {
@@ -1783,7 +1911,7 @@
     savePerPage(perPage);
     state.page = Math.floor(first / perPage) + 1;
     renderPage();
-    writeUrl();
+    writeUrl(undefined, true);
   });
   el.pager.addEventListener("click", (e) => {
     const b = e.target.closest("button[data-page]");
@@ -1797,7 +1925,7 @@
     state.kind = b.dataset.kind;
     syncControls();
     applyFilters();
-    writeUrl();
+    writeUrl(undefined, true);
   });
   el.kind.addEventListener("keydown", (e) => {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
@@ -1810,7 +1938,10 @@
     e.preventDefault();
   });
   el.artistQ.addEventListener("input", renderArtists);
-  el.artistSort.addEventListener("change", renderArtists);
+  el.artistSort.addEventListener("change", () => {
+    if (el.artistSort.value === "random") artistSeed = newSeed();
+    renderArtists();
+  });
   el.artistFollowers.addEventListener("change", renderArtists);
 
   window.addEventListener("keydown", (e) => {
@@ -1847,8 +1978,8 @@
       const list = parts.length > 1 ? parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1] : parts[0];
       el.lostNote.append(
         strong,
-        ` are works whose original post on X is gone: ${list}. ` +
-          "The art was saved before it disappeared, so it stays here with an orange tag, but its link to X no longer opens."
+        ` are works whose original post on Twitter is gone: ${list}. ` +
+          "The art was saved before it disappeared, so it stays here with an orange tag, but its link to Twitter no longer opens."
       );
     }
   }
@@ -1928,7 +2059,7 @@
         }
         if (state.view === "random") randomGrid.scrollToIndex(idx);
         if (state.view === "timeline") $(`#tl-list .tl-card[data-index="${idx}"]`)?.scrollIntoView({ block: "center" });
-        openViewer(idx, list);
+        openViewer(idx, list, null, false); // the work URL is already the current entry
       }
     }
   }

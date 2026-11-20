@@ -148,7 +148,10 @@ button, input, select { font: inherit; color: inherit; }
   white-space: normal;
   opacity: 0;
   pointer-events: none;
-  transform-origin: top left;
+  /* Grows out of the tail; after the pointer leaves it lingers 2s, then fades a little faster than it arrived. */
+  transform: translateY(-4px) scale(0.97);
+  transform-origin: 20px -6px;
+  transition: opacity 0.12s ease-in 2s, transform 0.12s ease-in 2s;
 }
 .brand-tip::before {
   content: "";
@@ -165,12 +168,12 @@ button, input, select { font: inherit; color: inherit; }
 .brand-icon:hover .brand-tip,
 .brand:hover .brand-tip,
 .brand:focus-visible .brand-tip {
-  animation: brand-tip-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.18s cubic-bezier(0.2, 0, 0, 1), transform 0.22s cubic-bezier(0.2, 0, 0, 1);
 }
-@keyframes brand-tip-in {
-  from { opacity: 0; transform: translateY(-6px) scale(0.94) rotate(-2deg); }
-  70% { opacity: 1; transform: translateY(2px) scale(1.03) rotate(0.6deg); }
-  to { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+@media (prefers-reduced-motion: reduce) {
+  .brand-tip { transform: none; }
 }
 .nav {
   display: flex;
@@ -235,8 +238,8 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 .hero-meta { margin: 10px 0 0; color: var(--muted); }
 .hero-coverage {
   display: flex;
+  align-items: center;
   gap: 8px;
-  max-width: 760px;
   margin: 8px 0 0;
   color: var(--muted);
   font-size: 14px;
@@ -250,7 +253,6 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   place-items: center;
   width: 18px;
   height: 18px;
-  margin-top: 1px;
   border: 1.5px solid currentColor;
   border-radius: 50%;
   font-size: 11px;
@@ -296,6 +298,9 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   background: var(--surface-2);
   width: 100%;
 }
+/* The Gallery search has a row to itself; the filters sit on the row below. */
+#toolbar .field-search { flex-basis: 100%; max-width: none; }
+#toolbar .field-search input { max-width: 420px; }
 .field-search input::placeholder { color: var(--muted); opacity: 0.8; }
 .field-search input:focus { background: var(--surface); border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 
@@ -384,6 +389,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   font-size: 12px;
 }
 .chip button:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.chip-label { padding: 0 12px; }
 
 /* Virtualized grid */
 .grid { position: relative; contain: strict; }
@@ -550,15 +556,17 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 14px;
 }
 .artist {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
   width: 100%;
-  padding: 8px 14px 8px 8px;
+  overflow: hidden;
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -567,17 +575,30 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 }
 .artist:hover { border-color: var(--accent); }
 .artist img {
-  width: 44px;
-  height: 44px;
-  flex: none;
-  border-radius: 6px;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
   object-fit: cover;
+  object-position: center 20%;
   background: var(--surface-2);
+  transition: transform 0.35s ease;
 }
-.artist-text { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; }
-.artist-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.artist:hover img { transform: scale(1.03); }
+.artist-text { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; padding: 10px 12px 12px; }
+.artist-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; font-weight: 700; }
 .artist-followers { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
-.artist-count { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.artist-count {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 68%);
+  color: #fff;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 
 .footer {
   max-width: 1600px;
@@ -738,6 +759,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   .toolbar { gap: 10px; padding: 12px 0; }
   .field-label { font-size: 13px; }
   .field-search { flex-basis: 100%; max-width: none; }
+  #toolbar .field-search input { max-width: none; }
   .field-search .field-label { display: none; }
   .field-search input, .select select, .segmented button[role="radio"] { height: 42px; }
   .field-inline { flex: 1 1 calc(50% - 5px); flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; }
@@ -789,6 +811,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   gap: 24px;
   margin-top: 16px;
 }
+.ideas-note { margin: 28px 0 0; color: var(--muted); font-size: 15px; text-align: center; }
 .idea-pair { display: flex; align-items: center; justify-content: center; gap: 16px; min-width: 0; }
 .idea-pair figure { margin: 0; }
 .idea-pair figcaption { margin-top: 10px; color: var(--muted); font-size: 14px; }
@@ -869,14 +892,14 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 .shelf-empty { margin: 0; padding: 32px 0; color: var(--muted); }
 .shelf-card {
   position: relative;
-  flex: 0 0 200px;
+  flex: 0 0 270px;
   aspect-ratio: 4 / 5;
   border-radius: var(--radius);
   overflow: hidden;
   background: var(--surface-2);
   scroll-snap-align: start;
 }
-#fame-track .shelf-card { flex-basis: 250px; }
+#fame-track .shelf-card { flex-basis: 340px; }
 .shelf-card img {
   display: block;
   width: 100%;
@@ -988,8 +1011,8 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   .shelf-head h2 { font-size: 21px; }
   .shelf-sub { font-size: 14px; }
   .shelf-btn { display: none; }
-  .shelf-card { flex-basis: 150px; }
-  #fame-track .shelf-card { flex-basis: 190px; }
+  .shelf-card { flex-basis: 200px; }
+  #fame-track .shelf-card { flex-basis: 255px; }
   .shelf-track { gap: 8px; margin: 0 calc(var(--gutter) * -1); padding: 0 var(--gutter) 10px; scroll-padding: 0 var(--gutter); }
   .tile { padding: 12px 14px; }
   .tile-num { font-size: 24px; }
