@@ -8,7 +8,8 @@ data/picks.json. This server serves the gallery folder like `python3 -m http.ser
     PUT /api/picks   replace the list, body {"picks": ["<filename>", ...]}
 
 Responses for data/picks.json carry an X-Malfoid-Edit header, which tells the page to show the heart buttons.
-It listens on 127.0.0.1 only and rejects cross-site writes, so only the owner's own browser can edit.
+It listens on 127.0.0.1 only, refuses requests addressed to any other host name (DNS rebinding),
+and rejects cross-site writes, so only the owner's own browser can edit.
 
 Usage:
     python3 tools/serve.py [--port 8770]
@@ -79,6 +80,29 @@ class Handler(SimpleHTTPRequestHandler):
     def _path(self) -> str:
         return self.path.split("?", 1)[0].split("#", 1)[0]
 
+    def _allowed_hosts(self) -> set[str]:
+        port = self.server.server_address[1]
+        return {f"127.0.0.1:{port}", f"localhost:{port}"}
+
+    def send_head(self):
+        # Never serve hidden paths such as /.git, even to the owner.
+        if any(part.startswith(".") for part in self._path().split("/") if part):
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return None
+        return super().send_head()
+
+    def _host_ok(self) -> bool:
+        """Refuse requests addressed to any other name. A DNS-rebinding page reaches this server
+        under its own domain, so its Host header gives it away, for reads as well as writes."""
+        if self.headers.get("Host") in self._allowed_hosts():
+            return True
+        self.send_error(HTTPStatus.FORBIDDEN, "unexpected Host")
+        return False
+
+    def do_HEAD(self) -> None:
+        if self._host_ok():
+            super().do_HEAD()
+
     def end_headers(self) -> None:
         if self._path() in EDIT_PATHS:
             self.send_header("X-Malfoid-Edit", "1")
@@ -94,6 +118,8 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self) -> None:
+        if not self._host_ok():
+            return
         if self._path() == "/api/picks":
             self._json(HTTPStatus.OK, {"picks": read_picks()})
         else:
@@ -103,9 +129,11 @@ class Handler(SimpleHTTPRequestHandler):
         if self._path() != "/api/picks":
             self.send_error(HTTPStatus.NOT_FOUND)
             return
+        if not self._host_ok():
+            return
         # Refuse writes started by other websites open in the same browser.
         origin = self.headers.get("Origin")
-        if origin and origin != f"http://{self.headers.get('Host')}":
+        if origin and origin not in {f"http://{h}" for h in self._allowed_hosts()}:
             self.send_error(HTTPStatus.FORBIDDEN, "cross-site request")
             return
         if not (self.headers.get("Content-Type") or "").startswith("application/json"):
