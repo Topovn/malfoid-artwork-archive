@@ -31,7 +31,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MANIFEST = ROOT / "data" / "manifest.json"
+MANIFEST = ROOT / "docs" / "data" / "manifest.json"
 RELEASES = ROOT / "data" / "releases.json"
 DEFAULT_REPO = "Topovn/malfoid-artwork-archive"
 TAG_PREFIX = "media-"

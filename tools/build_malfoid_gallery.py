@@ -25,9 +25,11 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
-OUT = Path(__file__).resolve().parent.parent  # the gallery repo root
-THUMBS = OUT / "thumbs"
-DATA = OUT / "data"
+REPO = Path(__file__).resolve().parent.parent
+SITE = REPO / "docs"  # the only folder GitHub Pages publishes
+THUMBS = SITE / "thumbs"
+DATA = REPO / "data"  # working caches (likes, followers, handles, releases); never published
+SITE_DATA = SITE / "data"
 
 THUMB_WIDTH = 400
 THUMB_QUALITY = 72
@@ -232,7 +234,8 @@ def main() -> int:
     }
     if rel.get("repo"):
         manifest["releaseBase"] = f"https://github.com/{rel['repo']}/releases/download/"
-    (DATA / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":"), ensure_ascii=False))
+    SITE_DATA.mkdir(parents=True, exist_ok=True)
+    (SITE_DATA / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":"), ensure_ascii=False))
 
     print(f"Wrote {len(items)} works ({sum(1 for i in items if 'l' in i)} lost tweets).")
     if errors:

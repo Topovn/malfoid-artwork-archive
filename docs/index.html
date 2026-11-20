@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- A purely static page: only its own files, plus full-size originals from GitHub Releases. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data: https://github.com https://release-assets.githubusercontent.com https://objects.githubusercontent.com; media-src 'self' https://github.com https://release-assets.githubusercontent.com https://objects.githubusercontent.com; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
   <title>The Malfoid Artwork Archive</title>
   <meta name="description" content="An archive of Malfoid fan art and animations, searchable by artist.">
   <link rel="preload" href="data/manifest.json" as="fetch" crossorigin>
@@ -11,10 +14,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="preload" href="fonts/pinyon-script-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
-  <script>
-    // Apply a saved theme before first paint, so the page never flashes the wrong colors.
-    try { const t = localStorage.getItem("theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
-  </script>
+  <script src="theme.js"></script>
   <script src="config.js"></script>
   <script src="app.js" defer></script>
 </head>
@@ -44,7 +44,7 @@
     <section class="hero">
       <h1>The Malfoid Artwork Archive</h1>
       <p class="hero-meta" id="hero-meta">Loading the collection…</p>
-      <p class="hero-coverage"><span>Covers artwork posted on X (Twitter) only. Art on Pixiv, Instagram, DeviantArt and other sites isn't tracked, since there's no proper tag to find it there. For more Malfoid fan works, see <a href="https://malfoid.com/" target="_blank" rel="noopener">Malfoid.com</a> and the <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/" target="_blank" rel="noopener">Malfoid Index</a>.</span></p>
+      <p class="hero-coverage"><span>Covers artwork posted on X (Twitter) only. Art on Pixiv, Instagram, DeviantArt and other sites isn't tracked, since there's no proper tag to find it there. For more Malfoid fan works, see <a href="https://malfoid.com/" target="_blank" rel="noopener noreferrer">Malfoid.com</a> and the <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/" target="_blank" rel="noopener noreferrer">Malfoid Index</a>.</span></p>
     </section>
 
     <section id="view-home" class="view">
@@ -155,7 +155,7 @@
           <div>
             <h2 id="timeline-title">Art timeline</h2>
           </div>
-          <a class="shelf-link" id="dashboard-link" href="#" target="_blank" rel="noopener">Open dashboard in Claude <span aria-hidden="true">↗</span></a>
+          <a class="shelf-link" id="dashboard-link" href="#" target="_blank" rel="noopener noreferrer">Open dashboard in Claude <span aria-hidden="true">↗</span></a>
         </div>
 
         <div class="tiles">
@@ -203,7 +203,7 @@
     </section>
 
     <section id="view-gallery" class="view" hidden>
-      <form class="toolbar" id="toolbar" role="search" onsubmit="return false">
+      <form class="toolbar" id="toolbar" role="search">
         <label class="field field-search">
           <span class="field-label">Search works or creators</span>
           <input id="q" type="search" placeholder="Artist handle or tweet ID" autocomplete="off" spellcheck="false" list="artist-list">
@@ -305,8 +305,8 @@
 
   <footer class="footer">
     <p>This site is an unofficial, non-commercial collection of fan art. Harry Potter and related names are trademarks of Warner Bros. Entertainment Inc. This site is not affiliated with, endorsed or sponsored by Warner Bros., Wizarding World Digital or J.K. Rowling.</p>
-    <p>All works belong to their original creators. Icon art by <a href="https://x.com/redteneri" target="_blank" rel="noopener">@redteneri</a>.</p>
-    <p>More Malfoid archives: <a href="https://malfoid.com/" target="_blank" rel="noopener">Malfoid.com</a> · <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/" target="_blank" rel="noopener">Malfoid Index</a></p>
+    <p>All works belong to their original creators. Icon art by <a href="https://x.com/redteneri" target="_blank" rel="noopener noreferrer">@redteneri</a>.</p>
+    <p>More Malfoid archives: <a href="https://malfoid.com/" target="_blank" rel="noopener noreferrer">Malfoid.com</a> · <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/" target="_blank" rel="noopener noreferrer">Malfoid Index</a></p>
   </footer>
 
   <dialog id="viewer" class="viewer" aria-label="Work viewer">
@@ -318,14 +318,14 @@
     <aside class="viewer-info">
       <button class="viewer-close" id="close" type="button" aria-label="Close">✕</button>
       <p class="viewer-pos" id="viewer-pos"></p>
-      <a class="viewer-artist" id="viewer-artist" target="_blank" rel="noopener"></a>
+      <a class="viewer-artist" id="viewer-artist" target="_blank" rel="noopener noreferrer"></a>
       <div class="viewer-tags" id="viewer-tags"></div>
       <p class="viewer-lost" id="viewer-lost" hidden></p>
       <dl class="viewer-meta" id="viewer-meta"></dl>
       <div class="viewer-actions">
         <button class="btn btn-pick" id="viewer-pick" type="button" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.6-4.6-9.5-9.3C1.1 7.8 3.2 4 6.9 4c2.1 0 3.5 1.1 5.1 3.1C13.6 5.1 15 4 17.1 4c3.7 0 5.8 3.8 4.4 7.2-1.9 4.7-9.5 9.3-9.5 9.3z"/></svg><span>Add to My Personal Pick</span></button>
-        <a class="btn btn-primary" id="viewer-tweet" target="_blank" rel="noopener">View tweet on X ↗</a>
-        <a class="btn" id="viewer-danbooru" target="_blank" rel="noopener" hidden>View on Danbooru ↗</a>
+        <a class="btn btn-primary" id="viewer-tweet" target="_blank" rel="noopener noreferrer">View tweet on X ↗</a>
+        <a class="btn" id="viewer-danbooru" target="_blank" rel="noopener noreferrer" hidden>View on Danbooru ↗</a>
         <button class="btn" id="viewer-more" type="button"></button>
       </div>
       <p class="viewer-note" id="viewer-note" hidden></p>
