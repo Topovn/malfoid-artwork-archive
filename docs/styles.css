@@ -991,7 +991,10 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 .tl-marker .tl-dot, .tl-year .tl-dot { top: 5px; left: -36px; width: 16px; height: 16px; }
 .tl-works { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
 .tl-card { position: relative; aspect-ratio: 4 / 5; contain: layout paint; }
-.tl-year .tl-works { grid-template-columns: repeat(auto-fill, minmax(200px, 260px)); }
+.tl-year .tl-works { grid-template-columns: repeat(auto-fill, minmax(200px, 260px)); align-items: start; }
+/* Early art: natural shape (aspect-ratio set from its size), uncropped, with tall screenshots capped and letterboxed */
+.tl-card-early { max-height: 480px; }
+.tl-card-early img { object-fit: contain; object-position: center; }
 
 @media (max-width: 640px) {
   .tl-intro h2 { font-size: 22px; }
@@ -1002,4 +1005,5 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   .tl-marker .tl-date, .tl-year .tl-date { font-size: 24px; }
   .tl-date { font-size: 16px; }
   .tl-works, .tl-year .tl-works { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .tl-card-early { max-height: 340px; }
 }
