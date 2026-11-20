@@ -811,7 +811,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 }
 .fun-art-open img { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; transition: transform 0.2s; }
 .fun-art-open:hover img { transform: scale(1.03); }
-@media (max-width: 640px) {
+@media (max-width: 900px) { /* stack the Fun Fact before the row gets too narrow for two 320px images */
   .fun-fact-body { flex-direction: column; align-items: stretch; gap: 12px; }
   .fun-tweet, .fun-art { flex: none; }
   .fun-fact-arrow { align-self: center; margin-bottom: 0; transform: rotate(90deg); }
