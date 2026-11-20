@@ -30,8 +30,8 @@
       <nav class="nav" aria-label="Sections">
         <a href="./" data-view="home" aria-current="page">Home</a>
         <a href="#gallery" data-view="gallery">Gallery</a>
-        <a href="#timeline" data-view="timeline">Timeline</a>
         <a href="#artists" data-view="artists">Artists</a>
+        <a href="#timeline" data-view="timeline">Timeline</a>
       </nav>
       <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch theme">
         <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -44,7 +44,7 @@
     <section class="hero">
       <h1>The Malfoid Artwork Archive</h1>
       <p class="hero-meta" id="hero-meta">Loading the collection…</p>
-      <p class="hero-coverage">Covers artwork posted on X (Twitter) only. Art on Pixiv, Instagram, DeviantArt and other sites isn't tracked, since there's no proper tag to find it there.</p>
+      <p class="hero-coverage"><span>Covers artwork posted on X (Twitter) only. Art on Pixiv, Instagram, DeviantArt and other sites isn't tracked, since there's no proper tag to find it there. For more Malfoid fan works, see <a href="https://malfoid.com/" target="_blank" rel="noopener">Malfoid.com</a> and the <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/" target="_blank" rel="noopener">Malfoid Index</a>.</span></p>
     </section>
 
     <section id="view-home" class="view">
@@ -140,7 +140,7 @@
         <div class="shelf-head">
           <div>
             <h2 id="pick-title"><a href="?type=pick#gallery" id="pick-link">My Personal Pick</a></h2>
-            <p class="shelf-sub">My personal favorite collection of Malfoid</p>
+            <p class="shelf-sub">My personal favorite (Topovn) collection of Malfoid, will grow over time as I look back at the library</p>
           </div>
           <div class="shelf-controls">
             <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll My Personal Pick left">‹</button>
@@ -233,6 +233,19 @@
               <option value="newest">Newest posted</option>
               <option value="liked">Most liked</option>
               <option value="name">File name</option>
+              <option value="random">Random</option>
+            </select>
+          </span>
+        </label>
+        <button type="button" class="reshuffle" id="reshuffle" hidden>Shuffle</button>
+        <label class="field field-inline">
+          <span class="field-label">Per page</span>
+          <span class="select">
+            <select id="per-page">
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="150">150</option>
+              <option value="200">200</option>
             </select>
           </span>
         </label>
@@ -240,15 +253,12 @@
           <button type="button" role="radio" data-kind="" aria-checked="true">All works</button>
           <button type="button" role="radio" data-kind="art" aria-checked="false">Static art</button>
           <button type="button" role="radio" data-kind="anim" aria-checked="false">Animations</button>
-          <button type="button" role="radio" data-kind="pick" aria-checked="false">My Personal Pick</button>
-          <span class="seg-help">
-            <button type="button" role="radio" data-kind="lost" aria-checked="false" aria-describedby="lost-note">Lost tweets</button>
-            <span class="help">
-              <button type="button" class="help-btn" aria-label="What are lost tweets?" aria-describedby="lost-note">?</button>
-              <span class="help-tip" role="tooltip" id="lost-note"></span>
-            </span>
-          </span>
+          <button type="button" role="radio" data-kind="pick" aria-checked="false" aria-describedby="pick-note">My Personal Pick</button>
+          <button type="button" role="radio" data-kind="lost" aria-checked="false" aria-describedby="lost-note">Lost tweets</button>
         </div>
+        <!-- Shown only while the matching type is selected (see .kind-note in styles.css). -->
+        <p class="kind-note" id="pick-note" data-kind="pick">My personal favorite (Topovn) collection of Malfoid, will grow over time as I look back at the library.</p>
+        <p class="kind-note" id="lost-note" data-kind="lost"></p>
       </form>
 
       <div class="status">
@@ -258,6 +268,7 @@
 
       <div id="grid" class="grid" aria-label="Works"></div>
       <p id="empty" class="empty" hidden>No works match these filters.</p>
+      <nav class="pager" id="pager" aria-label="Pages" hidden></nav>
     </section>
 
     <section id="view-timeline" class="view" hidden>
@@ -294,6 +305,7 @@
   <footer class="footer">
     <p>This site is an unofficial, non-commercial collection of fan art. Harry Potter and related names are trademarks of Warner Bros. Entertainment Inc. This site is not affiliated with, endorsed or sponsored by Warner Bros., Wizarding World Digital or J.K. Rowling.</p>
     <p>All works belong to their original creators. Icon art by <a href="https://x.com/redteneri" target="_blank" rel="noopener">@redteneri</a>.</p>
+    <p>More Malfoid archives: <a href="https://malfoid.com/" target="_blank" rel="noopener">Malfoid.com</a> · <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/" target="_blank" rel="noopener">Malfoid Index</a></p>
   </footer>
 
   <dialog id="viewer" class="viewer" aria-label="Work viewer">

@@ -212,6 +212,8 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   color: var(--muted);
   font-size: 14px;
 }
+.hero-coverage a { color: inherit; }
+.hero-coverage a:hover { color: var(--accent); }
 .hero-coverage::before {
   content: "i";
   flex: none;
@@ -227,45 +229,23 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   font-style: italic;
   font-family: Georgia, serif;
 }
-/* "?" help next to the Lost tweets filter */
-.seg-help { position: relative; display: inline-flex; align-items: center; gap: 6px; }
-.help { position: relative; display: inline-flex; }
-.help-btn {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 1.5px solid var(--border);
-  border-radius: 50%;
-  background: var(--surface);
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-  cursor: help;
-}
-.help-btn:hover, .help-btn:focus-visible { border-color: var(--lost); color: var(--lost); }
-.help-tip {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: -4px;
-  z-index: 15;
-  width: min(340px, calc(100vw - 32px));
-  padding: 12px 14px;
+/* Description under the type buttons, for the selected My Personal Pick or Lost tweets filter */
+.kind-note {
+  display: none;
+  flex-basis: 100%;
+  max-width: 760px;
+  margin: 0;
+  padding: 10px 14px;
   border: 1px solid var(--border);
-  border-left: 3px solid var(--lost);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--surface);
-  box-shadow: var(--shadow);
   color: var(--text);
   font-size: 14px;
   line-height: 1.45;
-  text-align: left;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.12s, visibility 0.12s;
 }
-.help-tip strong { color: var(--lost); }
-.help:hover .help-tip, .help-btn:focus-visible + .help-tip, .help-btn:focus + .help-tip { opacity: 1; visibility: visible; }
+.kind-note strong { color: var(--lost); }
+#toolbar:has(#kind [data-kind="pick"][aria-checked="true"]) .kind-note[data-kind="pick"],
+#toolbar:has(#kind [data-kind="lost"][aria-checked="true"]) .kind-note[data-kind="lost"]:not(:empty) { display: block; }
 
 /* Toolbar */
 .toolbar {
@@ -499,6 +479,47 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 .btn-pick[aria-pressed="true"] svg { fill: #ff5c7a; stroke: #ff5c7a; }
 .badge svg { width: 9px; height: 9px; fill: currentColor; }
 
+/* Random order reshuffle and page size */
+.reshuffle {
+  height: 46px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+.reshuffle:hover { border-color: var(--accent); }
+#per-page { min-width: 96px; }
+
+/* Pager */
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 32px 0 8px;
+}
+.pager-pages { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.pager button {
+  min-width: 42px;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.pager button:hover:not(:disabled) { border-color: var(--accent); }
+.pager button[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.pager button:disabled { opacity: 0.35; cursor: default; }
+.pager .pager-step { color: var(--accent); font-weight: 600; }
+.pager-gap { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 42px; color: var(--muted); }
+
 .empty {
   padding: 80px 0;
   text-align: center;
@@ -708,6 +729,11 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   .segmented { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; }
   .segmented button[role="radio"] { padding: 0 10px; }
   .card-meta { opacity: 1; font-size: 12px; padding: 22px 8px 7px; }
+  .reshuffle { height: 42px; flex: 1 1 calc(50% - 5px); }
+  #per-page { min-width: 0; }
+  .pager { gap: 8px 6px; margin-top: 24px; }
+  .pager-pages { order: -1; width: 100%; }
+  .pager .pager-step { flex: 1 1 0; }
 }
 
 @media (max-width: 440px) {
@@ -893,8 +919,6 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   .panel { padding: 14px; }
   .chart { height: 220px; }
   .timeline .shelf-head { flex-direction: column; align-items: flex-start; }
-  .seg-help { display: flex; }
-  .seg-help > button[role=radio] { flex: 1; min-width: 0; }
 }
 
 /* Timeline view */
