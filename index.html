@@ -1,10 +1,314 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <title>My Site</title>
-  </head>
-  <body>
-    <p>Personal site temporary HTML</p>
-  </body>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Malfoid Gallery</title>
+  <meta name="description" content="An archive of Malfoid fan art and animations, searchable by artist.">
+  <link rel="preload" href="data/manifest.json" as="fetch" crossorigin>
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preload" href="fonts/pinyon-script-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    // Apply a saved theme before first paint, so the page never flashes the wrong colors.
+    try { const t = localStorage.getItem("theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+  <script src="config.js"></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="./" aria-label="Malfoid Gallery home">
+        <img class="brand-mark" src="icons/icon-64.png" alt="" width="28" height="28">
+        <span class="brand-text"><span class="brand-name">Malfoid</span><span class="brand-sub">gallery</span></span>
+      </a>
+      <nav class="nav" aria-label="Sections">
+        <a href="./" data-view="home" aria-current="page">Home</a>
+        <a href="#gallery" data-view="gallery">Gallery</a>
+        <a href="#timeline" data-view="timeline">Timeline</a>
+        <a href="#artists" data-view="artists">Artists</a>
+      </nav>
+      <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch theme">
+        <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <h1>The Malfoid Gallery</h1>
+      <p class="hero-meta" id="hero-meta">Loading the collection…</p>
+      <p class="hero-coverage">Covers artwork posted on X (Twitter) only. Art on Pixiv, Instagram, DeviantArt and other sites isn't tracked, since there's no proper tag to find it there.</p>
+    </section>
+
+    <section id="view-home" class="view">
+      <section class="shelf" id="hall-of-fame" aria-labelledby="fame-title">
+        <div class="shelf-head">
+          <div>
+            <h2 id="fame-title"><a href="?sort=liked#gallery" id="fame-link">Hall of Fame</a></h2>
+          </div>
+          <div class="shelf-controls">
+            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll Hall of Fame left">‹</button>
+            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll Hall of Fame right">›</button>
+          </div>
+        </div>
+        <div class="shelf-track" id="fame-track"></div>
+      </section>
+
+      <section class="shelf" id="big-gems" aria-labelledby="big-title">
+        <div class="shelf-head">
+          <div>
+            <h2 id="big-title">Big Gems</h2>
+            <p class="shelf-sub">Works with 5,000 to 10,000 likes, one per artist</p>
+          </div>
+          <div class="shelf-controls">
+            <button type="button" class="shelf-shuffle" data-shuffle="big">Shuffle</button>
+            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll Big Gems left">‹</button>
+            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll Big Gems right">›</button>
+          </div>
+        </div>
+        <div class="shelf-track" id="big-track"></div>
+      </section>
+
+      <section class="shelf" id="gems" aria-labelledby="gems-title">
+        <div class="shelf-head">
+          <div>
+            <h2 id="gems-title">Gems</h2>
+            <p class="shelf-sub">Works with 2,000 to 5,000 likes, one per artist</p>
+          </div>
+          <div class="shelf-controls">
+            <button type="button" class="shelf-shuffle" data-shuffle="gems">Shuffle</button>
+            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll Gems left">‹</button>
+            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll Gems right">›</button>
+          </div>
+        </div>
+        <div class="shelf-track" id="gems-track"></div>
+      </section>
+
+      <section class="shelf" id="hidden-gems" aria-labelledby="hidden-title">
+        <div class="shelf-head">
+          <div>
+            <h2 id="hidden-title">Hidden Gems</h2>
+            <p class="shelf-sub">Works with 200 to 2,000 likes, one per artist</p>
+          </div>
+          <div class="shelf-controls">
+            <button type="button" class="shelf-shuffle" data-shuffle="hidden">Shuffle</button>
+            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll Hidden Gems left">‹</button>
+            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll Hidden Gems right">›</button>
+          </div>
+        </div>
+        <div class="shelf-track" id="hidden-track"></div>
+      </section>
+
+      <section class="shelf" id="small-artists" aria-labelledby="small-title">
+        <div class="shelf-head">
+          <div>
+            <h2 id="small-title">Small Artists</h2>
+            <p class="shelf-sub">Artists with under 2,000 followers, showing each one's best</p>
+          </div>
+          <div class="shelf-controls">
+            <button type="button" class="shelf-shuffle" data-shuffle="small">Shuffle</button>
+            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll Small Artists left">‹</button>
+            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll Small Artists right">›</button>
+          </div>
+        </div>
+        <div class="shelf-track" id="small-track"></div>
+      </section>
+
+      <section class="shelf" id="new-malfoid" aria-labelledby="new-title">
+        <div class="shelf-head">
+          <div>
+            <h2 id="new-title">New Malfoid</h2>
+            <p class="shelf-sub">Artists whose works all have under 200 likes, showing each one's best</p>
+          </div>
+          <div class="shelf-controls">
+            <button type="button" class="shelf-shuffle" data-shuffle="new">Shuffle</button>
+            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll New Malfoid left">‹</button>
+            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll New Malfoid right">›</button>
+          </div>
+        </div>
+        <div class="shelf-track" id="new-track"></div>
+      </section>
+
+      <section class="shelf" id="my-pick" aria-labelledby="pick-title" hidden>
+        <div class="shelf-head">
+          <div>
+            <h2 id="pick-title">My Pick</h2>
+          </div>
+          <div class="shelf-controls">
+            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll My Pick left">‹</button>
+            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll My Pick right">›</button>
+          </div>
+        </div>
+        <div class="shelf-track" id="pick-track"></div>
+      </section>
+
+      <section class="timeline" id="timeline" aria-labelledby="timeline-title">
+        <div class="shelf-head">
+          <div>
+            <h2 id="timeline-title">Art timeline</h2>
+          </div>
+          <a class="shelf-link" id="dashboard-link" href="#" target="_blank" rel="noopener">Open dashboard in Claude <span aria-hidden="true">↗</span></a>
+        </div>
+
+        <div class="tiles">
+          <div class="tile" id="tile-images"><span class="tile-label">Images</span><span class="tile-num" id="t-images">—</span></div>
+          <div class="tile" id="tile-artists"><span class="tile-label">Artists</span><span class="tile-num" id="t-artists">—</span></div>
+          <div class="tile" id="tile-peak"><span class="tile-label">Busiest day</span><span class="tile-num" id="t-peak">—</span><span class="tile-sub" id="t-peak-date"></span></div>
+          <div class="tile" id="tile-last7"><span class="tile-label">Latest 7 days</span><span class="tile-num"><span id="t-last7">—</span> <span class="tile-unit">a day</span></span></div>
+        </div>
+
+        <div class="panel" id="per-day-chart">
+          <div class="panel-bar">
+            <h3 id="chart-title">Images per day, by date posted</h3>
+            <div class="seg-small" role="group" aria-label="Count images by">
+              <button type="button" data-mode="posted" aria-pressed="true">Date posted</button>
+              <button type="button" data-mode="saved" aria-pressed="false">Date saved</button>
+            </div>
+          </div>
+          <div class="legend">
+            <span><i class="sw-bar"></i>Images that day</span>
+            <span><i class="sw-line"></i>7-day average</span>
+          </div>
+          <div class="chart" id="chart"></div>
+        </div>
+
+        <div class="panel" id="per-week-table">
+          <div class="panel-bar"><h3>Images added by week</h3></div>
+          <div class="tablewrap">
+            <table class="table" id="weekly">
+              <thead>
+                <tr>
+                  <th scope="col">Week (Mon to Sun)</th>
+                  <th scope="col">Images posted</th>
+                  <th scope="col">Avg a day</th>
+                  <th scope="col">Posts</th>
+                  <th scope="col">Artists</th>
+                  <th scope="col">New artists</th>
+                  <th scope="col">Images saved</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section id="view-gallery" class="view" hidden>
+      <form class="toolbar" id="toolbar" role="search" onsubmit="return false">
+        <label class="field field-search">
+          <span class="field-label">Search works or creators</span>
+          <input id="q" type="search" placeholder="Artist handle or tweet ID" autocomplete="off" spellcheck="false" list="artist-list">
+          <datalist id="artist-list"></datalist>
+        </label>
+        <label class="field field-inline">
+          <span class="field-label">Image format</span>
+          <span class="select">
+            <select id="fmt">
+              <option value="">All formats</option>
+              <option value="jpg">JPG</option>
+              <option value="png">PNG</option>
+              <option value="gif">GIF</option>
+              <option value="mp4">MP4</option>
+            </select>
+          </span>
+        </label>
+        <label class="field field-inline">
+          <span class="field-label">Order</span>
+          <span class="select">
+            <select id="sort">
+              <option value="added">Recently added</option>
+              <option value="newest">Newest posted</option>
+              <option value="liked">Most liked</option>
+            </select>
+          </span>
+        </label>
+        <div class="segmented" role="radiogroup" aria-label="Type of work" id="kind">
+          <button type="button" role="radio" data-kind="" aria-checked="true">All works</button>
+          <button type="button" role="radio" data-kind="art" aria-checked="false">Static art</button>
+          <button type="button" role="radio" data-kind="anim" aria-checked="false">Animations</button>
+          <span class="seg-help">
+            <button type="button" role="radio" data-kind="lost" aria-checked="false" aria-describedby="lost-note">Lost tweets</button>
+            <span class="help">
+              <button type="button" class="help-btn" aria-label="What are lost tweets?" aria-describedby="lost-note">?</button>
+              <span class="help-tip" role="tooltip" id="lost-note"></span>
+            </span>
+          </span>
+        </div>
+      </form>
+
+      <div class="status">
+        <p id="count" aria-live="polite"></p>
+        <div id="active-artist" class="chip-row" hidden></div>
+      </div>
+
+      <div id="grid" class="grid" aria-label="Works"></div>
+      <p id="empty" class="empty" hidden>No works match these filters.</p>
+    </section>
+
+    <section id="view-timeline" class="view" hidden>
+      <div class="tl-intro">
+        <h2>Timeline</h2>
+      </div>
+      <nav class="tl-jump" id="tl-jump" aria-label="Jump to month"></nav>
+      <div id="tl-grid" class="grid" aria-label="Works by date posted"></div>
+    </section>
+
+    <section id="view-artists" class="view" hidden>
+      <div class="toolbar">
+        <label class="field field-search">
+          <span class="field-label">Find an artist</span>
+          <input id="artist-q" type="search" placeholder="Artist handle" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="field field-inline">
+          <span class="field-label">Order</span>
+          <span class="select">
+            <select id="artist-sort">
+              <option value="count">Most works</option>
+              <option value="followers">Most followers</option>
+              <option value="name">A–Z</option>
+              <option value="recent">Recently added</option>
+            </select>
+          </span>
+        </label>
+      </div>
+      <p class="status-line" id="artist-count"></p>
+      <ul id="artists" class="artists"></ul>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>All works belong to their original creators. Icon art by <a href="https://x.com/redteneri" target="_blank" rel="noopener">@redteneri</a>.</p>
+  </footer>
+
+  <dialog id="viewer" class="viewer" aria-label="Work viewer">
+    <div class="viewer-stage">
+      <div class="viewer-media" id="viewer-media"></div>
+      <button class="viewer-nav prev" id="prev" type="button" aria-label="Previous work">‹</button>
+      <button class="viewer-nav next" id="next" type="button" aria-label="Next work">›</button>
+    </div>
+    <aside class="viewer-info">
+      <button class="viewer-close" id="close" type="button" aria-label="Close">✕</button>
+      <p class="viewer-pos" id="viewer-pos"></p>
+      <a class="viewer-artist" id="viewer-artist" target="_blank" rel="noopener"></a>
+      <div class="viewer-tags" id="viewer-tags"></div>
+      <p class="viewer-lost" id="viewer-lost" hidden></p>
+      <dl class="viewer-meta" id="viewer-meta"></dl>
+      <div class="viewer-actions">
+        <button class="btn btn-pick" id="viewer-pick" type="button" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.6-4.6-9.5-9.3C1.1 7.8 3.2 4 6.9 4c2.1 0 3.5 1.1 5.1 3.1C13.6 5.1 15 4 17.1 4c3.7 0 5.8 3.8 4.4 7.2-1.9 4.7-9.5 9.3-9.5 9.3z"/></svg><span>Add to My Pick</span></button>
+        <a class="btn btn-primary" id="viewer-tweet" target="_blank" rel="noopener">View tweet on X ↗</a>
+        <a class="btn" id="viewer-danbooru" target="_blank" rel="noopener" hidden>View on Danbooru ↗</a>
+        <button class="btn" id="viewer-more" type="button"></button>
+      </div>
+      <p class="viewer-note" id="viewer-note" hidden></p>
+    </aside>
+  </dialog>
+</body>
 </html>
