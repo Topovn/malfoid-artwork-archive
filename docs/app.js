@@ -1626,6 +1626,9 @@
 
   function showView() {
     for (const v of VIEWS) $(`#view-${v}`).hidden = state.view !== v;
+    // The Timeline gathers early works from every platform, so it has its own coverage note.
+    $("#tl-coverage").hidden = state.view !== "timeline";
+    $("#x-coverage").hidden = state.view === "timeline";
     for (const a of document.querySelectorAll(".nav a[data-view]")) {
       if (a.dataset.view === state.view) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
