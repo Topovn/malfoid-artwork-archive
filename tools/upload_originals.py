@@ -194,7 +194,8 @@ def main() -> int:
                         Path(p_).unlink(missing_ok=True)
                     if r.returncode == 0:
                         for f in todo:
-                            remote[tag][assets[f]["name"]] = local[f][0].stat().st_size
+                            # The owner may move a file right after it uploads; its size here is only a placeholder.
+                            remote[tag][assets[f]["name"]] = local[f][0].stat().st_size if local[f][0].exists() else 0
                         break
                     remote[tag] = tag_assets(args.repo, tag)
                 save_confirmed()
@@ -205,8 +206,8 @@ def main() -> int:
             got = remote[tag] = tag_assets(args.repo, tag)
             for f in files:
                 want = assets[f]["name"]
-                if want in got:
-                    continue
+                if want in got or not local[f][0].exists():
+                    continue  # uploaded, or moved away mid-run (retried next run if it comes back)
                 size = local[f][0].stat().st_size
                 match = [n for n, s in got.items() if s == size and n not in {a["name"] for a in assets.values()}]
                 if len(match) == 1:

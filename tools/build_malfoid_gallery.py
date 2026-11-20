@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
-"""Build the Malfoid Artwork Archive index and thumbnails.
+"""Build a Malfoid Artwork Archive site and thumbnails.
 
-Scans the top level of the Malfoid folder plus its _LostTweets subfolder.
-Every other subfolder is ignored.
-Writes data/manifest.json and one WebP thumbnail per work into thumbs/.
+The main build scans the top level of the Malfoid folder plus its _LostTweets subfolder.
+The 18+ build scans the 'malfoid H' folder instead and includes only works listed in
+data/audience.json. Every other subfolder is ignored.
+
+Writes data/manifest.json and one WebP thumbnail per work into the chosen site folder.
 Thumbnails are only regenerated when the source file is newer, so reruns are cheap.
 
 Usage:
-    python3 tools/build_malfoid_gallery.py [--src ~/Downloads/twitter_media_harvest/Malfoid]
+    python3 tools/build_malfoid_gallery.py
+    python3 tools/build_malfoid_gallery.py --audience adult --site docs-18
+
+The main build reads only Malfoid/. The 18+ build reads only Malfoid H/.
+Malfoid AI/ is never scanned by either build.
 """
 
 from __future__ import annotations
@@ -17,6 +23,7 @@ import csv
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from concurrent.futures import ProcessPoolExecutor
@@ -26,10 +33,15 @@ from pathlib import Path
 from PIL import Image, ImageOps
 
 REPO = Path(__file__).resolve().parent.parent
-SITE = REPO / "docs"  # the only folder GitHub Pages publishes
-THUMBS = SITE / "thumbs"
+DEFAULT_SITE = REPO / "docs"  # the main site; GitHub Pages publishes this folder
 DATA = REPO / "data"  # working caches (likes, followers, handles, releases); never published
-SITE_DATA = SITE / "data"
+HARVEST_ROOT = Path.home() / "Downloads/twitter_media_harvest"
+MAIN_SRC = HARVEST_ROOT / "Malfoid"
+ADULT_SRC = HARVEST_ROOT / "Malfoid H"
+AI_SRC = HARVEST_ROOT / "Malfoid AI"
+SHELL_FILES = ("index.html", "styles.css", "app.js", "theme.js", "config.js", ".nojekyll")
+SHELL_DIRS = ("fonts", "icons", "fun", "early")
+SHELL_DATA_FILES = ("early.json", "picks.json")
 
 THUMB_WIDTH = 400
 THUMB_QUALITY = 72
@@ -115,16 +127,21 @@ def make_thumb(job: tuple[str, str, str]) -> tuple[str, int, int, float | None, 
         return dst_p.name, 0, 0, seconds, str(exc)[:200]
 
 
-def source_files(src: Path) -> list[tuple[Path, bool]]:
-    """Every work the site should show, as (path, is lost tweet), in a stable order.
+def source_files(src: Path, audience: str = "main") -> list[tuple[Path, bool]]:
+    """Every work the chosen site should show, as (path, is lost tweet), in a stable order.
 
-    Shared with tools/sync_status.py so both agree on what counts as a work.
+    The main site skips both excluded and 18+ works. The adult site includes only
+    18+ works. The source files always stay where the owner put them.
     """
-    # Works the owner keeps off the site (wrong attribution and the like); the source files stay put.
     exclude_path = DATA / "exclude.json"
     exclude = json.loads(exclude_path.read_text()) if exclude_path.exists() else {}
     excluded_handles = {h.lower() for h in exclude.get("handles", [])}
     excluded_files = set(exclude.get("files", []))
+
+    audience_path = DATA / "audience.json"
+    audience_data = json.loads(audience_path.read_text()) if audience_path.exists() else {}
+    adult_handles = {h.lower() for h in audience_data.get("handles", [])}
+    adult_files = set(audience_data.get("files", []))
 
     files: list[tuple[Path, bool]] = []
     for folder, lost in ((src, False), (src / LOST_DIR, True)):
@@ -132,18 +149,63 @@ def source_files(src: Path) -> list[tuple[Path, bool]]:
             continue
         for p in sorted(folder.iterdir()):
             ext = p.suffix.lower().lstrip(".")
-            if p.name in excluded_files or parse_name(p.stem)[0].lower() in excluded_handles:
+            handle = parse_name(p.stem)[0].lower()
+            if p.name in excluded_files or handle in excluded_handles:
+                continue
+            is_adult = p.name in adult_files or handle in adult_handles
+            if audience == "adult" and not is_adult:
+                continue
+            if audience == "main" and is_adult:
                 continue
             if p.is_file() and not p.name.startswith(".") and ext in IMAGE_EXTS | VIDEO_EXTS:
                 files.append((p, lost))
     return files
 
 
+def copy_site_shell(site: Path) -> None:
+    """Copy the shared static shell so a second build is a complete site."""
+    if site.resolve() == DEFAULT_SITE.resolve():
+        return
+    site.mkdir(parents=True, exist_ok=True)
+    for name in SHELL_FILES:
+        src = DEFAULT_SITE / name
+        if src.exists():
+            shutil.copy2(src, site / name)
+    for name in SHELL_DIRS:
+        src = DEFAULT_SITE / name
+        if src.is_dir():
+            shutil.copytree(src, site / name, dirs_exist_ok=True)
+    data_dir = site / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    for name in SHELL_DATA_FILES:
+        src = DEFAULT_SITE / "data" / name
+        if src.exists() and not (data_dir / name).exists():
+            shutil.copy2(src, data_dir / name)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--src", default=str(Path.home() / "Downloads/twitter_media_harvest/Malfoid"))
+    ap.add_argument("--src", help="main-build source folder (default Malfoid/)")
+    ap.add_argument("--audience", choices=("main", "adult"), default="main")
+    ap.add_argument("--site", default=str(DEFAULT_SITE), help="output site folder")
     args = ap.parse_args()
-    src = Path(args.src).expanduser()
+
+    if args.audience == "adult":
+        if args.src:
+            sys.exit("The 18+ build always reads Malfoid H/; --src is only for the main build.")
+        src = ADULT_SRC
+    else:
+        src = Path(args.src).expanduser() if args.src else MAIN_SRC
+    if src.resolve() == AI_SRC.resolve():
+        sys.exit("Malfoid AI/ is never built.")
+    if args.audience == "main" and src.resolve() == ADULT_SRC.resolve():
+        sys.exit("Malfoid H/ is for the 18+ build; use --audience adult.")
+
+    site = Path(args.site).expanduser()
+    if not site.is_absolute():
+        site = REPO / site
+    thumbs = site / "thumbs"
+    site_data = site / "data"
     if not src.is_dir():
         sys.exit(f"Source folder not found: {src}")
 
@@ -154,15 +216,15 @@ def main() -> int:
         if m and row.get("Danbooru"):
             danbooru[m.group(1)] = row["Danbooru"]
 
-    files = source_files(src)
+    files = source_files(src, args.audience)
 
-    THUMBS.mkdir(parents=True, exist_ok=True)
+    thumbs.mkdir(parents=True, exist_ok=True)
     DATA.mkdir(parents=True, exist_ok=True)
 
     jobs = []
     for p, _ in files:
         kind = "video" if p.suffix.lower().lstrip(".") in VIDEO_EXTS else "image"
-        jobs.append((str(p), str(THUMBS / f"{p.name}.webp"), kind))
+        jobs.append((str(p), str(thumbs / f"{p.name}.webp"), kind))
 
     print(f"Processing {len(jobs)} files with {os.cpu_count()} workers...", flush=True)
     results = {}
@@ -177,7 +239,7 @@ def main() -> int:
 
     # Drop thumbnails whose source no longer exists.
     wanted = {Path(j[1]).name for j in jobs}
-    for t in THUMBS.glob("*.webp"):
+    for t in thumbs.glob("*.webp"):
         if t.name not in wanted:
             t.unlink()
 
@@ -257,10 +319,11 @@ def main() -> int:
     }
     if rel.get("repo"):
         manifest["releaseBase"] = f"https://github.com/{rel['repo']}/releases/download/"
-    SITE_DATA.mkdir(parents=True, exist_ok=True)
-    (SITE_DATA / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":"), ensure_ascii=False))
+    site_data.mkdir(parents=True, exist_ok=True)
+    (site_data / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":"), ensure_ascii=False))
+    copy_site_shell(site)
 
-    print(f"Wrote {len(items)} works ({sum(1 for i in items if 'l' in i)} lost tweets).")
+    print(f"Wrote {len(items)} {args.audience} works ({sum(1 for i in items if 'l' in i)} lost tweets) to {site}.")
     if errors:
         print(f"{len(errors)} files failed:")
         for name, err in errors:
