@@ -1,5 +1,5 @@
 {
- "_note": "Works shown only on the Timeline. 'dir' is the folder inside Malfoid/ (default '_Early Arts'). Entries without 'credit' are anonymous: their filename handles are reposters, so no names are published. 'credit' (artist name and link) and 'source' (an https link) are published; 'note' is private and never published.",
+ "_note": "Works shown only on the Timeline. 'dir' is the folder inside Malfoid/ (default '_Early Arts'). Entries without 'credit' are anonymous: their filename handles are reposters, so no names are published. 'credit' (artist name and link) and 'source' (an https link), 'title' and 'links' (extra https links, each with a label) are published; 'note' is private and never published.",
  "works": {
   "Papa_Ph0-2107441303034495447-01.jpg": {
    "year": 2008,
@@ -90,8 +90,15 @@
   "Sstar111112-2104789366220714157-01.jpg": {
    "year": 2021,
    "label": "2021",
-   "note": "Moved off the gallery to the Timeline at the owner's request; artist omitted, 'source' links the Novelpia novel.",
-   "source": "https://novelpia.com/novel/3291"
+   "note": "Moved off the gallery to the Timeline at the owner's request; artist omitted. 'source' is the English Novelpia release, 'links' the Korean original.",
+   "source": "https://global.novelpia.com/novel/6589",
+   "title": "The Villainess Malfoy",
+   "links": [
+    {
+     "label": "Korean original",
+     "url": "https://novelpia.com/novel/3291"
+    }
+   ]
   }
  }
 }
