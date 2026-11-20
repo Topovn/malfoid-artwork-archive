@@ -127,6 +127,7 @@ button, input, select { font: inherit; color: inherit; }
   font-size: 17px;
   white-space: nowrap;
 }
+.brand-group { display: flex; align-items: center; gap: 12px; flex: none; }
 .brand-icon { position: relative; display: inline-flex; flex: none; }
 .brand-mark { width: 28px; height: 28px; flex: none; border-radius: 7px; }
 .brand-tip {
@@ -165,16 +166,54 @@ button, input, select { font: inherit; color: inherit; }
   background: var(--surface);
   transform: rotate(45deg);
 }
+/* Bridges the gap under the icon, so the pointer can travel into the bubble without it closing. */
+.brand-tip::after {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  height: 14px;
+}
 .brand-icon:hover .brand-tip,
-.brand:hover .brand-tip,
-.brand:focus-visible .brand-tip {
+.brand-icon:has(:focus-visible) .brand-tip,
+.brand-tip.is-greeting {
   opacity: 1;
+  pointer-events: auto;
   transform: none;
   transition: opacity 0.18s cubic-bezier(0.2, 0, 0, 1), transform 0.22s cubic-bezier(0.2, 0, 0, 1);
 }
 @media (prefers-reduced-motion: reduce) {
   .brand-tip { transform: none; }
 }
+.brand-goon {
+  display: block;
+  margin-top: 8px;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.brand-goon:hover { text-decoration: underline; text-underline-offset: 3px; }
+.brand-out {
+  display: none;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.brand-out:hover { border-color: var(--accent); color: var(--accent); }
+
+/* The 18+ page (docs/h/): a way back out, none of the parts marked data-main-only, and its own data-adult-only parts. */
+:root[data-site="h"] .brand-out { display: inline-flex; }
+:root[data-site="h"] .brand-tip,
+:root[data-site="h"] .brand-tip::before { border-color: var(--tl-red); }
+:root[data-site="h"] [data-main-only] { display: none !important; }
+:root:not([data-site="h"]) [data-adult-only] { display: none !important; }
+:root[data-site="h"] .hero { padding-bottom: 8px; }
 .nav {
   display: flex;
   gap: 4px;
@@ -301,6 +340,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 /* The Gallery search has a row to itself; the filters sit on the row below. */
 #toolbar .field-search { flex-basis: 100%; max-width: none; }
 #toolbar .field-search input { max-width: 420px; }
+#toolbar #kind { flex-basis: 100%; } /* the type buttons always get their own line, however few there are */
 .field-search input::placeholder { color: var(--muted); opacity: 0.8; }
 .field-search input:focus { background: var(--surface); border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 
@@ -509,6 +549,35 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 @media (hover: none) {
   .pick-btn { opacity: 1; }
 }
+
+/* Artist link (ARTIST_LINKS in app.js): a small pill under the handle, beside the open button so it is not nested */
+.card-link {
+  position: absolute;
+  left: 10px;
+  bottom: 9px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s, background 0.15s;
+}
+.card-link:hover { background: rgb(219 39 119 / 88%); }
+.card-link:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.card:hover .card-link, .card:focus-within .card-link, .shelf-card .card-link { opacity: 1; visibility: visible; }
+.has-link .card-handle { margin-bottom: 27px; } /* lifts only the handle above the pill */
+.has-link .card-likes { line-height: 22px; } /* same box as the pill, so the hearts line up with it */
 .btn-pick { gap: 8px; }
 .btn-pick svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
 .btn-pick[aria-pressed="true"] svg { fill: #ff5c7a; stroke: #ff5c7a; }
@@ -607,10 +676,11 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   border-top: 1px solid var(--border);
   color: var(--muted);
   font-size: 14px;
+  text-align: center;
 }
-.footer p { max-width: 80ch; margin: 0; }
+.footer p { max-width: 72ch; margin: 0 auto; text-wrap: pretty; }
 .footer p + p { margin-top: 6px; }
-.footer a { color: inherit; }
+.footer a { color: inherit; white-space: nowrap; }
 
 /* Viewer */
 .viewer {
@@ -691,6 +761,22 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   word-break: break-all;
 }
 .viewer-artist:hover { text-decoration: underline; }
+.viewer-link {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  margin-top: 10px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #262c29;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.viewer-link:hover { background: rgb(219 39 119 / 88%); }
+.viewer-link:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .viewer-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
 .viewer-tags .badge { backdrop-filter: none; background: #262c29; }
 .viewer-tags .badge-lost { background: #b86e00; margin-left: 0; }
@@ -768,6 +854,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   .segmented { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; }
   .segmented button[role="radio"] { padding: 0 10px; }
   .card-meta { opacity: 1; font-size: 12px; padding: 22px 8px 7px; }
+  .card-link { opacity: 1; visibility: visible; left: 8px; bottom: 7px; }
   #per-page { min-width: 0; }
   .pager { gap: 8px 6px; margin-top: 24px; }
   .pager-pages { order: -1; width: 100%; }
@@ -780,6 +867,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 
 @media (hover: none) {
   .card-meta { opacity: 1; }
+  .card-link { opacity: 1; visibility: visible; }
 }
 
 @media (prefers-reduced-motion: reduce) {

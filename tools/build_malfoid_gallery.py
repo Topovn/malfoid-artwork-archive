@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """Build a Malfoid Artwork Archive site and thumbnails.
 
-The main build scans the top level of the Malfoid folder plus its _LostTweets subfolder.
-The 18+ build scans the 'malfoid H' folder instead and includes only works listed in
-data/audience.json. Every other subfolder is ignored.
+The main build scans the top level of the Malfoid folder plus its _LostTweets subfolder,
+skipping the works listed in data/audience.json. It writes the site in docs/.
+The 18+ build scans only the top level of the 'Malfoid H' folder; its subfolders are ignored.
+It writes the site in docs/h/, which GitHub Pages publishes as the /h/ page of the main site.
+That page shares the main site's code, styles and icons and adds only its own data and thumbnails.
+Malfoid AI/ is never scanned by either build.
 
 Writes data/manifest.json and one WebP thumbnail per work into the chosen site folder.
 Thumbnails are only regenerated when the source file is newer, so reruns are cheap.
 
 Usage:
     python3 tools/build_malfoid_gallery.py
-    python3 tools/build_malfoid_gallery.py --audience adult --site docs-18
-
-The main build reads only Malfoid/. The 18+ build reads only Malfoid H/.
-Malfoid AI/ is never scanned by either build.
+    python3 tools/build_malfoid_gallery.py --audience adult
 """
 
 from __future__ import annotations
@@ -23,7 +23,6 @@ import csv
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 from concurrent.futures import ProcessPoolExecutor
@@ -34,14 +33,19 @@ from PIL import Image, ImageOps
 
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_SITE = REPO / "docs"  # the main site; GitHub Pages publishes this folder
+ADULT_SITE = DEFAULT_SITE / "h"  # the 18+ page, published at <main site>/h/
 DATA = REPO / "data"  # working caches (likes, followers, handles, releases); never published
 HARVEST_ROOT = Path.home() / "Downloads/twitter_media_harvest"
 MAIN_SRC = HARVEST_ROOT / "Malfoid"
 ADULT_SRC = HARVEST_ROOT / "Malfoid H"
 AI_SRC = HARVEST_ROOT / "Malfoid AI"
-SHELL_FILES = ("index.html", "styles.css", "app.js", "theme.js", "config.js", ".nojekyll")
-SHELL_DIRS = ("fonts", "icons", "fun", "early")
-SHELL_DATA_FILES = ("early.json", "picks.json")
+# Relative links in the main index.html that the 18+ page keeps pointing at its own folder.
+OWN_PATH_PREFIXES = ("data/", "thumbs/", "media/")
+MAIN_TITLE = "The Malfoid Artwork Archive"
+ADULT_TITLE = "R18 Malfoid Artwork Archive"
+MAIN_QUOTE = "Since when have you been collecting my artwork, Potter?"
+ADULT_QUOTE = "Caught you gooning, Potter"
+ASSET_REF_RE = re.compile(r'\b(href|src)="([^"#?:]+)(\?[^"]*)?"')
 
 THUMB_WIDTH = 400
 THUMB_QUALITY = 72
@@ -130,8 +134,9 @@ def make_thumb(job: tuple[str, str, str]) -> tuple[str, int, int, float | None, 
 def source_files(src: Path, audience: str = "main") -> list[tuple[Path, bool]]:
     """Every work the chosen site should show, as (path, is lost tweet), in a stable order.
 
-    The main site skips both excluded and 18+ works. The adult site includes only
-    18+ works. The source files always stay where the owner put them.
+    The main site reads the top level and _LostTweets, skipping excluded and 18+ works.
+    The adult site reads only the top level of Malfoid H/, skipping excluded works.
+    The source files always stay where the owner put them.
     """
     exclude_path = DATA / "exclude.json"
     exclude = json.loads(exclude_path.read_text()) if exclude_path.exists() else {}
@@ -143,8 +148,9 @@ def source_files(src: Path, audience: str = "main") -> list[tuple[Path, bool]]:
     adult_handles = {h.lower() for h in audience_data.get("handles", [])}
     adult_files = set(audience_data.get("files", []))
 
+    folders = [(src, False)] if audience == "adult" else [(src, False), (src / LOST_DIR, True)]
     files: list[tuple[Path, bool]] = []
-    for folder, lost in ((src, False), (src / LOST_DIR, True)):
+    for folder, lost in folders:
         if not folder.is_dir():
             continue
         for p in sorted(folder.iterdir()):
@@ -152,47 +158,59 @@ def source_files(src: Path, audience: str = "main") -> list[tuple[Path, bool]]:
             handle = parse_name(p.stem)[0].lower()
             if p.name in excluded_files or handle in excluded_handles:
                 continue
-            is_adult = p.name in adult_files or handle in adult_handles
-            if audience == "adult" and not is_adult:
-                continue
-            if audience == "main" and is_adult:
+            if audience == "main" and (p.name in adult_files or handle in adult_handles):
                 continue
             if p.is_file() and not p.name.startswith(".") and ext in IMAGE_EXTS | VIDEO_EXTS:
                 files.append((p, lost))
     return files
 
 
-def copy_site_shell(site: Path) -> None:
-    """Copy the shared static shell so a second build is a complete site."""
-    if site.resolve() == DEFAULT_SITE.resolve():
-        return
-    site.mkdir(parents=True, exist_ok=True)
-    for name in SHELL_FILES:
-        src = DEFAULT_SITE / name
-        if src.exists():
-            shutil.copy2(src, site / name)
-    for name in SHELL_DIRS:
-        src = DEFAULT_SITE / name
-        if src.is_dir():
-            shutil.copytree(src, site / name, dirs_exist_ok=True)
-    data_dir = site / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    for name in SHELL_DATA_FILES:
-        src = DEFAULT_SITE / "data" / name
-        if src.exists() and not (data_dir / name).exists():
-            shutil.copy2(src, data_dir / name)
+def write_adult_page() -> None:
+    """Write the 18+ index.html from the main one, so both pages always share one layout.
+
+    It is the main page marked with data-site="h", with the shared code, styles and icons
+    loaded from the main site one folder up. Its data, thumbnails and media stay in its own folder.
+    """
+    html = (DEFAULT_SITE / "index.html").read_text(encoding="utf-8")
+
+    def shared(m: re.Match) -> str:
+        attr, path, query = m.group(1), m.group(2), m.group(3) or ""
+        if path.startswith(OWN_PATH_PREFIXES) or not (DEFAULT_SITE / path).is_file():
+            return m.group(0)
+        return f'{attr}="../{path}{query}"'
+
+    html, marked = re.subn(r"<html\b", '<html data-site="h"', html, count=1)
+    if not marked:
+        sys.exit("docs/index.html has no <html> tag.")
+    html = ASSET_REF_RE.sub(shared, html)
+    html = html.replace(MAIN_TITLE, ADULT_TITLE)  # the tab title, the heading and the home link's label
+    if MAIN_QUOTE not in html:
+        sys.exit("docs/index.html no longer has the speech bubble quote; update MAIN_QUOTE.")
+    html = html.replace(MAIN_QUOTE, ADULT_QUOTE)  # the speech bubble under the icon
+    ADULT_SITE.mkdir(parents=True, exist_ok=True)
+    (ADULT_SITE / "index.html").write_text(html, encoding="utf-8")
+    # The page also asks for My Pick and the Timeline's early works; neither exists for 18+ works.
+    for name, empty in (("picks.json", {"picks": []}), ("early.json", {"early": []})):
+        path = ADULT_SITE / "data" / name
+        if not path.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(empty) + "\n", encoding="utf-8")
+    # A local link to the originals for previewing full-size files, like docs/media; never published.
+    media = ADULT_SITE / "media"
+    if not media.exists() and not media.is_symlink():
+        media.symlink_to(ADULT_SRC, target_is_directory=True)
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", help="main-build source folder (default Malfoid/)")
     ap.add_argument("--audience", choices=("main", "adult"), default="main")
-    ap.add_argument("--site", default=str(DEFAULT_SITE), help="output site folder")
+    ap.add_argument("--site", help="main-build output folder (default docs/)")
     args = ap.parse_args()
 
     if args.audience == "adult":
-        if args.src:
-            sys.exit("The 18+ build always reads Malfoid H/; --src is only for the main build.")
+        if args.src or args.site:
+            sys.exit("The 18+ build always reads Malfoid H/ and writes docs/h/; --src and --site are only for the main build.")
         src = ADULT_SRC
     else:
         src = Path(args.src).expanduser() if args.src else MAIN_SRC
@@ -201,7 +219,7 @@ def main() -> int:
     if args.audience == "main" and src.resolve() == ADULT_SRC.resolve():
         sys.exit("Malfoid H/ is for the 18+ build; use --audience adult.")
 
-    site = Path(args.site).expanduser()
+    site = ADULT_SITE if args.audience == "adult" else Path(args.site).expanduser() if args.site else DEFAULT_SITE
     if not site.is_absolute():
         site = REPO / site
     thumbs = site / "thumbs"
@@ -321,7 +339,9 @@ def main() -> int:
         manifest["releaseBase"] = f"https://github.com/{rel['repo']}/releases/download/"
     site_data.mkdir(parents=True, exist_ok=True)
     (site_data / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":"), ensure_ascii=False))
-    copy_site_shell(site)
+    # The 18+ page copies the main index.html, so either build refreshes it once it exists.
+    if args.audience == "adult" or ADULT_SITE.is_dir():
+        write_adult_page()
 
     print(f"Wrote {len(items)} {args.audience} works ({sum(1 for i in items if 'l' in i)} lost tweets) to {site}.")
     if errors:

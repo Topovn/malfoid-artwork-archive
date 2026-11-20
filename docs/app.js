@@ -10,16 +10,27 @@
   const FAME_SIZE = 50; // Hall of Fame: 50 works
   // Gem shelves, one work per artist: at least the first number of likes and fewer than the second.
   const GEM_RANGES = { big: [5000, 10000], gems: [2000, 5000], hidden: [200, 2000] };
-  const NEW_MAX = 200; // New Malfoid: every work under this many likes
-  const SMALL_FOLLOWERS = 2000; // Small Artists: fewer followers than this (and not in New Malfoid)
+  const BURIED_MAX = 200; // Buried Malfoid: every work under this many likes
+  const SMALL_FOLLOWERS = 2000; // Small Artists: fewer followers than this (and not in Buried Malfoid)
+  // Overlooked Malfoid: every work whose likes fall under this share of the artist's followers,
+  // from artists with at least OVERLOOKED_MIN_FOLLOWERS (below that the ratio is just noise).
+  const OVERLOOKED_RATIO = 0.01;
+  const OVERLOOKED_MIN_FOLLOWERS = 1500;
+  // Accounts that dub or translate Japanese comics: their followers come from the dubbing, so their reach isn't overlooked.
+  const COMIC_DUBBERS = new Set(["player1_please", "raymnd_x"]);
+  // A small link under the handle on every card by these artists (lowercase handle).
+  const ARTIST_LINKS = {
+    yunayuispink: { text: "Thank You 🩷", label: "Thank you, @yunayuispink's livestream on YouTube", url: "https://www.youtube.com/watch?v=uXFL084iKvk" },
+  };
   const SHELF_SIZE = 30; // works shown at once in the shuffled shelves
-  const RANDOM_SHELF_SIZE = 20; // works shown at once in Big Gems, Gems, Hidden Gems and New Malfoid
+  const RANDOM_SHELF_SIZE = 20; // works shown at once in Big Gems, Gems, Hidden Gems and Buried Malfoid
   const RANDOM_SIZE = 50; // works shown in the Random tab, one per artist
   const LONG_VIDEO = 30; // videos this many seconds or longer count as Videos (see isVideo)
   const VIDEO_ARTISTS = new Set(["alessandro49472"]); // every work by these artists counts as Videos
   const TIMEZONE = "Australia/Sydney"; // days on the timeline, as in the original dashboard
   const TIMELINE_START = "2026-09-01";
   const TIMELINE_VIEW_END = "2026-10-01"; // the Timeline tab covers the early days, before the October wave
+  const TIMELINE_GROUPED_YEARS = new Set(["2022", "2023"]); // years shown as one group on their year marker, without days
   const VIDEO_EXTS = new Set(["mp4", "mov", "webm"]);
 
   const $ = (sel) => document.querySelector(sel);
@@ -47,19 +58,26 @@
     viewerMedia: $("#viewer-media"),
     viewerPos: $("#viewer-pos"),
     viewerArtist: $("#viewer-artist"),
+    viewerLink: $("#viewer-link"),
     viewerTags: $("#viewer-tags"),
     viewerLost: $("#viewer-lost"),
     viewerMeta: $("#viewer-meta"),
     viewerTweet: $("#viewer-tweet"),
     viewerDanbooru: $("#viewer-danbooru"),
+    viewerExtra: $("#viewer-extra"),
     viewerMore: $("#viewer-more"),
     viewerNote: $("#viewer-note"),
     prev: $("#prev"),
     next: $("#next"),
   };
 
-  const VIEWS = ["home", "random", "gallery", "timeline", "artists"];
-  const state = { q: "", artist: "", likes: "", followers: "", kind: "", sort: "shuffle", seed: 0, page: 1, view: "home" };
+  // The 18+ page (docs/h/) has only the Gallery and Artists tabs, opens on the Gallery,
+  // and has no My Personal Pick or Lost tweets filter.
+  const ADULT_SITE = document.documentElement.dataset.site === "h";
+  const VIEWS = ADULT_SITE ? ["gallery", "artists"] : ["home", "random", "gallery", "timeline", "artists"];
+  const DEFAULT_VIEW = VIEWS[0]; // shown at the bare address; the 18+ page then moves it to #gallery
+  const MAIN_ONLY_KINDS = new Set(["pick", "lost"]);
+  const state = { q: "", artist: "", likes: "", followers: "", kind: "", sort: "shuffle", seed: 0, page: 1, view: DEFAULT_VIEW };
   const PER_PAGE_OPTIONS = [50, 100, 150, 200, 250, 300];
   const DEFAULT_PER_PAGE = 100;
   // Gallery "Likes" filter: at least the first number and fewer than the second. Works without a count match none.
@@ -181,7 +199,8 @@
     state.likes = p.get("likes") || "";
     state.followers = p.get("followers") || "";
     state.kind = p.get("type") || "";
-    const legacyRandom = p.get("sort") === "random";
+    if (ADULT_SITE && MAIN_ONLY_KINDS.has(state.kind)) state.kind = "";
+    const legacyRandom = !ADULT_SITE && p.get("sort") === "random";
     state.sort = p.get("sort") || "shuffle";
     // Old links may name an order or range that no longer exists.
     if (![...el.sort.options].some((o) => o.value === state.sort)) state.sort = "shuffle";
@@ -194,7 +213,7 @@
     state.page = Number.isInteger(page) && page >= 1 ? page : 1; // clamped to the last page once results are known
     const hash = location.hash.slice(1);
     const hasFilters = ["q", "artist", "likes", "followers", "type", "sort", "page"].some((k) => p.has(k));
-    state.view = legacyRandom ? "random" : VIEWS.includes(hash) ? hash : hasFilters ? "gallery" : "home";
+    state.view = legacyRandom ? "random" : VIEWS.includes(hash) ? hash : hasFilters ? "gallery" : DEFAULT_VIEW;
     if (state.view === "random" && !state.seed) state.seed = newSeed();
     return p.get("work");
   }
@@ -286,7 +305,7 @@
       liked: (a, b) => (b.v ?? -1) - (a.v ?? -1) || (a.t < b.t ? -1 : a.t > b.t ? 1 : 0) || a.i - b.i || byFile(a, b),
       oldest: (a, b) => (postedMs(a) || Infinity) - (postedMs(b) || Infinity) || byFile(a, b),
       artist: (a, b) => (a._al < b._al ? -1 : a._al > b._al ? 1 : postedMs(b) - postedMs(a) || byFile(a, b)),
-      name: (a, b) => nameCollator.compare(a.f, b.f) || byFile(a, b),
+      name: (a, b) => nameCollator.compare(a._fn, b._fn) || byFile(a, b),
       shuffle: (a, b) => randomRank(a, gallerySeed) - randomRank(b, gallerySeed) || byFile(a, b),
     };
     out.sort(sorters[state.sort] || sorters.added);
@@ -431,6 +450,24 @@
     }
     b.append(text);
     return b;
+  }
+
+  // Puts the artist's link (ARTIST_LINKS) after the card's open button, or takes it off a recycled card.
+  function setArtistLink(card, it) {
+    const link = ARTIST_LINKS[it._al];
+    let a = card.querySelector(".card-link");
+    card.classList.toggle("has-link", !!link);
+    if (!link) return a?.remove();
+    if (!a) {
+      a = document.createElement("a");
+      a.className = "card-link";
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      card.querySelector(".card-hit").after(a);
+    }
+    a.href = link.url;
+    a.textContent = link.text;
+    a.setAttribute("aria-label", link.label);
   }
 
   function cardLabel(it) {
@@ -604,6 +641,7 @@
       hit._item = it;
       hit.setAttribute("aria-label", cardLabel(it));
       setPick(node.lastChild, it);
+      setArtistLink(node, it);
       node.querySelector(".card-handle").textContent = "@" + it.a;
       node.querySelector(".card-likes").textContent = it.v != null ? "♥ " + fmtLikes(it.v) : "";
       const badges = node.querySelector(".badges");
@@ -822,11 +860,14 @@
     full.src = it.e.full;
     el.viewerMedia.replaceChildren(media);
     el.viewerPos.textContent = `${numberFmt.format(viewerIndex + 1)} of ${numberFmt.format(viewerList.length)}`;
-    el.viewerArtist.hidden = !it.credit;
-    if (it.credit) {
-      el.viewerArtist.textContent = it.credit.name;
-      el.viewerArtist.href = it.credit.url;
+    // The heading names the artist, or else the work's title (linked to its source).
+    const heading = it.credit ? { text: it.credit.name, url: it.credit.url } : it.title && it.source ? { text: it.title, url: it.source } : null;
+    el.viewerArtist.hidden = !heading;
+    if (heading) {
+      el.viewerArtist.textContent = heading.text;
+      el.viewerArtist.href = heading.url;
     }
+    el.viewerLink.hidden = true;
     el.viewerTags.replaceChildren(badge("Early art", false));
     el.viewerLost.hidden = true;
     el.viewerMeta.replaceChildren();
@@ -841,6 +882,12 @@
       el.viewerTweet.textContent = sourceLabel(it.source);
     }
     el.viewerDanbooru.hidden = true;
+    const extra = it.links[0];
+    el.viewerExtra.hidden = !extra;
+    if (extra) {
+      el.viewerExtra.href = extra.url;
+      el.viewerExtra.textContent = extra.label + " ↗";
+    }
     el.viewerMore.hidden = true;
     el.prev.disabled = viewerIndex <= 0;
     el.next.disabled = viewerIndex >= viewerList.length - 1;
@@ -850,7 +897,7 @@
   function renderViewer(it) {
     if (it._early) return renderEarlyViewer(it);
     el.viewerArtist.hidden = false;
-    el.viewerMore.hidden = false;
+    el.viewerExtra.hidden = true;
     const isVideo = VIDEO_EXTS.has(it.x);
     el.viewerNote.hidden = true;
     const current = () => viewerList[viewerIndex] === it;
@@ -891,6 +938,13 @@
     el.viewerPos.textContent = `${numberFmt.format(viewerIndex + 1)} of ${numberFmt.format(viewerList.length)}`;
     el.viewerArtist.textContent = "@" + it.a;
     el.viewerArtist.href = profileUrl(it);
+    const link = ARTIST_LINKS[it._al];
+    el.viewerLink.hidden = !link;
+    if (link) {
+      el.viewerLink.href = link.url;
+      el.viewerLink.textContent = link.text;
+      el.viewerLink.setAttribute("aria-label", link.label);
+    }
 
     el.viewerTags.replaceChildren();
     el.viewerTags.append(badge(it.k === "anim" ? "Animation" : "Static art", false));
@@ -905,12 +959,11 @@
     const rows = [
       ["Likes", it.v != null ? `About ${fmtLikes(it.v)}` : "Unknown"],
       ["Artist followers", followers != null ? `About ${fmtLikes(followers)}` : "Unknown"],
-      ...(it.o ? [["Saved as", "@" + it.o]] : []),
       ["Posted", fmtPosted(it)],
       ["Added", fmtDate(it.d)],
       ["Tweet ID", it.t || "Unknown"],
       ["Image", it.t ? `#${it.i} in tweet` : "Single file"],
-      ["File", it.f],
+      ["File", it._fn],
     ];
     for (const [k, v] of rows) {
       const dt = document.createElement("dt");
@@ -936,8 +989,9 @@
 
     const stats = artistStats.get(it._al);
     const n = stats ? stats.count : 1;
-    const filteringThisArtist = state.view === "gallery" && state.artist.toLowerCase() === it._al;
-    el.viewerMore.textContent = filteringThisArtist ? "Show all artists" : `All ${plural(n, "work", "works")} by @${it.a}`;
+    // Inside this artist's own view the shortcut would lead nowhere new, so it hides.
+    el.viewerMore.hidden = state.view === "gallery" && state.artist.toLowerCase() === it._al;
+    el.viewerMore.textContent = `All ${plural(n, "work", "works")} by @${it.a}`;
 
     el.prev.disabled = viewerIndex <= 0;
     el.next.disabled = viewerIndex >= viewerList.length - 1;
@@ -978,10 +1032,9 @@
   $("#close").addEventListener("click", closeViewer);
   el.viewerMore.addEventListener("click", () => {
     const it = viewerList[viewerIndex];
-    const showAll = state.view === "gallery" && state.artist.toLowerCase() === it._al;
     viewerReturnFocus = null;
     if (state.view === "gallery") {
-      setArtist(showAll ? "" : it.a);
+      setArtist(it.a);
     } else {
       showGallery({ artist: it.a, q: "", likes: "", followers: "", kind: "" });
     }
@@ -1012,10 +1065,10 @@
 
   // ---------- Home: shelves ----------
 
-  const shelves = { pick: [], fame: [], big: [], gems: [], hidden: [], small: [], new: [] };
-  const shelfPools = { big: [], gems: [], hidden: [], small: [], new: [] };
+  const shelves = { pick: [], fame: [], big: [], gems: [], hidden: [], small: [], buried: [], overlooked: [] };
+  const shelfPools = { big: [], gems: [], hidden: [], small: [], buried: [] };
   // Shelves that draw a fresh set on every load (Shuffle picks another), one artist at a time, and how many they show.
-  const RANDOM_SHELVES = { big: RANDOM_SHELF_SIZE, gems: RANDOM_SHELF_SIZE, hidden: RANDOM_SHELF_SIZE, new: RANDOM_SHELF_SIZE };
+  const RANDOM_SHELVES = { big: RANDOM_SHELF_SIZE, gems: RANDOM_SHELF_SIZE, hidden: RANDOM_SHELF_SIZE, buried: RANDOM_SHELF_SIZE };
   const shelfSeeds = Object.fromEntries(Object.keys(RANDOM_SHELVES).map((k) => [k, newSeed()]));
 
   // A small seeded shuffle, so Small Artists changes once a day and stays put on reload.
@@ -1051,11 +1104,20 @@
       if (!best || it.v > best.v) bestByArtist.set(it._al, it);
     }
     // Small Artists shows an artist's best work, so those artists stay off the gem shelves.
-    // The gem shelves and New Malfoid draw from every work in their like range, one artist at a time.
+    // The gem shelves and Buried Malfoid draw from every work in their like range, one artist at a time.
     const bests = [...bestByArtist.values()];
-    shelfPools.new = tweets.filter((it) => it.v < NEW_MAX);
+    // Overlooked shows every qualifying work, lowest reach first; those works stay off Buried Malfoid.
+    const reach = (it) => it.v / artistStats.get(it._al).followers;
+    shelves.overlooked = tweets
+      .filter((it) => {
+        const fo = artistStats.get(it._al).followers;
+        return fo >= OVERLOOKED_MIN_FOLLOWERS && !COMIC_DUBBERS.has(it._al) && it.v < fo * OVERLOOKED_RATIO;
+      })
+      .sort((a, b) => reach(a) - reach(b) || (a.f < b.f ? -1 : 1));
+    const overlooked = new Set(shelves.overlooked);
+    shelfPools.buried = tweets.filter((it) => it.v < BURIED_MAX && !overlooked.has(it));
     shelfPools.small = bests.filter(
-      (it) => it.v >= NEW_MAX && (artistStats.get(it._al).followers ?? Infinity) < SMALL_FOLLOWERS
+      (it) => it.v >= BURIED_MAX && (artistStats.get(it._al).followers ?? Infinity) < SMALL_FOLLOWERS
     );
     const small = new Set(shelfPools.small.map((it) => it._al));
     for (const [k, [min, max]] of Object.entries(GEM_RANGES)) {
@@ -1065,6 +1127,7 @@
     for (const name of Object.keys(RANDOM_SHELVES)) shuffleShelf(name, shelfSeeds[name]);
     shuffleShelf("small", Math.floor(Date.now() / 864e5) * 7 + 3);
     renderShelf("fame");
+    renderShelf("overlooked");
   }
 
   // One artist max: pick artists with the seed, then one of that artist's works in the pool, in shuffled order.
@@ -1158,6 +1221,7 @@
       const pickEl = makePick();
       card.append(btn, pickEl);
       setPick(pickEl, it);
+      setArtistLink(card, it);
       track.append(card);
     });
     if (keepScroll) track.scrollLeft = scroll;
@@ -1534,7 +1598,11 @@
           const c = e.credit;
           const credit = c && typeof c.name === "string" && c.name && isSafeUrl(String(c.url)) ? { name: c.name, url: c.url } : null;
           const source = typeof e.source === "string" && isSafeUrl(e.source) ? e.source : "";
-          return { _early: true, e, label: String(e.label || e.year), credit, source };
+          const title = typeof e.title === "string" ? e.title : "";
+          const links = (Array.isArray(e.links) ? e.links : []).filter(
+            (l) => l && typeof l.label === "string" && l.label && typeof l.url === "string" && isSafeUrl(l.url)
+          );
+          return { _early: true, e, label: String(e.label || e.year), credit, source, title, links };
         });
     } catch {
       // No early art: the Timeline simply starts in 2026.
@@ -1561,13 +1629,17 @@
       card.classList.add("tl-card-early");
       if (it.e.w > 0 && it.e.h > 0) card.style.aspectRatio = `${it.e.w} / ${it.e.h}`;
       img.src = it.e.thumb;
-      btn.setAttribute("aria-label", it.credit ? `Work by ${it.credit.name}, ${it.label}` : `Early Malfoid art, ${it.label}`);
-      if (it.credit) {
+      btn.setAttribute(
+        "aria-label",
+        it.credit ? `Work by ${it.credit.name}, ${it.label}` : it.title ? `${it.title}, ${it.label}` : `Early Malfoid art, ${it.label}`
+      );
+      const caption = it.credit?.name || it.title;
+      if (caption) {
         const meta = document.createElement("span");
         meta.className = "card-meta";
         const name = document.createElement("span");
         name.className = "card-handle";
-        name.textContent = it.credit.name;
+        name.textContent = caption;
         meta.append(name);
         btn.append(meta);
       }
@@ -1593,6 +1665,7 @@
     const pick = makePick();
     card.append(pick);
     setPick(pick, it);
+    setArtistLink(card, it);
     return card;
   }
 
@@ -1614,6 +1687,10 @@
     tlView.list.forEach((it, i) => {
       if (!it._early && !it.p && it.y) {
         marker(String(it.y)).works.push(i);
+        return;
+      }
+      if (!it._early && TIMELINE_GROUPED_YEARS.has(dayKey(when(it)).slice(0, 4))) {
+        marker(dayKey(when(it)).slice(0, 4)).works.push(i);
         return;
       }
       const key = it._early ? "early:" + it.label : dayKey(when(it));
@@ -1768,6 +1845,15 @@
       if (a.dataset.view === state.view) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     }
+    // On narrow screens the tabs scroll sideways: keep the current one fully in view.
+    const nav = $(".nav");
+    const cur = nav.querySelector('[aria-current="page"]');
+    if (cur) {
+      const n = nav.getBoundingClientRect();
+      const c = cur.getBoundingClientRect();
+      if (c.right > n.right) nav.scrollLeft += c.right - n.right;
+      else if (c.left < n.left) nav.scrollLeft -= n.left - c.left;
+    }
     if (state.view === "gallery") grid.relayout();
     else grid.schedule(); // drops grid nodes while hidden
     if (state.view === "random") randomGrid.relayout();
@@ -1838,10 +1924,29 @@
   window.addEventListener("popstate", restoreFromUrl);
   window.addEventListener("hashchange", restoreFromUrl);
 
+  // The 18+ page greets each arrival with its speech bubble, as if the icon were hovered:
+  // it grows out, holds, then lingers and fades on the bubble's own transition.
+  if (ADULT_SITE) {
+    const tip = $(".brand-tip");
+    let greetTimer = 0;
+    const greet = () => {
+      clearTimeout(greetTimer);
+      tip.classList.remove("is-greeting");
+      // Two frames, so the hidden state is painted first and the bubble animates in.
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        tip.classList.add("is-greeting");
+        greetTimer = setTimeout(() => tip.classList.remove("is-greeting"), 1500);
+      }));
+    };
+    greet();
+    // Coming back with the Back button restores the page from cache without rerunning this script.
+    window.addEventListener("pageshow", (e) => e.persisted && greet());
+  }
+
   for (const a of document.querySelectorAll(".nav a[data-view], .brand")) {
     a.addEventListener("click", (e) => {
       e.preventDefault();
-      enterView(a.dataset.view || "home");
+      enterView(a.dataset.view || DEFAULT_VIEW);
       writeUrl(undefined, true);
       window.scrollTo({ top: 0 });
     });
@@ -2013,6 +2118,8 @@
       it._an = it._al.replace(/[_.]/g, ""); // lets "kuyou" find "__k_u_y_o_u__"
       it._ao = it.o ? it.o.toLowerCase() : ""; // the handle the file was saved under, if the artist renamed
       it._aon = it._ao.replace(/[_.]/g, "");
+      // The file keeps the handle it was saved under; the site names it after the artist's current handle.
+      it._fn = it.o && it.f.startsWith(it.o + "-") ? it.a + it.f.slice(it.o.length) : it.f;
       if (it._ao) formerHandles.set(it._ao, it._al);
       const s = artistStats.get(it._al);
       if (!s) {

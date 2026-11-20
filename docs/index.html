@@ -12,28 +12,34 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=9">
+  <link rel="stylesheet" href="styles.css?v=20">
   <script src="theme.js?v=2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=12" defer></script>
+  <script src="app.js?v=16" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
 
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" href="./" aria-label="The Malfoid Artwork Archive home" aria-describedby="brand-tip">
-        <span class="brand-icon">
-          <img class="brand-mark" src="icons/icon-64.png" alt="" width="28" height="28">
-          <span class="brand-tip" id="brand-tip" role="tooltip">Since when are you collecting my artwork, Potter?</span>
-        </span>
-      </a>
+      <div class="brand-group">
+        <div class="brand-icon">
+          <a class="brand" href="./" aria-label="The Malfoid Artwork Archive home" aria-describedby="brand-quote">
+            <img class="brand-mark" src="icons/icon-64.png" alt="" width="28" height="28">
+          </a>
+          <div class="brand-tip">
+            <span id="brand-quote">Since when have you been collecting my artwork, Potter?</span>
+            <a class="brand-goon" href="h/" data-main-only>I'm here to Goon</a>
+          </div>
+        </div>
+        <a class="brand-out" href="../">Let me out</a>
+      </div>
       <nav class="nav" aria-label="Sections">
-        <a href="./" data-view="home" aria-current="page">Home</a>
-        <a href="#random" data-view="random">Random</a>
+        <a href="./" data-view="home" aria-current="page" data-main-only>Home</a>
+        <a href="#random" data-view="random" data-main-only>Random</a>
         <a href="#gallery" data-view="gallery">Gallery</a>
         <a href="#artists" data-view="artists">Artists</a>
-        <a href="#timeline" data-view="timeline">Timeline</a>
+        <a href="#timeline" data-view="timeline" data-main-only>Timeline</a>
       </nav>
       <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch theme">
         <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -46,11 +52,12 @@
     <section class="hero">
       <h1>The Malfoid Artwork Archive</h1>
       <p class="hero-meta" id="hero-meta">Loading the collection…</p>
-      <p class="hero-coverage" id="tl-coverage" hidden><span>Below are all the works I can find predates Oct 2026, counting all the platforms, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed any, especially those predates September 23 2026</span></p>
-      <p class="hero-coverage" id="x-coverage"><span>Covers hand-drawn artwork posted on Twitter (X) only. NO AI arts, 18+ comes later if there's a demand for it. Art on Pixiv, Instagram and other sites isn't tracked since I'm too lazy to manually tag<br>This is not every art out there on Twitter nor I have every pieces of every artists in this folder, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed your art or you found any 18+ arts that doesnt belong here</span></p>
+      <p class="hero-coverage" id="tl-coverage" hidden data-main-only><span>Below are all the works I can find predates Oct 2026, counting all the platforms, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed any, especially those predates September 23 2026</span></p>
+      <p class="hero-coverage" id="x-coverage" data-main-only><span>Covers hand-drawn artwork posted on Twitter (X) only. NO AI arts, 18+ ver exists if you can find it. Art on Pixiv, Instagram and other sites isn't tracked since I'm too lazy to manually tag<br>This is not every art out there on Twitter nor I have every pieces of every artists in this folder, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed your art or you found any 18+ arts that doesnt belong here</span></p>
+      <p class="hero-coverage" id="h-coverage" data-adult-only><span>I dont actively save R18 artworks on Twitter</span></p>
     </section>
 
-    <section id="view-home" class="view">
+    <section id="view-home" class="view" data-main-only>
       <section class="shelf" id="hall-of-fame" aria-labelledby="fame-title">
         <div class="shelf-head">
           <div>
@@ -125,19 +132,33 @@
         <div class="shelf-track" id="small-track"></div>
       </section>
 
-      <section class="shelf" id="new-malfoid" aria-labelledby="new-title">
+      <section class="shelf" id="buried-malfoid" aria-labelledby="buried-title">
         <div class="shelf-head">
           <div>
-            <h2 id="new-title">New Malfoid artworks</h2>
+            <h2 id="buried-title">Buried Malfoid artworks</h2>
             <p class="shelf-sub">Works under 200 likes, one per artist</p>
           </div>
           <div class="shelf-controls">
-            <button type="button" class="shelf-shuffle" data-shuffle="new">Shuffle</button>
-            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll New Malfoid artworks left">‹</button>
-            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll New Malfoid artworks right">›</button>
+            <button type="button" class="shelf-shuffle" data-shuffle="buried">Shuffle</button>
+            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll Buried Malfoid artworks left">‹</button>
+            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll Buried Malfoid artworks right">›</button>
           </div>
         </div>
-        <div class="shelf-track" id="new-track"></div>
+        <div class="shelf-track" id="buried-track"></div>
+      </section>
+
+      <section class="shelf" id="overlooked-malfoid" aria-labelledby="overlooked-title">
+        <div class="shelf-head">
+          <div>
+            <h2 id="overlooked-title">Overlooked Malfoid artworks</h2>
+            <p class="shelf-sub">Low reach/interaction count compared to artists' followers count</p>
+          </div>
+          <div class="shelf-controls">
+            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll Overlooked Malfoid artworks left">‹</button>
+            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll Overlooked Malfoid artworks right">›</button>
+          </div>
+        </div>
+        <div class="shelf-track" id="overlooked-track"></div>
       </section>
 
       <section class="shelf" id="my-pick" aria-labelledby="pick-title" hidden>
@@ -154,7 +175,7 @@
         <div class="shelf-track" id="pick-track"></div>
       </section>
 
-      <section class="my-ideas" id="my-ideas" aria-labelledby="ideas-title">
+      <section class="my-ideas" id="my-ideas" aria-labelledby="ideas-title" data-main-only>
         <div class="shelf-head">
           <div>
             <h2 id="ideas-title">My ideas</h2>
@@ -328,8 +349,8 @@
           <button type="button" role="radio" data-kind="art" aria-checked="false">Static art</button>
           <button type="button" role="radio" data-kind="anim" aria-checked="false">Animations</button>
           <button type="button" role="radio" data-kind="video" aria-checked="false">Videos</button>
-          <button type="button" role="radio" data-kind="pick" aria-checked="false" aria-describedby="pick-note">My Personal Pick</button>
-          <button type="button" role="radio" data-kind="lost" aria-checked="false" aria-describedby="lost-note">Lost tweets</button>
+          <button type="button" role="radio" data-kind="pick" aria-checked="false" aria-describedby="pick-note" data-main-only>My Personal Pick</button>
+          <button type="button" role="radio" data-kind="lost" aria-checked="false" aria-describedby="lost-note" data-main-only>Lost tweets</button>
         </div>
         <!-- Shown only while the matching type is selected (see .kind-note in styles.css). -->
         <p class="kind-note" id="pick-note" data-kind="pick">My (Topovn) personal favorite collection of Malfoid, will grow over time as I look back at the library.</p>
@@ -400,7 +421,7 @@
     <p>This site is an unofficial, non-commercial collection of fan art I found on Twitter, with the help of <a href="https://github.com/EltonChou/TwitterMediaHarvest" target="_blank" rel="noopener noreferrer">Twitter Media Harvest extension</a></p>
     <p>Harry Potter and related names are trademarks of Warner Bros. Entertainment Inc. This site is not affiliated with, endorsed or sponsored by Warner Bros., Wizarding World Digital or J.K. Rowling</p>
     <p>All works belong to their original creators. Icon art by <a href="https://x.com/redteneri" target="_blank" rel="noopener noreferrer">@redteneri</a></p>
-    <p>For more Malfoid fan works, see <a href="https://malfoid.com/" target="_blank" rel="noopener noreferrer">Malfoid.com</a> and the <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/" target="_blank" rel="noopener noreferrer">Malfoid Index</a> where <a href="https://x.com/rhedak1" target="_blank" rel="noopener noreferrer">@rhedak</a> archive all Malfoid media</p>
+    <p>For more Malfoid fan works, see <a href="https://malfoid.com/" target="_blank" rel="noopener noreferrer">Malfoid.com</a> and the <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/" target="_blank" rel="noopener noreferrer">Malfoid Index</a> where <a href="https://x.com/rhedak1" target="_blank" rel="noopener noreferrer">@rhedak</a> archive all Malfoid media, and the <a href="https://www.reddit.com/r/Malfoid/" target="_blank" rel="noopener noreferrer">r/Malfoid</a> subreddit</p>
   </footer>
 
   <dialog id="viewer" class="viewer" aria-label="Work viewer">
@@ -413,6 +434,7 @@
       <button class="viewer-close" id="close" type="button" aria-label="Close">✕</button>
       <p class="viewer-pos" id="viewer-pos"></p>
       <a class="viewer-artist" id="viewer-artist" target="_blank" rel="noopener noreferrer"></a>
+      <a class="viewer-link" id="viewer-link" target="_blank" rel="noopener noreferrer" hidden></a>
       <div class="viewer-tags" id="viewer-tags"></div>
       <p class="viewer-lost" id="viewer-lost" hidden></p>
       <dl class="viewer-meta" id="viewer-meta"></dl>
@@ -420,6 +442,7 @@
         <button class="btn btn-pick" id="viewer-pick" type="button" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.6-4.6-9.5-9.3C1.1 7.8 3.2 4 6.9 4c2.1 0 3.5 1.1 5.1 3.1C13.6 5.1 15 4 17.1 4c3.7 0 5.8 3.8 4.4 7.2-1.9 4.7-9.5 9.3-9.5 9.3z"/></svg><span>Add to My Personal Pick</span></button>
         <a class="btn btn-primary" id="viewer-tweet" target="_blank" rel="noopener noreferrer">View tweet on Twitter ↗</a>
         <a class="btn" id="viewer-danbooru" target="_blank" rel="noopener noreferrer" hidden>View on Danbooru ↗</a>
+        <a class="btn" id="viewer-extra" target="_blank" rel="noopener noreferrer" hidden></a>
         <button class="btn" id="viewer-more" type="button"></button>
       </div>
       <p class="viewer-note" id="viewer-note" hidden></p>

@@ -2,8 +2,11 @@
 __pycache__/
 # Local link to the full-size originals for previewing; not published.
 docs/media
+docs/h/media
 # Build leftovers if a run is interrupted.
 docs/thumbs/*.tmp
 docs/thumbs/*.frame.png
+docs/h/thumbs/*.tmp
+docs/h/thumbs/*.frame.png
 # Held by tools/upload_originals.py while it runs.
 data/.upload.lock
