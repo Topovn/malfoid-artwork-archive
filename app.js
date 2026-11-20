@@ -13,7 +13,8 @@
   const NEW_MAX = 200; // New Malfoid: every work under this many likes
   const SMALL_FOLLOWERS = 2000; // Small Artists: fewer followers than this (and not in New Malfoid)
   const SHELF_SIZE = 30; // works shown at once in the shuffled shelves
-  const LONG_VIDEO = 30; // videos this many seconds or longer stay off the home shelves (My Personal Pick excepted)
+  const LONG_VIDEO = 30; // videos this many seconds or longer count as Videos (see isVideo)
+  const VIDEO_ARTISTS = new Set(["alessandro49472"]); // every work by these artists counts as Videos
   const TIMEZONE = "Australia/Sydney"; // days on the timeline, as in the original dashboard
   const TIMELINE_START = "2026-09-01";
   const TIMELINE_VIEW_END = "2026-10-01"; // the Timeline tab covers the early days, before the October wave
@@ -90,6 +91,8 @@
   // File-name order as macOS Finder shows it: case-insensitive, numbers by value, "_" before digits and letters.
   const nameCollator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
   const plural = (n, one, many) => `${numberFmt.format(n)} ${n === 1 ? one : many}`;
+  // Long videos, and everything by VIDEO_ARTISTS (under a current or former handle), form the Videos filter.
+  const isVideo = (it) => it.s >= LONG_VIDEO || VIDEO_ARTISTS.has(it._al) || VIDEO_ARTISTS.has(it._ao);
 
   const thumbUrl = (it) => "thumbs/" + encodeURIComponent(it.f) + ".webp";
   const onLocalhost = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
@@ -208,7 +211,13 @@
     const out = items.filter((it) => {
       if (artist && it._al !== artist) return false;
       if (state.likes && (it.v == null || it.v < minLikes || it.v >= maxLikes)) return false;
-      if (state.kind === "lost" ? !it.l : state.kind === "pick" ? !pickSet.has(it.f) : state.kind && it.k !== state.kind) return false;
+      const kindOk =
+        state.kind === "lost" ? !!it.l
+        : state.kind === "pick" ? pickSet.has(it.f)
+        : state.kind === "video" ? isVideo(it)
+        : state.kind === "anim" ? it.k === "anim" && !isVideo(it)
+        : !state.kind || it.k === state.kind;
+      if (!kindOk) return false;
       if (q) {
         // An exact former handle finds the whole artist, including works saved under the new handle.
         if (exact) return exactHandle ? it._al === resolveHandle(q) : it._al.startsWith(q) || it._ao.startsWith(q);
@@ -929,7 +938,7 @@
     // One entry per tweet: its first image, carrying the tweet's like count.
     const byTweet = new Map();
     for (const it of items) {
-      if (it.v == null || !it.t || it.s >= LONG_VIDEO) continue;
+      if (it.v == null || !it.t || isVideo(it)) continue; // Videos stay off the home shelves (My Personal Pick excepted)
       const cur = byTweet.get(it.t);
       if (!cur || it.i < cur.i) byTweet.set(it.t, it);
     }
