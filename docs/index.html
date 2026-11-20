@@ -12,8 +12,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="preload" href="fonts/pinyon-script-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=2">
   <script src="theme.js"></script>
   <script src="config.js"></script>
   <script src="app.js" defer></script>
@@ -23,12 +22,15 @@
 
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" href="./" aria-label="The Malfoid Artwork Archive home">
-        <img class="brand-mark" src="icons/icon-64.png" alt="" width="28" height="28">
-        <span class="brand-text"><span class="brand-name">Malfoid</span></span>
+      <a class="brand" href="./" aria-label="The Malfoid Artwork Archive home" aria-describedby="brand-tip">
+        <span class="brand-icon">
+          <img class="brand-mark" src="icons/icon-64.png" alt="" width="28" height="28">
+          <span class="brand-tip" id="brand-tip" role="tooltip">Since when are you collecting my artwork, Potter?</span>
+        </span>
       </a>
       <nav class="nav" aria-label="Sections">
         <a href="./" data-view="home" aria-current="page">Home</a>
+        <a href="#random" data-view="random">Random</a>
         <a href="#gallery" data-view="gallery">Gallery</a>
         <a href="#artists" data-view="artists">Artists</a>
         <a href="#timeline" data-view="timeline">Timeline</a>
@@ -44,8 +46,8 @@
     <section class="hero">
       <h1>The Malfoid Artwork Archive</h1>
       <p class="hero-meta" id="hero-meta">Loading the collection…</p>
-      <p class="hero-coverage" id="tl-coverage" hidden><span>Below are all the works I can find predates Oct 2026, counting all the platforms</span></p>
-      <p class="hero-coverage" id="x-coverage"><span>Covers artwork posted on X (Twitter) only. Art on Pixiv, Instagram, DeviantArt and other sites isn't tracked, since there's no proper tag to find it there. For more Malfoid fan works, see <a href="https://malfoid.com/" target="_blank" rel="noopener noreferrer">Malfoid.com</a> and the <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/" target="_blank" rel="noopener noreferrer">Malfoid Index</a>.</span></p>
+      <p class="hero-coverage" id="tl-coverage" hidden><span>Below are all the works I can find predates Oct 2026, counting all the platforms, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed any, especially those predates <strong>Sept 23 2026</strong></span></p>
+      <p class="hero-coverage" id="x-coverage"><span>Covers hand-drawn artwork posted on Twitter (X) only. NO AI arts and NO 18+ arts. Art on Pixiv, Instagram and other sites isn't tracked since I'm too lazy to manually tag. This is not every art out there on Twitter nor I have every pieces of every artists in this folder, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed your art</span></p>
     </section>
 
     <section id="view-home" class="view">
@@ -53,6 +55,7 @@
         <div class="shelf-head">
           <div>
             <h2 id="fame-title"><a href="?sort=liked#gallery" id="fame-link">Hall of Fame</a></h2>
+            <p class="shelf-sub">Malfoid Hall of Fame, most liked post on Twitter</p>
           </div>
           <div class="shelf-controls">
             <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll Hall of Fame left">‹</button>
@@ -65,7 +68,7 @@
       <section class="shelf" id="big-gems" aria-labelledby="big-title">
         <div class="shelf-head">
           <div>
-            <h2 id="big-title">Big Gems</h2>
+            <h2 id="big-title"><a href="?likes=5k#gallery" id="big-link">Big Gems</a></h2>
             <p class="shelf-sub">Works with 5,000 to 10,000 likes, one per artist</p>
           </div>
           <div class="shelf-controls">
@@ -80,7 +83,7 @@
       <section class="shelf" id="gems" aria-labelledby="gems-title">
         <div class="shelf-head">
           <div>
-            <h2 id="gems-title">Gems</h2>
+            <h2 id="gems-title"><a href="?likes=2k#gallery" id="gems-link">Gems</a></h2>
             <p class="shelf-sub">Works with 2,000 to 5,000 likes, one per artist</p>
           </div>
           <div class="shelf-controls">
@@ -95,7 +98,7 @@
       <section class="shelf" id="hidden-gems" aria-labelledby="hidden-title">
         <div class="shelf-head">
           <div>
-            <h2 id="hidden-title">Hidden Gems</h2>
+            <h2 id="hidden-title"><a href="?likes=200#gallery" id="hidden-link">Hidden Gems</a></h2>
             <p class="shelf-sub">Works with 200 to 2,000 likes, one per artist</p>
           </div>
           <div class="shelf-controls">
@@ -151,29 +154,47 @@
         <div class="shelf-track" id="pick-track"></div>
       </section>
 
-      <section class="fun-fact" id="fun-fact" aria-labelledby="fun-title">
+      <section class="my-ideas" id="my-ideas" aria-labelledby="ideas-title">
         <div class="shelf-head">
           <div>
-            <h2 id="fun-title">Fun Fact</h2>
-            <p class="shelf-sub">I'm the one who gave @Ni7NiA7 the idea for this art</p>
+            <h2 id="ideas-title">My ideas</h2>
           </div>
         </div>
-        <div class="fun-fact-body">
-          <figure class="fun-tweet">
-            <blockquote>
-              <p class="fun-tweet-author"><strong>Topo</strong> <span>@Topovn</span></p>
-              <p class="fun-tweet-text">@Ni7NiA7 I love your chibi Malfoids, can you draw her in this Adomination meme? With the flag being 🍏 or something too</p>
-              <img class="fun-tweet-media" src="fun/tweet-image.webp" alt="The Adomination meme the tweet links: a chibi Ado peeking over a globe with an Ado flag" width="554" height="554" loading="lazy" decoding="async">
-            </blockquote>
-            <figcaption><a href="https://x.com/Topovn/status/2112585612322902144" target="_blank" rel="noopener noreferrer">View on X ↗</a></figcaption>
-          </figure>
-          <span class="fun-fact-arrow" aria-hidden="true">→</span>
-          <figure class="fun-art">
-            <button type="button" class="fun-art-open" id="fun-art-open" data-file="Ni7NiA7-2113016585950789961-01.jpg" aria-label="Open the artwork by @Ni7NiA7">
-              <img src="thumbs/Ni7NiA7-2113016585950789961-01.jpg.webp" alt="" width="400" height="400" loading="lazy" decoding="async">
-            </button>
-            <figcaption><span>@Ni7NiA7</span> <a href="https://x.com/Ni7NiA7/status/2113016585950789961" target="_blank" rel="noopener noreferrer">View on X ↗</a></figcaption>
-          </figure>
+        <div class="ideas-grid">
+          <div class="idea-pair" id="idea-request-pair">
+            <figure class="idea-tweet">
+              <blockquote>
+                <p class="idea-tweet-author"><strong>Topo</strong> <span><a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a></span></p>
+                <p class="idea-tweet-text">@Ni7NiA7 I love your chibi Malfoids, can you draw her in this Adomination meme? With the flag being 🍏 or something too</p>
+                <img class="idea-tweet-media" src="fun/tweet-image.webp" alt="The Adomination meme the tweet links: a chibi Ado peeking over a globe with an Ado flag" width="554" height="554" loading="lazy" decoding="async">
+              </blockquote>
+              <figcaption><a href="https://x.com/Topovn/status/2112585612322902144" target="_blank" rel="noopener noreferrer">View on X ↗</a></figcaption>
+            </figure>
+            <span class="idea-arrow" aria-hidden="true">→</span>
+            <figure class="idea-art">
+              <button type="button" class="idea-art-open" id="ideas-art-open" data-file="Ni7NiA7-2113016585950789961-01.jpg" aria-label="Open the artwork by @Ni7NiA7">
+                <img src="thumbs/Ni7NiA7-2113016585950789961-01.jpg.webp" alt="" width="400" height="400" loading="lazy" decoding="async">
+              </button>
+              <figcaption><span>@Ni7NiA7</span> <a href="https://x.com/Ni7NiA7/status/2113016585950789961" target="_blank" rel="noopener noreferrer">View on X ↗</a></figcaption>
+            </figure>
+          </div>
+          <div class="idea-pair">
+            <figure class="idea-tweet">
+              <blockquote>
+                <p class="idea-tweet-author"><strong>Topo</strong> <span><a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a></span></p>
+                <p class="idea-tweet-text">@hallowleaf I have a great idea for Potter family and I would love to see it in your artstyle 🙏 Ratatouille came out in 2007, Lily should still be &lt;10 years old. She would definitely watched this and would definitely nag her dad to sit on his shoulder, tugging his hair while he cooks</p>
+                <img class="idea-tweet-media" src="fun/potter-idea.webp" alt="Ratatouille reference image attached to the idea" width="408" height="150" loading="lazy" decoding="async">
+              </blockquote>
+              <figcaption><a href="https://x.com/Topovn/status/2120739396861538576" target="_blank" rel="noopener noreferrer">View on X ↗</a></figcaption>
+            </figure>
+            <span class="idea-arrow" aria-hidden="true">→</span>
+            <figure class="idea-art">
+              <a class="idea-art-link" href="https://x.com/hallowleaf/status/2122431288212635668/photo/1" target="_blank" rel="noopener noreferrer" aria-label="Open the artwork by @hallowleaf on X">
+                <img src="fun/potter-art.webp" alt="Fan art by @hallowleaf of Lily sitting on Harry's shoulders, tugging his hair while he cooks" width="1401" height="2048" loading="lazy" decoding="async">
+              </a>
+              <figcaption><span>@hallowleaf</span> <a href="https://x.com/hallowleaf/status/2122431288212635668/photo/1" target="_blank" rel="noopener noreferrer">View on X ↗</a></figcaption>
+            </figure>
+          </div>
         </div>
       </section>
 
@@ -182,7 +203,7 @@
           <div>
             <h2 id="timeline-title">Art timeline</h2>
           </div>
-          <a class="shelf-link" id="dashboard-link" href="#" target="_blank" rel="noopener noreferrer">Open dashboard in Claude <span aria-hidden="true">↗</span></a>
+          <a class="shelf-link" id="dashboard-link" href="#" target="_blank" rel="noopener noreferrer">Open Claude dashboard artifact <span aria-hidden="true">↗</span></a>
         </div>
 
         <div class="tiles">
@@ -229,6 +250,18 @@
       </section>
     </section>
 
+    <section id="view-random" class="view" hidden>
+      <div class="shelf-head">
+        <div>
+          <h2>Random</h2>
+          <p class="shelf-sub">50 works, one per artist. Shuffle for a new set.</p>
+        </div>
+        <button type="button" class="shelf-shuffle" id="random-shuffle">Shuffle</button>
+      </div>
+      <div class="status"><p id="random-count" aria-live="polite"></p></div>
+      <div id="random-grid" class="grid" aria-label="Random works"></div>
+    </section>
+
     <section id="view-gallery" class="view" hidden>
       <form class="toolbar" id="toolbar" role="search">
         <label class="field field-search">
@@ -241,8 +274,7 @@
             <select id="likes">
               <option value="">All likes</option>
               <option value="50k">50K+</option>
-              <option value="30k">30K–50K</option>
-              <option value="20k">20K–30K</option>
+              <option value="20k">20K–50K</option>
               <option value="10k">10K–20K</option>
               <option value="5k">5K–10K</option>
               <option value="2k">2K–5K</option>
@@ -259,11 +291,9 @@
               <option value="newest">Newest posted</option>
               <option value="liked">Most liked</option>
               <option value="name">File name</option>
-              <option value="random">Random</option>
             </select>
           </span>
         </label>
-        <button type="button" class="reshuffle" id="reshuffle" hidden>Shuffle</button>
         <label class="field field-inline">
           <span class="field-label">Per page</span>
           <span class="select">
@@ -348,9 +378,11 @@
   </main>
 
   <footer class="footer">
-    <p>This site is an unofficial, non-commercial collection of fan art. Harry Potter and related names are trademarks of Warner Bros. Entertainment Inc. This site is not affiliated with, endorsed or sponsored by Warner Bros., Wizarding World Digital or J.K. Rowling.</p>
-    <p>All works belong to their original creators. Icon art by <a href="https://x.com/redteneri" target="_blank" rel="noopener noreferrer">@redteneri</a>.</p>
-    <p>More Malfoid archives: <a href="https://malfoid.com/" target="_blank" rel="noopener noreferrer">Malfoid.com</a> · <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/" target="_blank" rel="noopener noreferrer">Malfoid Index</a></p>
+    <p>This site is an unofficial, non-commercial collection of fan art.</p>
+    <p>With the help of <a href="https://github.com/EltonChou/TwitterMediaHarvest" target="_blank" rel="noopener noreferrer">Twitter Media Harvest extension</a></p>
+    <p>Harry Potter and related names are trademarks of Warner Bros. Entertainment Inc. This site is not affiliated with, endorsed or sponsored by Warner Bros., Wizarding World Digital or J.K. Rowling</p>
+    <p>All works belong to their original creators. Icon art by <a href="https://x.com/redteneri" target="_blank" rel="noopener noreferrer">@redteneri</a></p>
+    <p>For more Malfoid fan works, see <a href="https://malfoid.com/" target="_blank" rel="noopener noreferrer">Malfoid.com</a> and the <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/" target="_blank" rel="noopener noreferrer">Malfoid Index</a></p>
   </footer>
 
   <dialog id="viewer" class="viewer" aria-label="Work viewer">

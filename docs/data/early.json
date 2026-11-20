@@ -157,6 +157,18 @@
     "url": "https://www.pixiv.net/en/users/32040671"
    },
    "source": "https://www.pixiv.net/en/artworks/88917990"
+  },
+  {
+   "id": "2021-1",
+   "year": 2021,
+   "label": "2021",
+   "thumb": "early/2021-1.webp",
+   "full": "early/2021-1-full.webp",
+   "w": 400,
+   "h": 600,
+   "fw": 400,
+   "fh": 600,
+   "source": "https://novelpia.com/novel/3291"
   }
  ]
 }

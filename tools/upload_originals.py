@@ -20,6 +20,7 @@ The manifest is rebuilt at the end so the site points at the uploaded files.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import re
@@ -33,6 +34,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = ROOT / "docs" / "data" / "manifest.json"
 RELEASES = ROOT / "data" / "releases.json"
+LOCK = ROOT / "data" / ".upload.lock"  # held while a run is active, so two runs never upload the same files
 DEFAULT_REPO = "Topovn/malfoid-artwork-archive"
 TAG_PREFIX = "media-"
 ASSETS_PER_RELEASE = 900  # GitHub allows 1000; keep headroom
@@ -227,4 +229,9 @@ def main() -> int:
 if __name__ == "__main__":
     if not shutil.which("gh"):
         sys.exit("The GitHub CLI (gh) is required.")
+    lock = LOCK.open("w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        sys.exit("Another upload_originals.py run is in progress. Let it finish first.")
     sys.exit(main())

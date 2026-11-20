@@ -115,21 +115,11 @@ def make_thumb(job: tuple[str, str, str]) -> tuple[str, int, int, float | None, 
         return dst_p.name, 0, 0, seconds, str(exc)[:200]
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--src", default=str(Path.home() / "Downloads/twitter_media_harvest/Malfoid"))
-    args = ap.parse_args()
-    src = Path(args.src).expanduser()
-    if not src.is_dir():
-        sys.exit(f"Source folder not found: {src}")
+def source_files(src: Path) -> list[tuple[Path, bool]]:
+    """Every work the site should show, as (path, is lost tweet), in a stable order.
 
-    lost_meta = {row["file"]: row for row in read_csv(src / LOST_DIR / f"{LOST_DIR}.csv")}
-    danbooru = {}
-    for row in read_csv(src / "Malfoid non-Twitter sources.csv"):
-        m = re.search(r"/status/(\d+)", row.get("Source", ""))
-        if m and row.get("Danbooru"):
-            danbooru[m.group(1)] = row["Danbooru"]
-
+    Shared with tools/sync_status.py so both agree on what counts as a work.
+    """
     # Works the owner keeps off the site (wrong attribution and the like); the source files stay put.
     exclude_path = DATA / "exclude.json"
     exclude = json.loads(exclude_path.read_text()) if exclude_path.exists() else {}
@@ -146,6 +136,25 @@ def main() -> int:
                 continue
             if p.is_file() and not p.name.startswith(".") and ext in IMAGE_EXTS | VIDEO_EXTS:
                 files.append((p, lost))
+    return files
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--src", default=str(Path.home() / "Downloads/twitter_media_harvest/Malfoid"))
+    args = ap.parse_args()
+    src = Path(args.src).expanduser()
+    if not src.is_dir():
+        sys.exit(f"Source folder not found: {src}")
+
+    lost_meta = {row["file"]: row for row in read_csv(src / LOST_DIR / f"{LOST_DIR}.csv")}
+    danbooru = {}
+    for row in read_csv(src / "Malfoid non-Twitter sources.csv"):
+        m = re.search(r"/status/(\d+)", row.get("Source", ""))
+        if m and row.get("Danbooru"):
+            danbooru[m.group(1)] = row["Danbooru"]
+
+    files = source_files(src)
 
     THUMBS.mkdir(parents=True, exist_ok=True)
     DATA.mkdir(parents=True, exist_ok=True)

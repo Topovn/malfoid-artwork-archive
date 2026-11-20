@@ -5,3 +5,5 @@ docs/media
 # Build leftovers if a run is interrupted.
 docs/thumbs/*.tmp
 docs/thumbs/*.frame.png
+# Held by tools/upload_originals.py while it runs.
+data/.upload.lock
