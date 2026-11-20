@@ -33,7 +33,6 @@
     pager: $("#pager"),
     count: $("#count"),
     activeArtist: $("#active-artist"),
-    artistList: $("#artist-list"),
     grid: $("#grid"),
     empty: $("#empty"),
     artistQ: $("#artist-q"),
@@ -1849,14 +1848,6 @@
 
     renderHero(data);
 
-    const frag = document.createDocumentFragment();
-    for (const s of [...artistStats.values()].sort((a, b) => b.count - a.count)) {
-      const o = document.createElement("option");
-      o.value = "@" + s.handle;
-      o.label = plural(s.count, "work", "works");
-      frag.append(o);
-    }
-    el.artistList.append(frag);
 
     applyFilters();
     renderPickShelf();
