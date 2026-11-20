@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the Malfoid gallery index and thumbnails.
+"""Build the Malfoid Artwork Archive index and thumbnails.
 
 Scans the top level of the Malfoid folder plus its _LostTweets subfolder.
 Every other subfolder is ignored.
