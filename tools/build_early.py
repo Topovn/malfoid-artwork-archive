@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Build the anonymized early-art set for the Timeline view.
 
-Reads the works listed in data/early_years.json from Malfoid/_Early Arts.
+Reads the works listed in data/early_years.json from folders inside Malfoid/ ('dir', default '_Early Arts').
 The handles in those filenames belong to reposters, not the artists, so nothing identifying is published:
 files get neutral names like 2013-1, are converted to sRGB and re-encoded with no metadata,
 and docs/data/early.json carries only years and labels.
+Entries the owner marks with a 'credit' (artist name and link) and a public 'source' link are published with them.
 These works never enter the main manifest, the gallery, the shelves or the artist list.
 
 Usage:
-    python3 tools/build_early.py [--src ~/Downloads/twitter_media_harvest/Malfoid/_Early\\ Arts]
+    python3 tools/build_early.py [--root ~/Downloads/twitter_media_harvest/Malfoid]
 """
 
 from __future__ import annotations
@@ -56,14 +57,15 @@ def save_webp(im: Image.Image, width: int, dest: Path, quality: int) -> tuple[in
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--src", default=str(Path.home() / "Downloads/twitter_media_harvest/Malfoid/_Early Arts"))
+    ap.add_argument("--root", default=str(Path.home() / "Downloads/twitter_media_harvest/Malfoid"))
     args = ap.parse_args()
-    src = Path(args.src).expanduser()
+    root = Path(args.root).expanduser()
     works = json.loads(MAPPING.read_text())["works"]
+    path_of = {f: root / works[f].get("dir", "_Early Arts") / f for f in works}
 
-    missing = [f for f in works if not (src / f).is_file()]
+    missing = [str(p) for p in path_of.values() if not p.is_file()]
     if missing:
-        sys.exit(f"Missing in {src}: {missing}")
+        sys.exit(f"Missing: {missing}")
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     entries, counters, wanted = [], {}, set()
@@ -71,7 +73,7 @@ def main() -> int:
         meta = works[f]
         counters[meta["year"]] = counters.get(meta["year"], 0) + 1
         wid = f"{meta['year']}-{counters[meta['year']]}"
-        im = clean_rgb(src / f)
+        im = clean_rgb(path_of[f])
         thumb, full = OUT_DIR / f"{wid}.webp", OUT_DIR / f"{wid}-full.webp"
         w, h = save_webp(im, THUMB_WIDTH, thumb, QUALITY["thumb"])
         fw, fh = save_webp(im, FULL_MAX_WIDTH, full, QUALITY["full"])
@@ -81,11 +83,16 @@ def main() -> int:
             "thumb": f"early/{thumb.name}", "full": f"early/{full.name}",
             "w": w, "h": h, "fw": fw, "fh": fh,
         })
+        # Only works the owner chose to credit carry an artist name and links.
+        if meta.get("credit"):
+            entries[-1]["credit"] = {"name": meta["credit"]["name"], "url": meta["credit"]["url"]}
+            if meta.get("source", "").startswith("https://"):
+                entries[-1]["source"] = meta["source"]
 
     for stale in OUT_DIR.iterdir():
         if stale.name not in wanted:
             stale.unlink()
-    OUT_JSON.write_text(json.dumps({"early": entries}, indent=1))
+    OUT_JSON.write_text(json.dumps({"early": entries}, indent=1, ensure_ascii=False))
     print(f"Wrote {len(entries)} early works to {OUT_DIR.relative_to(REPO)} and {OUT_JSON.relative_to(REPO)}.")
     return 0
 

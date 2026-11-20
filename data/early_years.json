@@ -1,5 +1,5 @@
 {
- "_note": "Source files in Malfoid/_Early Arts -> the year each work dates from. The handles in these filenames are reposters, not the artists, so none of this is published. 'source' is the reposter's wording, for reference only.",
+ "_note": "Works shown only on the Timeline. 'dir' is the folder inside Malfoid/ (default '_Early Arts'). Entries without 'credit' are anonymous: their filename handles are reposters, so nothing identifying is published. Entries with 'credit' are published with that artist name and links. 'source' on anonymous entries is the reposter's wording, kept private.",
  "works": {
   "Papa_Ph0-2107441303034495447-01.jpg": {
    "year": 2008,
@@ -35,6 +35,56 @@
    "year": 2013,
    "label": "2013",
    "source": "traced all the way back in 2013 on Tumblr"
+  },
+  "[ねむ] - HPログ (86588589) p04.jpg": {
+   "year": 2020,
+   "label": "2020",
+   "dir": "uchikaze",
+   "credit": {
+    "name": "ねむ",
+    "url": "https://www.pixiv.net/en/users/32040671"
+   },
+   "source": "https://www.pixiv.net/en/artworks/86588589"
+  },
+  "[ねむ] - HPログ (86588589) p07.jpg": {
+   "year": 2020,
+   "label": "2020",
+   "dir": "uchikaze",
+   "credit": {
+    "name": "ねむ",
+    "url": "https://www.pixiv.net/en/users/32040671"
+   },
+   "source": "https://www.pixiv.net/en/artworks/86588589"
+  },
+  "[ねむ] - HPログ② (87167988) p06.jpg": {
+   "year": 2020,
+   "label": "2020",
+   "dir": "uchikaze",
+   "credit": {
+    "name": "ねむ",
+    "url": "https://www.pixiv.net/en/users/32040671"
+   },
+   "source": "https://www.pixiv.net/en/artworks/87167988"
+  },
+  "[ねむ] - HPログ② (87167988) p10.jpg": {
+   "year": 2020,
+   "label": "2020",
+   "dir": "uchikaze",
+   "credit": {
+    "name": "ねむ",
+    "url": "https://www.pixiv.net/en/users/32040671"
+   },
+   "source": "https://www.pixiv.net/en/artworks/87167988"
+  },
+  "[ねむ] - HPログ③ (88917990) p04.jpg": {
+   "year": 2020,
+   "label": "2020",
+   "dir": "uchikaze",
+   "credit": {
+    "name": "ねむ",
+    "url": "https://www.pixiv.net/en/users/32040671"
+   },
+   "source": "https://www.pixiv.net/en/artworks/88917990"
   }
  }
 }

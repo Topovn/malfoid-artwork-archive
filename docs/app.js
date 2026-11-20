@@ -724,7 +724,7 @@
   function renderEarlyViewer(it) {
     el.viewerNote.hidden = true;
     const media = document.createElement("img");
-    media.alt = `Early Malfoid art, ${it.label}`;
+    media.alt = it.credit ? `Work by ${it.credit.name}, ${it.label}` : `Early Malfoid art, ${it.label}`;
     media.src = it.e.thumb;
     const full = new Image();
     full.decoding = "async";
@@ -734,7 +734,11 @@
     full.src = it.e.full;
     el.viewerMedia.replaceChildren(media);
     el.viewerPos.textContent = `${numberFmt.format(viewerIndex + 1)} of ${numberFmt.format(viewerList.length)}`;
-    el.viewerArtist.hidden = true;
+    el.viewerArtist.hidden = !it.credit;
+    if (it.credit) {
+      el.viewerArtist.textContent = it.credit.name;
+      el.viewerArtist.href = it.credit.url;
+    }
     el.viewerTags.replaceChildren(badge("Early art", false));
     el.viewerLost.hidden = true;
     el.viewerMeta.replaceChildren();
@@ -743,7 +747,11 @@
     const dd = document.createElement("dd");
     dd.textContent = it.label;
     el.viewerMeta.append(dt, dd);
-    el.viewerTweet.hidden = true;
+    el.viewerTweet.hidden = !it.source;
+    if (it.source) {
+      el.viewerTweet.href = it.source;
+      el.viewerTweet.textContent = /pixiv\.net/i.test(it.source) ? "View on Pixiv ↗" : "View source ↗";
+    }
     el.viewerDanbooru.hidden = true;
     el.viewerMore.hidden = true;
     el.prev.disabled = viewerIndex <= 0;
@@ -1396,7 +1404,13 @@
       const data = await res.json();
       earlyItems = (Array.isArray(data.early) ? data.early : [])
         .filter((e) => e && typeof e.thumb === "string" && typeof e.full === "string")
-        .map((e) => ({ _early: true, e, label: String(e.label || e.year) }));
+        .map((e) => {
+          // Credited works (e.g. from Pixiv) name the artist; the anonymous ones carry no credit or source.
+          const c = e.credit;
+          const credit = c && typeof c.name === "string" && c.name && isSafeUrl(String(c.url)) ? { name: c.name, url: c.url } : null;
+          const source = typeof e.source === "string" && isSafeUrl(e.source) ? e.source : "";
+          return { _early: true, e, label: String(e.label || e.year), credit, source };
+        });
     } catch {
       // No early art: the Timeline simply starts in 2026.
     }
@@ -1422,7 +1436,16 @@
       card.classList.add("tl-card-early");
       if (it.e.w > 0 && it.e.h > 0) card.style.aspectRatio = `${it.e.w} / ${it.e.h}`;
       img.src = it.e.thumb;
-      btn.setAttribute("aria-label", `Early Malfoid art, ${it.label}`);
+      btn.setAttribute("aria-label", it.credit ? `Work by ${it.credit.name}, ${it.label}` : `Early Malfoid art, ${it.label}`);
+      if (it.credit) {
+        const meta = document.createElement("span");
+        meta.className = "card-meta";
+        const name = document.createElement("span");
+        name.className = "card-handle";
+        name.textContent = it.credit.name;
+        meta.append(name);
+        btn.append(meta);
+      }
       return card;
     }
     img.src = thumbUrl(it);
