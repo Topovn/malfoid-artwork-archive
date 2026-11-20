@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import tempfile
 from functools import partial
 from http import HTTPStatus
@@ -77,7 +78,13 @@ def validate(body: object) -> list[str]:
     return out
 
 
+RANGE_RE = re.compile(r"^bytes=(\d*)-(\d*)$")
+
+
 class Handler(SimpleHTTPRequestHandler):
+    _range: tuple[int, int] | None = None  # (start, length) of the part being sent
+    _ranges_ok = False  # the response is a plain file, so Accept-Ranges is advertised
+
     def _path(self) -> str:
         return self.path.split("?", 1)[0].split("#", 1)[0]
 
@@ -90,7 +97,50 @@ class Handler(SimpleHTTPRequestHandler):
         if any(part.startswith(".") for part in self._path().split("/") if part):
             self.send_error(HTTPStatus.NOT_FOUND)
             return None
-        return super().send_head()
+        self._range = None
+        path = self.translate_path(self.path)
+        self._ranges_ok = os.path.isfile(path)
+        m = RANGE_RE.match(self.headers.get("Range", "").strip())
+        if not (self._ranges_ok and m and any(m.groups())):
+            return super().send_head()
+        return self._send_part(path, m)
+
+    def _send_part(self, path: str, m: re.Match):
+        """Answer a single byte-range request with 206, so videos can seek (a plain 200 can't)."""
+        f = open(path, "rb")
+        size = os.fstat(f.fileno()).st_size
+        first, last = m.groups()
+        if first:
+            start, end = int(first), min(int(last), size - 1) if last else size - 1
+        else:  # "bytes=-N": the last N bytes
+            start, end = max(0, size - int(last)), size - 1
+        if start >= size or start > end:
+            f.close()
+            self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+            self.send_header("Content-Range", f"bytes */{size}")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return None
+        self.send_response(HTTPStatus.PARTIAL_CONTENT)
+        self.send_header("Content-Type", self.guess_type(path))
+        self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.send_header("Content-Length", str(end - start + 1))
+        self.send_header("Last-Modified", self.date_time_string(int(os.fstat(f.fileno()).st_mtime)))
+        self.end_headers()
+        f.seek(start)
+        self._range = (start, end - start + 1)
+        return f
+
+    def copyfile(self, source, outputfile) -> None:
+        if self._range is None:
+            return super().copyfile(source, outputfile)
+        remaining = self._range[1]
+        while remaining > 0:
+            chunk = source.read(min(64 * 1024, remaining))
+            if not chunk:
+                break
+            outputfile.write(chunk)
+            remaining -= len(chunk)
 
     def _host_ok(self) -> bool:
         """Refuse requests addressed to any other name. A DNS-rebinding page reaches this server
@@ -105,9 +155,15 @@ class Handler(SimpleHTTPRequestHandler):
             super().do_HEAD()
 
     def end_headers(self) -> None:
+        if self._ranges_ok:
+            self.send_header("Accept-Ranges", "bytes")
         if self._path() in EDIT_PATHS:
             self.send_header("X-Malfoid-Edit", "1")
             self.send_header("Cache-Control", "no-store")
+        else:
+            # A local preview should show edits on a plain reload: the browser revalidates every file
+            # (a 304 when unchanged) instead of guessing it is still fresh from Last-Modified.
+            self.send_header("Cache-Control", "no-cache")
         super().end_headers()
 
     def _json(self, status: HTTPStatus, payload: object) -> None:

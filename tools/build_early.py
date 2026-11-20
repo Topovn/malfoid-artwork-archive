@@ -5,7 +5,7 @@ Reads the works listed in data/early_years.json from folders inside Malfoid/ ('d
 The handles in those filenames belong to reposters, not the artists, so nothing identifying is published:
 files get neutral names like 2013-1, are converted to sRGB and re-encoded with no metadata,
 and docs/data/early.json carries only years and labels.
-Entries the owner marks with a 'credit' (artist name and link) and a public 'source' link are published with them.
+Entries the owner marks with a 'credit' (artist name and link), a public 'source' link, a 'title' and extra 'links' are published with them.
 These works never enter the main manifest, the gallery, the shelves or the artist list.
 
 Usage:
@@ -89,6 +89,11 @@ def main() -> int:
             entries[-1]["credit"] = {"name": meta["credit"]["name"], "url": meta["credit"]["url"]}
         if meta.get("source", "").startswith("https://"):
             entries[-1]["source"] = meta["source"]
+        if meta.get("title"):
+            entries[-1]["title"] = meta["title"]
+        links = [{"label": l["label"], "url": l["url"]} for l in meta.get("links", []) if l.get("url", "").startswith("https://")]
+        if links:
+            entries[-1]["links"] = links
 
     for stale in OUT_DIR.iterdir():
         if stale.name not in wanted:

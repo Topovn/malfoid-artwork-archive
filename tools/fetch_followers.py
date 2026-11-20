@@ -5,8 +5,13 @@ X's own no-login endpoints no longer expose follower counts, so this uses the pu
 (https://github.com/FxEmbed/FxEmbed), which needs no login.
 Requests are paced gently and retried on rate limits.
 Results are cached in data/followers.json, keyed by lowercased handle, and artists fetched recently are skipped,
-so reruns are cheap.
-Run tools/build_malfoid_gallery.py afterwards to put the counts into the manifest.
+so reruns are cheap. Artists without a count are always retried.
+
+When an artist's profile can't be fetched, the account may have been renamed: its current handle is traced through
+the artist's newest tweets (as tools/trace_handles.py does) and recorded in data/handles.json, and the count is
+fetched under the new handle. The site then shows the new handle; files keep the name they were saved under.
+A rename can't be found once all of an artist's tweets are deleted; data/aliases.json takes those by hand.
+Run tools/build_malfoid_gallery.py afterwards to put the counts and handles into the manifest.
 
 Usage:
     python3 tools/fetch_followers.py                   # fetch artists never fetched or older than 30 days
@@ -27,6 +32,9 @@ import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from trace_handles import HANDLES, TWEETS_PER_HANDLE, trace  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = ROOT / "docs" / "data" / "manifest.json"
@@ -106,7 +114,7 @@ def main() -> int:
             handles.setdefault(it["a"].lower(), it["a"])
     todo = [
         h for k, h in sorted(handles.items())
-        if k not in cache or cache[k]["at"] < cutoff or cache[k].get("status") == "failed"
+        if k not in cache or cache[k]["at"] < cutoff or cache[k].get("status") != "ok"
     ]
     print(f"{len(handles)} artists, {len(handles) - len(todo)} cached, {len(todo)} to fetch.", flush=True)
 
@@ -124,7 +132,55 @@ def main() -> int:
                 print(f"  {done}/{len(todo)} {counts}", flush=True)
     FOLLOWERS.write_text(json.dumps(cache, separators=(",", ":"), sort_keys=True))
     print(f"Done: {counts}")
+
+    missing = sorted(k for k in handles if cache.get(k, {}).get("status") != "ok")
+    if missing:
+        resolve_renames(missing, items, cache)
+        FOLLOWERS.write_text(json.dumps(cache, separators=(",", ":"), sort_keys=True))
     return 0
+
+
+def resolve_renames(missing: list[str], items: list[dict], cache: dict[str, dict]) -> None:
+    """Trace artists whose profile lookup failed to their current handle, then fetch the count under it."""
+    traced: dict[str, dict] = json.loads(HANDLES.read_text()) if HANDLES.exists() else {}
+    # Saved handles and newest tweets behind each shown handle ("o" is the saved handle after a rename).
+    tweets: dict[str, dict[str, list[str]]] = {}
+    for it in items:
+        if it["t"] and it["a"].lower() in missing:
+            saved = (it.get("o") or it["a"]).lower()
+            tweets.setdefault(it["a"].lower(), {}).setdefault(saved, []).append(it["t"])
+    jobs = [(saved, sorted(set(ids), key=int, reverse=True)[:TWEETS_PER_HANDLE])
+            for shown in sorted(tweets) for saved, ids in sorted(tweets[shown].items())]
+    print(f"Tracing {len(missing)} artists without a count through their tweets...", flush=True)
+
+    current: dict[str, str] = {}  # shown handle -> account's current handle
+    with ThreadPoolExecutor(WORKERS) as pool:
+        for saved, entry in pool.map(trace, jobs):
+            if entry["status"] == "ok":
+                traced[saved] = entry
+                shown = next(k for k, v in tweets.items() if saved in v)
+                current[shown] = entry["current"]
+            elif traced.get(saved, {}).get("id"):
+                traced[saved] = {**traced[saved], "status": entry["status"], "at": entry["at"]}
+            else:
+                traced[saved] = entry
+    HANDLES.write_text(json.dumps(traced, indent=1, sort_keys=True))
+
+    # Renamed accounts get their count under the new handle; unchanged ones that still exist are tried once more,
+    # since a failed lookup is sometimes transient.
+    retry = sorted({h for h in current.values()})
+    found: dict[str, int] = {}
+    with ThreadPoolExecutor(WORKERS) as pool:
+        for key, followers, status in pool.map(fetch, retry):
+            cache[key] = {"followers": followers if followers is not None else cache.get(key, {}).get("followers"),
+                          "status": status, "at": int(time.time())}
+            if status == "ok":
+                found[key] = followers
+    renamed = {old: new for old, new in current.items() if new.lower() != old}
+    for old, new in sorted(renamed.items()):
+        print(f"  renamed: @{old} -> @{new} ({found.get(new.lower(), 'no count')} followers)")
+    still = [k for k in missing if k not in current or current[k].lower() not in found]
+    print(f"Renames: {len(renamed)}. Counts found on retry: {len(found)}. Still without a count: {len(still)}.")
 
 
 if __name__ == "__main__":

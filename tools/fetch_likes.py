@@ -2,7 +2,9 @@
 """Fetch approximate like counts for every tweet in the gallery.
 
 Uses X's public embed endpoint (the one that powers embedded tweets), which needs no login.
-It is undocumented, so requests are paced gently and retried on rate limits.
+That endpoint hides sensitive (age-restricted) tweets behind an empty tombstone, so those are
+looked up again through the public FxTwitter API, which still sees them.
+Both are undocumented, so requests are paced gently and retried on rate limits.
 Results are cached in data/likes.json, and tweets fetched recently are skipped, so reruns are cheap.
 Run tools/build_malfoid_gallery.py afterwards to put the counts into the manifest.
 
@@ -28,6 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = ROOT / "docs" / "data" / "manifest.json"
 LIKES = ROOT / "data" / "likes.json"
 ENDPOINT = "https://cdn.syndication.twimg.com/tweet-result?id={id}&lang=en&token=0"
+FALLBACK = "https://api.fxtwitter.com/status/{id}"
 WORKERS = 4
 MIN_INTERVAL = 0.15  # seconds between requests across all workers
 
@@ -52,34 +55,46 @@ def pace() -> None:
         time.sleep(wait)
 
 
-def fetch(tweet_id: str) -> tuple[str, int | None, str]:
-    """Return (id, likes or None if the tweet is gone, status)."""
+def get_json(url: str) -> tuple[int, dict | None]:
+    """GET url and return (HTTP status, parsed JSON or None). Retries rate limits and network errors."""
     backoff = 5.0
     for _ in range(6):
         pace()
-        req = urllib.request.Request(ENDPOINT.format(id=tweet_id), headers={"User-Agent": "Mozilla/5.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         try:
             with urllib.request.urlopen(req, timeout=20, context=SSL_CONTEXT) as r:
-                data = json.load(r)
-            if data.get("__typename") == "TweetTombstone" or "favorite_count" not in data:
-                return tweet_id, None, "gone"
-            return tweet_id, int(data["favorite_count"]), "ok"
+                return r.status, json.load(r)
         except urllib.error.HTTPError as e:
-            if e.code == 404:
-                return tweet_id, None, "gone"
             if e.code in (429, 500, 502, 503, 504):
                 time.sleep(backoff)
                 backoff *= 2
                 continue
-            return tweet_id, None, f"http {e.code}"
+            return e.code, None
         except urllib.error.URLError as e:
             if isinstance(e.reason, ssl.SSLError):
-                raise SystemExit(f"TLS error talking to X: {e.reason}. Install certifi (pip install certifi).")
+                raise SystemExit(f"TLS error: {e.reason}. Install certifi (pip install certifi).")
             time.sleep(backoff)
             backoff *= 2
         except (TimeoutError, json.JSONDecodeError):
             time.sleep(backoff)
             backoff *= 2
+    return 0, None
+
+
+def fetch(tweet_id: str) -> tuple[str, int | None, str]:
+    """Return (id, likes or None if the tweet is gone, status)."""
+    code, data = get_json(ENDPOINT.format(id=tweet_id))
+    if data is not None and "favorite_count" in data and data.get("__typename") != "TweetTombstone":
+        return tweet_id, int(data["favorite_count"]), "ok"
+    if code not in (200, 404):
+        return tweet_id, None, "failed" if code == 0 else f"http {code}"
+    # A tombstone or 404 here can also mean a live sensitive tweet; ask FxTwitter.
+    code, data = get_json(FALLBACK.format(id=tweet_id))
+    tweet = (data or {}).get("tweet") or {}
+    if isinstance(tweet.get("likes"), int):
+        return tweet_id, tweet["likes"], "ok"
+    if code in (401, 404):  # deleted, suspended or protected
+        return tweet_id, None, "gone"
     return tweet_id, None, "failed"
 
 
@@ -92,7 +107,7 @@ def main() -> int:
     cache: dict[str, dict] = json.loads(LIKES.read_text()) if LIKES.exists() else {}
     cutoff = time.time() - args.max_age_days * 86400
     ids = sorted({it["t"] for it in items if it["t"]})
-    todo = [i for i in ids if i not in cache or cache[i]["at"] < cutoff or cache[i].get("status") == "failed"]
+    todo = [i for i in ids if i not in cache or cache[i]["at"] < cutoff or cache[i].get("status") != "ok"]
     print(f"{len(ids)} tweets, {len(ids) - len(todo)} cached, {len(todo)} to fetch.", flush=True)
 
     counts: dict[str, int] = {}
