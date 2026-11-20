@@ -182,6 +182,10 @@ def main() -> int:
     # Current handles from tools/trace_handles.py, keyed by lowercased saved handle.
     handles_path = DATA / "handles.json"
     handles = json.loads(handles_path.read_text()) if handles_path.exists() else {}
+    # Manual renames for handles the tracer can't resolve, and known posting years for undated works.
+    aliases_path, dates_path = DATA / "aliases.json", DATA / "dates.json"
+    aliases = {k.lower(): v for k, v in (json.loads(aliases_path.read_text()) if aliases_path.exists() else {}).get("handles", {}).items()}
+    years = (json.loads(dates_path.read_text()) if dates_path.exists() else {}).get("files", {})
 
     # Approximate follower counts from tools/fetch_followers.py, keyed by lowercased handle.
     followers_path = DATA / "followers.json"
@@ -220,11 +224,13 @@ def main() -> int:
                 pass
         # Show renamed artists under their current handle; "o" keeps the saved one for search.
         # Two saved handles of one account resolve to the same current handle, so they merge.
-        current = handles.get(handle.lower(), {}).get("current")
+        current = aliases.get(handle.lower()) or handles.get(handle.lower(), {}).get("current")
         if current and current != handle:
             item["a"] = current
             if current.lower() != handle.lower():
                 item["o"] = handle
+        if not item["p"] and p.name in years:
+            item["y"] = int(years[p.name])  # posting year only; no exact date is known
         if tweet in danbooru:
             item["b"] = danbooru[tweet]
         if tweet in likes and likes[tweet].get("likes") is not None:

@@ -99,6 +99,9 @@
   const dateFmt = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric" });
   const fmtDate = (ms) => (ms ? dateFmt.format(new Date(ms)) : "Unknown");
   const fmtLikes = (n) => compactFmt.format(n);
+  // When a work was posted, in ms. "y" is a posting year for works with no exact date (no tweet id); it counts as Jan 1.
+  const postedMs = (it) => it.p || (it.y ? Date.UTC(it.y, 0, 1) : 0);
+  const fmtPosted = (it) => (it.p ? fmtDate(it.p) : it.y ? String(it.y) : "Unknown");
   // File-name order as macOS Finder shows it: case-insensitive, numbers by value, "_" before digits and letters.
   const nameCollator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
   const plural = (n, one, many) => `${numberFmt.format(n)} ${n === 1 ? one : many}`;
@@ -245,11 +248,11 @@
     const byFile = (a, b) => (a.f < b.f ? -1 : a.f > b.f ? 1 : 0);
     const sorters = {
       added: (a, b) => b.d - a.d || byFile(a, b),
-      newest: (a, b) => b.p - a.p || byFile(a, b),
+      newest: (a, b) => postedMs(b) - postedMs(a) || byFile(a, b),
       // Images from one tweet share its count, so they stay together.
       liked: (a, b) => (b.v ?? -1) - (a.v ?? -1) || (a.t < b.t ? -1 : a.t > b.t ? 1 : 0) || a.i - b.i || byFile(a, b),
-      oldest: (a, b) => (a.p || Infinity) - (b.p || Infinity) || byFile(a, b),
-      artist: (a, b) => (a._al < b._al ? -1 : a._al > b._al ? 1 : b.p - a.p || byFile(a, b)),
+      oldest: (a, b) => (postedMs(a) || Infinity) - (postedMs(b) || Infinity) || byFile(a, b),
+      artist: (a, b) => (a._al < b._al ? -1 : a._al > b._al ? 1 : postedMs(b) - postedMs(a) || byFile(a, b)),
       name: (a, b) => nameCollator.compare(a.f, b.f) || byFile(a, b),
     };
     if (state.sort === "random") {
@@ -807,7 +810,7 @@
       ["Likes", it.v != null ? `About ${fmtLikes(it.v)}` : "Unknown"],
       ["Artist followers", followers != null ? `About ${fmtLikes(followers)}` : "Unknown"],
       ...(it.o ? [["Saved as", "@" + it.o]] : []),
-      ["Posted", fmtDate(it.p)],
+      ["Posted", fmtPosted(it)],
       ["Added", fmtDate(it.d)],
       ["Tweet ID", it.t || "Unknown"],
       ["Image", it.t ? `#${it.i} in tweet` : "Single file"],
@@ -1091,7 +1094,7 @@
   function buildTimeline() {
     const images = items
       .filter((it) => !VIDEO_EXTS.has(it.x))
-      .map((it) => ({ artist: it._al, post: it.t || it.f, posted: dayKey(it.p || it.d), saved: dayKey(it.d) }));
+      .map((it) => ({ artist: it._al, post: it.t || it.f, posted: dayKey(postedMs(it) || it.d), saved: dayKey(it.d) }));
 
     const firstSeen = new Map();
     for (const im of images) {
@@ -1446,23 +1449,34 @@
   }
 
   function buildTimelineView() {
-    const when = (it) => it.p || it.d;
+    const when = (it) => postedMs(it) || it.d;
     const recent = items
       .filter((it) => dayKey(when(it)) < TIMELINE_VIEW_END)
       .sort((a, b) => when(a) - when(b) || (a.f < b.f ? -1 : 1));
     tlView.list = [...earlyItems, ...recent];
 
     // Entries: one per early year label, a "2026"-style year marker, then one per day.
+    // Works known only by year sit on that year's marker; there is no day to show.
     const entries = [];
+    const marker = (year) => {
+      let m = entries.find((e) => e.year === year);
+      if (!m) entries.push((m = { key: "year:" + year, year, label: year, marker: true, works: [] }));
+      return m;
+    };
     tlView.list.forEach((it, i) => {
+      if (!it._early && !it.p && it.y) {
+        marker(String(it.y)).works.push(i);
+        return;
+      }
       const key = it._early ? "early:" + it.label : dayKey(when(it));
       let cur = entries[entries.length - 1];
       if (!cur || cur.key !== key) {
-        if (!it._early) {
-          const year = key.slice(0, 4);
-          if (!entries.some((e) => e.year === year)) entries.push({ key: "year:" + year, year, label: year, marker: true, works: [] });
+        if (it._early) {
+          cur = { key, year: String(it.e.year), label: it.label, early: true, works: [] };
+        } else {
+          marker(key.slice(0, 4));
+          cur = { key, label: tlDayFmt.format(new Date(keyMs(key))), works: [] };
         }
-        cur = { key, label: it._early ? it.label : tlDayFmt.format(new Date(keyMs(key))), early: !!it._early, works: [] };
         entries.push(cur);
       }
       cur.works.push(i);
