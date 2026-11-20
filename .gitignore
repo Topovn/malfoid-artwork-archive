@@ -1,7 +1,7 @@
 .DS_Store
 __pycache__/
 # Local link to the full-size originals for previewing; not published.
-media
+docs/media
 # Build leftovers if a run is interrupted.
-thumbs/*.tmp
-thumbs/*.frame.png
+docs/thumbs/*.tmp
+docs/thumbs/*.frame.png

@@ -1624,6 +1624,8 @@
     const b = e.target.closest("button[data-page]");
     if (b && !b.disabled) goToPage(Number(b.dataset.page));
   });
+  // The search form never submits anywhere; Enter just keeps the live filter.
+  $("#toolbar").addEventListener("submit", (e) => e.preventDefault());
   el.kind.addEventListener("click", (e) => {
     const b = e.target.closest("button[role=radio]");
     if (!b) return;

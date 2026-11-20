@@ -29,7 +29,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MANIFEST = ROOT / "data" / "manifest.json"
+MANIFEST = ROOT / "docs" / "data" / "manifest.json"
 FOLLOWERS = ROOT / "data" / "followers.json"
 ENDPOINT = "https://api.fxtwitter.com/2/profile/{handle}"
 WORKERS = 2

@@ -25,7 +25,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MANIFEST = ROOT / "data" / "manifest.json"
+MANIFEST = ROOT / "docs" / "data" / "manifest.json"
 LIKES = ROOT / "data" / "likes.json"
 ENDPOINT = "https://cdn.syndication.twimg.com/tweet-result?id={id}&lang=en&token=0"
 WORKERS = 4

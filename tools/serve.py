@@ -30,7 +30,8 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PICKS = ROOT / "data" / "picks.json"
+SITE = ROOT / "docs"  # serve only the published site, never tools/ or the working caches
+PICKS = SITE / "data" / "picks.json"
 MAX_PICKS = 20000
 MAX_BODY = 4 * 1024 * 1024
 EDIT_PATHS = {"/data/picks.json", "/api/picks"}
@@ -161,7 +162,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--port", type=int, default=8770)
     args = ap.parse_args()
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), partial(Handler, directory=str(ROOT)))
+    server = ThreadingHTTPServer(("127.0.0.1", args.port), partial(Handler, directory=str(SITE)))
     print(f"Editing My Pick at http://127.0.0.1:{args.port}/  (Ctrl+C to stop)", flush=True)
     try:
         server.serve_forever()
