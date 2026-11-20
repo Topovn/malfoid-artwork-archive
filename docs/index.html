@@ -301,8 +301,10 @@
       <div class="tl-intro">
         <h2>Timeline</h2>
       </div>
-      <nav class="tl-jump" id="tl-jump" aria-label="Jump to month"></nav>
-      <div id="tl-grid" class="grid" aria-label="Works by date posted"></div>
+      <div class="tl" id="tl">
+        <div class="tl-rail" aria-hidden="true"><div class="tl-progress" id="tl-progress"></div></div>
+        <ol class="tl-list" id="tl-list" aria-label="Works by date posted, oldest first"></ol>
+      </div>
     </section>
 
     <section id="view-artists" class="view" hidden>

@@ -499,16 +499,12 @@
 
   // ---------- Virtualized grid ----------
   // Renders only the cards near the viewport, so thousands of works stay fast.
-  // Optional groups add a heading row before each group (used by the timeline).
 
-  function makeVirtualGrid({ container, isActive, onOpen, headerHeight = 64 }) {
+  function makeVirtualGrid({ container, isActive, onOpen }) {
     const cards = new Map(); // item index -> element
-    const heads = new Map(); // group index -> element
     const cardPool = [];
-    const headPool = [];
     let list = [];
-    let groups = null; // [{label, sub, start, end}]
-    let rows = []; // [{y, h, head: groupIndex} | {y, h, start, end}]
+    let rows = []; // [{y, h, start, end}]
     let cols = 1;
     let cellW = 0;
     let cellH = 0;
@@ -525,23 +521,11 @@
       cellH = Math.round(cellW * CELL_RATIO);
       rows = [];
       let y = 0;
-      const addCards = (from, to) => {
-        for (let i = from; i < to; i += cols) {
-          rows.push({ y, h: cellH, start: i, end: Math.min(to, i + cols) });
-          y += cellH + gap;
-        }
-      };
-      if (groups) {
-        groups.forEach((g, gi) => {
-          rows.push({ y, h: headerHeight, head: gi });
-          y += headerHeight;
-          addCards(g.start, g.end);
-          y += gi < groups.length - 1 ? 16 : 0;
-        });
-      } else {
-        addCards(0, list.length);
+      for (let i = 0; i < list.length; i += cols) {
+        rows.push({ y, h: cellH, start: i, end: Math.min(list.length, i + cols) });
+        y += cellH + gap;
       }
-      container.style.height = Math.max(0, y - (groups ? 0 : gap)) + "px";
+      container.style.height = Math.max(0, y - gap) + "px";
       top = container.getBoundingClientRect().top + window.scrollY;
     }
 
@@ -594,27 +578,8 @@
       node.style.transform = `translate(${x}px, ${y}px)`;
     }
 
-    function makeHead() {
-      const div = document.createElement("div");
-      div.className = "group-head";
-      const h = document.createElement("h3");
-      const sub = document.createElement("span");
-      div.append(h, sub);
-      return div;
-    }
-
-    function fillHead(node, gi, y) {
-      const g = groups[gi];
-      node.firstChild.textContent = g.label;
-      node.lastChild.textContent = g.sub;
-      node.classList.toggle("first", gi === 0);
-      node.style.height = headerHeight + "px";
-      node.style.transform = `translateY(${y}px)`;
-    }
-
     function recycleAll() {
       for (const [k, n] of cards) (n.remove(), cardPool.push(n), cards.delete(k));
-      for (const [k, n] of heads) (n.remove(), headPool.push(n), heads.delete(k));
     }
 
     function firstRowAt(y) {
@@ -638,24 +603,12 @@
       const from = window.scrollY - top - pad;
       const to = window.scrollY - top + window.innerHeight + pad;
       const wantCards = new Map();
-      const wantHeads = new Map();
       for (let r = firstRowAt(from); r < rows.length && rows[r].y <= to; r++) {
         const row = rows[r];
-        if (row.head !== undefined) wantHeads.set(row.head, row.y);
-        else for (let i = row.start; i < row.end; i++) wantCards.set(i, [(i - row.start) * (cellW + gap), row.y]);
+        for (let i = row.start; i < row.end; i++) wantCards.set(i, [(i - row.start) * (cellW + gap), row.y]);
       }
       for (const [k, n] of cards) if (!wantCards.has(k)) (n.remove(), cardPool.push(n), cards.delete(k));
-      for (const [k, n] of heads) if (!wantHeads.has(k)) (n.remove(), headPool.push(n), heads.delete(k));
       const frag = document.createDocumentFragment();
-      for (const [gi, y] of wantHeads) {
-        let n = heads.get(gi);
-        if (!n) {
-          n = headPool.pop() || makeHead();
-          heads.set(gi, n);
-          frag.append(n);
-        }
-        fillHead(n, gi, y);
-      }
       for (const [i, [x, y]] of wantCards) {
         let n = cards.get(i);
         if (!n) {
@@ -672,9 +625,8 @@
       if (!frame) frame = requestAnimationFrame(render);
     }
 
-    function setData(newList, newGroups = null) {
+    function setData(newList) {
       list = newList;
-      groups = newGroups;
       measure();
       recycleAll();
       render();
@@ -688,30 +640,13 @@
     }
 
     function rowYOfIndex(index) {
-      const row = rows.find((r) => r.head === undefined && index >= r.start && index < r.end);
+      const row = rows.find((r) => index >= r.start && index < r.end);
       return row ? row.y : 0;
     }
 
     function scrollToIndex(index) {
       const y = top + rowYOfIndex(index);
       if (y < window.scrollY + 70 || y + cellH > window.scrollY + window.innerHeight) window.scrollTo({ top: y - 90 });
-    }
-
-    function scrollToGroup(gi, offset) {
-      const row = rows.find((r) => r.head === gi);
-      if (row) window.scrollTo({ top: top + row.y - offset });
-    }
-
-    // The group whose heading was last scrolled past.
-    function groupAt(offset) {
-      if (!groups || !rows.length) return -1;
-      const y = window.scrollY - top + offset + 1;
-      let gi = 0;
-      for (const r of rows) {
-        if (r.y > y) break;
-        if (r.head !== undefined) gi = r.head;
-      }
-      return gi;
     }
 
     function focusIndex(index) {
@@ -721,7 +656,7 @@
 
     window.addEventListener("scroll", schedule, { passive: true });
     new ResizeObserver(relayout).observe(container);
-    return { setData, schedule, relayout, scrollToIndex, scrollToGroup, groupAt, focusIndex };
+    return { setData, schedule, relayout, scrollToIndex, focusIndex };
   }
 
   // The gallery grid holds one page; the viewer steps through every filtered work, across pages.
@@ -729,12 +664,6 @@
     container: el.grid,
     isActive: () => state.view === "gallery",
     onOpen: (i, list, btn) => openViewer(pageStart + i, filtered, btn),
-  });
-
-  const tlGrid = makeVirtualGrid({
-    container: $("#tl-grid"),
-    isActive: () => state.view === "timeline",
-    onOpen: (i, list, btn) => openViewer(i, list, btn),
   });
 
   // ---------- Viewer ----------
@@ -761,7 +690,13 @@
   el.viewer.addEventListener("close", () => {
     el.viewerMedia.replaceChildren(); // stops any playing video
     document.documentElement.style.overflow = "";
-    const g = state.view === "gallery" && viewerList === filtered ? grid : state.view === "timeline" && viewerList === tlView.list ? tlGrid : null;
+    if (state.view === "timeline" && viewerList === tlView.list) {
+      writeUrl();
+      requestAnimationFrame(() => focusTimelineCard(viewerIndex));
+      viewerReturnFocus = null;
+      return;
+    }
+    const g = state.view === "gallery" && viewerList === filtered ? grid : null;
     // The viewer may have stepped onto another page; show that page so the work is visible.
     if (g === grid && viewerIndex >= 0) {
       const page = Math.floor(viewerIndex / perPage) + 1;
@@ -782,7 +717,41 @@
     viewerReturnFocus = null;
   });
 
+  // Early art carries no artist, tweet or file details: only the image and its year.
+  function renderEarlyViewer(it) {
+    el.viewerNote.hidden = true;
+    const media = document.createElement("img");
+    media.alt = `Early Malfoid art, ${it.label}`;
+    media.src = it.e.thumb;
+    const full = new Image();
+    full.decoding = "async";
+    full.onload = () => {
+      if (viewerList[viewerIndex] === it) media.src = full.src;
+    };
+    full.src = it.e.full;
+    el.viewerMedia.replaceChildren(media);
+    el.viewerPos.textContent = `${numberFmt.format(viewerIndex + 1)} of ${numberFmt.format(viewerList.length)}`;
+    el.viewerArtist.hidden = true;
+    el.viewerTags.replaceChildren(badge("Early art", false));
+    el.viewerLost.hidden = true;
+    el.viewerMeta.replaceChildren();
+    const dt = document.createElement("dt");
+    dt.textContent = "Year";
+    const dd = document.createElement("dd");
+    dd.textContent = it.label;
+    el.viewerMeta.append(dt, dd);
+    el.viewerTweet.hidden = true;
+    el.viewerDanbooru.hidden = true;
+    el.viewerMore.hidden = true;
+    el.prev.disabled = viewerIndex <= 0;
+    el.next.disabled = viewerIndex >= viewerList.length - 1;
+    renderViewerPick(null);
+  }
+
   function renderViewer(it) {
+    if (it._early) return renderEarlyViewer(it);
+    el.viewerArtist.hidden = false;
+    el.viewerMore.hidden = false;
     const isVideo = VIDEO_EXTS.has(it.x);
     el.viewerNote.hidden = true;
     const current = () => viewerList[viewerIndex] === it;
@@ -891,7 +860,8 @@
   function preloadNeighbours(index) {
     for (const j of [index + 1, index - 1]) {
       const it = viewerList[j];
-      if (it && it.k !== "anim") new Image().src = thumbUrl(it);
+      if (it && it._early) new Image().src = it.e.thumb;
+      else if (it && it.k !== "anim") new Image().src = thumbUrl(it);
     }
   }
 
@@ -1409,74 +1379,143 @@
   }
   new ResizeObserver(() => state.view === "home" && drawChart()).observe($("#chart"));
 
-  // ---------- Timeline view: every work by date posted, oldest first ----------
+  // ---------- Timeline view: early art by year, then every work by date posted, oldest first ----------
+  // One list down a rail; a red line follows the scroll and each date's dot turns red once the line reaches it.
 
-  const tlView = { list: [], groups: [], months: [], activeMonth: "" };
-  const JUMP_OFFSET = () => (window.innerWidth <= 640 ? 56 : 60) + $("#tl-jump").offsetHeight;
-  const monthFmt = new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
-  const fullDayFmt = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+  const tlView = { list: [], entries: [] };
+  let earlyItems = []; // from data/early.json: anonymized, Timeline only, never in the gallery or shelves
+  const tlDayFmt = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", timeZone: "UTC" });
+
+  async function loadEarly() {
+    try {
+      const res = await fetch("data/early.json");
+      if (!res.ok) return;
+      const data = await res.json();
+      earlyItems = (Array.isArray(data.early) ? data.early : [])
+        .filter((e) => e && typeof e.thumb === "string" && typeof e.full === "string")
+        .map((e) => ({ _early: true, e, label: String(e.label || e.year) }));
+    } catch {
+      // No early art: the Timeline simply starts in 2026.
+    }
+  }
+
+  function tlCard(it, index) {
+    const card = document.createElement("div");
+    card.className = "card tl-card";
+    card.dataset.index = index;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "card-hit";
+    const img = document.createElement("img");
+    img.alt = "";
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.addEventListener("load", () => img.classList.add("ready"));
+    btn.append(img);
+    btn.addEventListener("click", () => openViewer(index, tlView.list, btn));
+    card.append(btn);
+    if (it._early) {
+      img.src = it.e.thumb;
+      btn.setAttribute("aria-label", `Early Malfoid art, ${it.label}`);
+      return card;
+    }
+    img.src = thumbUrl(it);
+    btn._item = it;
+    btn.setAttribute("aria-label", cardLabel(it));
+    const badges = document.createElement("span");
+    badges.className = "badges";
+    if (it.k === "anim") badges.append(badge(it.x === "gif" ? "GIF" : "Video", true));
+    if (it.l) badges.append(badge("Lost tweet", false, "badge-lost"));
+    const meta = document.createElement("span");
+    meta.className = "card-meta";
+    const handle = document.createElement("span");
+    handle.className = "card-handle";
+    handle.textContent = "@" + it.a;
+    const likes = document.createElement("span");
+    likes.className = "card-likes";
+    likes.textContent = it.v != null ? "♥ " + fmtLikes(it.v) : "";
+    meta.append(handle, likes);
+    btn.append(badges, meta);
+    const pick = makePick();
+    card.append(pick);
+    setPick(pick, it);
+    return card;
+  }
 
   function buildTimelineView() {
     const when = (it) => it.p || it.d;
-    tlView.list = items
+    const recent = items
       .filter((it) => dayKey(when(it)) < TIMELINE_VIEW_END)
       .sort((a, b) => when(a) - when(b) || (a.f < b.f ? -1 : 1));
-    tlView.groups = [];
-    tlView.months = [];
-    let cur = null;
+    tlView.list = [...earlyItems, ...recent];
+
+    // Entries: one per early year label, a "2026"-style year marker, then one per day.
+    const entries = [];
     tlView.list.forEach((it, i) => {
-      const key = dayKey(when(it));
+      const key = it._early ? "early:" + it.label : dayKey(when(it));
+      let cur = entries[entries.length - 1];
       if (!cur || cur.key !== key) {
-        cur = { key, start: i, end: i };
-        tlView.groups.push(cur);
+        if (!it._early) {
+          const year = key.slice(0, 4);
+          if (!entries.some((e) => e.year === year)) entries.push({ key: "year:" + year, year, label: year, marker: true, works: [] });
+        }
+        cur = { key, label: it._early ? it.label : tlDayFmt.format(new Date(keyMs(key))), early: !!it._early, works: [] };
+        entries.push(cur);
       }
-      cur.end = i + 1;
+      cur.works.push(i);
     });
-    tlView.groups.forEach((g, gi) => {
-      const n = g.end - g.start;
-      g.label = fullDayFmt.format(new Date(keyMs(g.key)));
-      g.sub = "";
-      const month = g.key.slice(0, 7);
-      const last = tlView.months[tlView.months.length - 1];
-      if (!last || last.key !== month) tlView.months.push({ key: month, group: gi, count: n });
-      else last.count += n;
-    });
+    tlView.entries = entries;
 
-
-    const jump = $("#tl-jump");
-    jump.replaceChildren();
-    for (const m of tlView.months) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.dataset.month = m.key;
-      b.append(monthFmt.format(new Date(keyMs(m.key + "-01"))));
-      b.addEventListener("click", () => tlGrid.scrollToGroup(m.group, JUMP_OFFSET() - 1));
-      jump.append(b);
+    const list = $("#tl-list");
+    list.replaceChildren();
+    for (const entry of entries) {
+      const li = document.createElement("li");
+      li.className = "tl-entry" + (entry.marker ? " tl-marker" : "") + (entry.early ? " tl-year" : "");
+      const dot = document.createElement("span");
+      dot.className = "tl-dot";
+      dot.setAttribute("aria-hidden", "true");
+      const h = document.createElement("h3");
+      h.className = "tl-date";
+      h.textContent = entry.label;
+      li.append(dot, h);
+      if (entry.works.length) {
+        const works = document.createElement("div");
+        works.className = "tl-works";
+        for (const i of entry.works) works.append(tlCard(tlView.list[i], i));
+        li.append(works);
+      }
+      entry.el = li;
+      list.append(li);
     }
-    tlGrid.setData(tlView.list, tlView.groups);
-    updateActiveMonth();
+    updateRail();
   }
 
-  function updateActiveMonth() {
-    if (state.view !== "timeline" || !tlView.groups.length) return;
-    const gi = Math.max(0, tlGrid.groupAt(JUMP_OFFSET()));
-    const month = tlView.groups[gi].key.slice(0, 7);
-    if (month === tlView.activeMonth) return;
-    tlView.activeMonth = month;
-    for (const b of $("#tl-jump").children) {
-      const on = b.dataset.month === month;
-      b.setAttribute("aria-current", String(on));
-      if (on) b.scrollIntoView({ block: "nearest", inline: "nearest" });
+  // The red line ends where the middle of the screen crosses the rail.
+  function updateRail() {
+    if (state.view !== "timeline" || !tlView.entries.length) return;
+    const rail = $("#tl").getBoundingClientRect();
+    const reach = Math.min(Math.max(window.innerHeight * 0.5 - rail.top, 0), rail.height);
+    $("#tl-progress").style.height = reach + "px";
+    for (const entry of tlView.entries) {
+      const dot = entry.el.firstChild.getBoundingClientRect();
+      entry.el.classList.toggle("reached", dot.top + dot.height / 2 - rail.top <= reach);
     }
   }
-  let monthFrame = 0;
-  window.addEventListener(
-    "scroll",
-    () => {
-      if (!monthFrame) monthFrame = requestAnimationFrame(() => ((monthFrame = 0), updateActiveMonth()));
-    },
-    { passive: true }
-  );
+  let railFrame = 0;
+  const scheduleRail = () => {
+    if (!railFrame) railFrame = requestAnimationFrame(() => ((railFrame = 0), updateRail()));
+  };
+  window.addEventListener("scroll", scheduleRail, { passive: true });
+  window.addEventListener("resize", scheduleRail);
+
+  // After the viewer closes on a Timeline work, bring that card into view and focus it.
+  function focusTimelineCard(index) {
+    const card = $(`#tl-list .tl-card[data-index="${index}"]`);
+    if (!card) return;
+    const r = card.getBoundingClientRect();
+    if (r.top < 70 || r.bottom > window.innerHeight) card.scrollIntoView({ block: "center" });
+    card.firstChild.focus({ preventScroll: true });
+  }
 
   // ---------- Artists view ----------
 
@@ -1553,10 +1592,7 @@
     }
     if (state.view === "gallery") grid.relayout();
     else grid.schedule(); // drops grid nodes while hidden
-    if (state.view === "timeline") {
-      tlGrid.relayout();
-      requestAnimationFrame(updateActiveMonth);
-    } else tlGrid.schedule();
+    if (state.view === "timeline") requestAnimationFrame(updateRail);
     if (state.view === "artists" && !el.artists.childElementCount && items.length) renderArtists();
     if (state.view === "home") requestAnimationFrame(drawChart);
   }
@@ -1720,7 +1756,7 @@
 
     let data;
     try {
-      const [res] = await Promise.all([fetch("data/manifest.json"), loadPicks()]);
+      const [res] = await Promise.all([fetch("data/manifest.json"), loadPicks(), loadEarly()]);
       if (!res.ok) throw new Error(res.status + " " + res.statusText);
       data = await res.json();
     } catch (err) {
@@ -1784,7 +1820,7 @@
           renderPage();
           grid.scrollToIndex(idx - pageStart);
         }
-        if (state.view === "timeline") tlGrid.scrollToIndex(idx);
+        if (state.view === "timeline") $(`#tl-list .tl-card[data-index="${idx}"]`)?.scrollIntoView({ block: "center" });
         openViewer(idx, list);
       }
     }
