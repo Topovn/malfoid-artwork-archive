@@ -95,6 +95,8 @@
 
   const numberFmt = new Intl.NumberFormat("en-US");
   const compactFmt = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1, roundingMode: "trunc" }); // 1,950 reads 1.9K, never "2K" for an under-2,000 work
+  // Artist like totals: three significant digits, so 1.06M and 1.03M don't both read "1M".
+  const totalFmt = new Intl.NumberFormat("en-US", { notation: "compact", maximumSignificantDigits: 3, roundingMode: "trunc" });
   const dateFmt = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric" });
   const fmtDate = (ms) => (ms ? dateFmt.format(new Date(ms)) : "Unknown");
   const fmtLikes = (n) => compactFmt.format(n);
@@ -1588,6 +1590,8 @@
         ? b.latest - a.latest
         : by === "followers"
         ? (b.followers ?? -1) - (a.followers ?? -1) || (a.key < b.key ? -1 : 1)
+        : by === "likes"
+        ? b.likes - a.likes || (a.key < b.key ? -1 : 1)
         : b.count - a.count || (a.key < b.key ? -1 : 1)
     );
     el.artistCount.textContent = plural(list.length, "artist", "artists");
@@ -1621,10 +1625,13 @@
     name.className = "artist-name";
     name.textContent = "@" + a.handle;
     text.append(name);
-    if (a.followers != null) {
+    const stats = [];
+    if (a.followers != null) stats.push(`${fmtLikes(a.followers)} ${a.followers === 1 ? "follower" : "followers"}`);
+    if (a.likes > 0) stats.push(`♥ ${totalFmt.format(a.likes)}`);
+    if (stats.length) {
       const fo = document.createElement("span");
       fo.className = "artist-followers";
-      fo.textContent = `${fmtLikes(a.followers)} ${a.followers === 1 ? "follower" : "followers"}`;
+      fo.textContent = stats.join(" · ");
       text.append(fo);
     }
     const count = document.createElement("span");
@@ -1835,7 +1842,7 @@
       const s = artistStats.get(it._al);
       if (!s) {
         const fo = followers[it._al] ?? null;
-        artistStats.set(it._al, { key: it._al, handle: it.a, count: 1, latest: it.d, cover: it, followers: fo, formers: [] });
+        artistStats.set(it._al, { key: it._al, handle: it.a, count: 1, latest: it.d, cover: it, followers: fo, formers: [], likes: 0, likedTweets: new Set() });
       }
       else {
         s.count++;
@@ -1844,6 +1851,11 @@
       }
       const stats = artistStats.get(it._al);
       if (it._ao && !stats.formers.includes(it._ao)) stats.formers.push(it._ao);
+      // Total likes: images from one tweet share its count, so each tweet is counted once.
+      if (it.v != null && it.t && !stats.likedTweets.has(it.t)) {
+        stats.likedTweets.add(it.t);
+        stats.likes += it.v;
+      }
     }
 
     renderHero(data);
