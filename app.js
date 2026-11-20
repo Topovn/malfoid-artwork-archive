@@ -13,6 +13,7 @@
   const NEW_MAX = 200; // New Malfoid: every work under this many likes
   const SMALL_FOLLOWERS = 2000; // Small Artists: fewer followers than this (and not in New Malfoid)
   const SHELF_SIZE = 30; // works shown at once in the shuffled shelves
+  const LONG_VIDEO = 30; // videos this many seconds or longer stay off the home shelves (My Pick excepted)
   const TIMEZONE = "Australia/Sydney"; // days on the timeline, as in the original dashboard
   const TIMELINE_START = "2026-09-01";
   const TIMELINE_VIEW_END = "2026-10-01"; // the Timeline tab covers the early days, before the October wave
@@ -759,7 +760,7 @@
     // One entry per tweet: its first image, carrying the tweet's like count.
     const byTweet = new Map();
     for (const it of items) {
-      if (it.v == null || !it.t) continue;
+      if (it.v == null || !it.t || it.s >= LONG_VIDEO) continue;
       const cur = byTweet.get(it.t);
       if (!cur || it.i < cur.i) byTweet.set(it.t, it);
     }
