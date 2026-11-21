@@ -1,17 +1,11 @@
-## Malfoid Gallery
+[![The Malfoid Artwork Archive](docs/og.jpg)](https://topovn.github.io/malfoid-artwork-archive/)
 
-sync with what I have locally, saved via Twitter Media Harvest https://github.com/EltonChou/TwitterMediaHarvest
+## The Malfoid Artwork Archive
 
-whip up a gallery view website because viewing thousands of images on google drive is horrible
+A browsable archive of Malfoid fan art and animations posted on Twitter (X), searchable by artist, with a gallery, artist index, timeline and random picks.
 
-## Builds
+https://topovn.github.io/malfoid-artwork-archive/
 
-Main site reads only `Malfoid/`. 18+ site reads only `Malfoid H/`. `Malfoid AI/` is never built.
+Sync with what I have locally, saved via [Twitter Media Harvest](https://github.com/EltonChou/TwitterMediaHarvest) extension
 
-```
-python3 tools/build_malfoid_gallery.py
-python3 tools/build_malfoid_gallery.py --audience adult --site docs-18
-```
-
-`data/exclude.json` holds works kept off both builds. `data/audience.json` holds the 18+ works; the main build skips them and the 18+ build includes only them.
-
+Whip up a gallery view website because viewing thousands of images on Google Drive is horrible
