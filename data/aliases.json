@@ -1,6 +1,7 @@
 {
  "_note": "Manual handle renames the tracer can't resolve (all the old handle's tweets are gone). Saved handle (lowercase) -> current handle; overrides data/handles.json.",
  "handles": {
-  "forgetmenot_hd": "forget_me_not_HD"
+  "forgetmenot_hd": "forget_me_not_HD",
+  "stray_mayoigo": "pikapoka00"
  }
 }
