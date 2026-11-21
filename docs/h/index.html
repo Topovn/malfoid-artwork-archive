@@ -24,7 +24,7 @@
   <link rel="stylesheet" href="../styles.css?v=25">
   <script src="../theme.js?v=2"></script>
   <script src="../config.js"></script>
-  <script src="../app.js?v=25" defer></script>
+  <script src="../app.js?v=26" defer></script>
 </head>
 <body>
 
@@ -241,7 +241,7 @@
         </div>
 
         <div class="tiles">
-          <div class="tile" id="tile-images"><span class="tile-label">Images</span><span class="tile-num" id="t-images">—</span></div>
+          <div class="tile" id="tile-works"><span class="tile-label">Works</span><span class="tile-num" id="t-works">—</span></div>
           <div class="tile" id="tile-artists"><span class="tile-label">Artists</span><span class="tile-num" id="t-artists">—</span></div>
           <div class="tile" id="tile-new"><span class="tile-label">New artists</span><span class="tile-num"><span id="t-new">—</span> <span class="tile-unit">in 7 days</span></span></div>
           <div class="tile" id="tile-last7"><span class="tile-label">Latest 7 days</span><span class="tile-num"><span id="t-last7">—</span> <span class="tile-unit">a day</span></span></div>
@@ -249,32 +249,32 @@
 
         <div class="panel" id="per-day-chart">
           <div class="panel-bar">
-            <h3 id="chart-title">Images per day, by date posted</h3>
-            <div class="seg-small" role="group" aria-label="Count images by">
+            <h3 id="chart-title">Works per day, by date posted</h3>
+            <div class="seg-small" role="group" aria-label="Count works by">
               <button type="button" data-mode="posted" aria-pressed="true">Date posted</button>
               <button type="button" data-mode="saved" aria-pressed="false">Date saved</button>
             </div>
           </div>
           <div class="legend">
-            <span><i class="sw-bar"></i>Images that day</span>
+            <span><i class="sw-bar"></i>Works that day</span>
             <span><i class="sw-line"></i>7-day average</span>
           </div>
           <div class="chart" id="chart"></div>
         </div>
 
         <div class="panel" id="per-week-table">
-          <div class="panel-bar"><h3>Images added by week</h3></div>
+          <div class="panel-bar"><h3>Works added by week</h3></div>
           <div class="tablewrap">
             <table class="table" id="weekly">
               <thead>
                 <tr>
                   <th scope="col">Week (Mon to Sun)</th>
-                  <th scope="col">Images posted</th>
+                  <th scope="col">Works posted</th>
                   <th scope="col">Avg a day</th>
                   <th scope="col">Posts</th>
                   <th scope="col">Artists</th>
                   <th scope="col">New artists</th>
-                  <th scope="col">Images saved</th>
+                  <th scope="col">Works saved</th>
                 </tr>
               </thead>
               <tbody></tbody>

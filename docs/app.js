@@ -1402,14 +1402,13 @@
   const round1 = (n) => Math.round(n * 10) / 10;
 
   function buildTimeline() {
-    const images = items
-      .filter((it) => !VIDEO_EXTS.has(it.x))
-      .map((it) => ({ artist: it._al, post: it.t || it.f, posted: dayKey(postedMs(it) || it.d), saved: dayKey(it.d) }));
+    // Every work counts, videos included, so the totals match the site header.
+    const works = items.map((it) => ({ artist: it._al, post: it.t || it.f, posted: dayKey(postedMs(it) || it.d), saved: dayKey(it.d) }));
 
     const firstSeen = new Map();
-    for (const im of images) {
-      const f = firstSeen.get(im.artist);
-      if (!f || im.posted < f) firstSeen.set(im.artist, im.posted);
+    for (const work of works) {
+      const f = firstSeen.get(work.artist);
+      if (!f || work.posted < f) firstSeen.set(work.artist, work.posted);
     }
 
     const days = new Map();
@@ -1417,12 +1416,12 @@
       if (!days.has(k)) days.set(k, { date: k, posted: 0, saved: 0, posts: new Set(), artists: new Set() });
       return days.get(k);
     };
-    for (const im of images) {
-      const d = day(im.posted);
+    for (const work of works) {
+      const d = day(work.posted);
       d.posted++;
-      d.posts.add(im.post);
-      d.artists.add(im.artist);
-      day(im.saved).saved++;
+      d.posts.add(work.post);
+      d.artists.add(work.artist);
+      day(work.saved).saved++;
     }
     const keys = [...days.keys()].sort();
     const last = keys[keys.length - 1];
@@ -1456,15 +1455,15 @@
       if (!weeks.has(k)) weeks.set(k, { start: k, posted: 0, saved: 0, posts: new Set(), artists: new Set(), fresh: new Set() });
       return weeks.get(k);
     };
-    for (const im of images) {
-      if (im.posted >= TIMELINE_START) {
-        const w = week(monday(im.posted));
+    for (const work of works) {
+      if (work.posted >= TIMELINE_START) {
+        const w = week(monday(work.posted));
         w.posted++;
-        w.posts.add(im.post);
-        w.artists.add(im.artist);
-        if (firstSeen.get(im.artist) === im.posted) w.fresh.add(im.artist);
+        w.posts.add(work.post);
+        w.artists.add(work.artist);
+        if (firstSeen.get(work.artist) === work.posted) w.fresh.add(work.artist);
       }
-      if (im.saved >= TIMELINE_START) week(monday(im.saved)).saved++;
+      if (work.saved >= TIMELINE_START) week(monday(work.saved)).saved++;
     }
     timeline.weekly = [...weeks.values()]
       .sort((a, b) => (a.start < b.start ? 1 : -1))
@@ -1485,13 +1484,13 @@
     // Headline numbers, by date posted.
     const lastPosted = [...timeline.daily].reverse().find((d) => d.posted > 0) || timeline.daily[timeline.daily.length - 1];
     const bestWeek = Math.max(...timeline.daily.map((d) => d.posted_avg7));
-    const before = images.filter((im) => im.posted < TIMELINE_START).length;
+    const before = works.filter((work) => work.posted < TIMELINE_START).length;
     const weekFrom = keyIso(keyMs(lastPosted.date) - 6 * DAY);
     const newLast7 = timeline.daily.filter((d) => d.date >= weekFrom && d.date <= lastPosted.date).reduce((n, d) => n + d.new_artists, 0);
     timeline.summary = {
-      images: images.length,
-      posts: new Set(images.map((im) => im.post)).size,
-      artists: new Set(images.map((im) => im.artist)).size,
+      works: works.length,
+      posts: new Set(works.map((work) => work.post)).size,
+      artists: new Set(works.map((work) => work.artist)).size,
       newLast7,
       lastDate: lastPosted.date,
       last7: lastPosted.posted_avg7,
@@ -1506,7 +1505,7 @@
   function renderTimelineText() {
     const s = timeline.summary;
 
-    $("#t-images").textContent = numberFmt.format(s.images);
+    $("#t-works").textContent = numberFmt.format(s.works);
     $("#t-artists").textContent = numberFmt.format(s.artists);
     $("#t-new").textContent = numberFmt.format(s.newLast7);
     $("#t-last7").textContent = String(s.last7);
@@ -1662,7 +1661,7 @@
         div.append(l, v);
         tip.append(div);
       };
-      row("sw-bar", mode === "posted" ? "Images posted" : "Images saved", numberFmt.format(d[mode]));
+      row("sw-bar", mode === "posted" ? "Works posted" : "Works saved", numberFmt.format(d[mode]));
       row("sw-line", "7-day average", String(d[mode + "_avg7"]));
       if (mode === "posted") {
         row("", "Posts", numberFmt.format(d.posts));
@@ -1685,7 +1684,7 @@
       timeline.mode = b.dataset.mode;
       for (const o of document.querySelectorAll(".seg-small button")) o.setAttribute("aria-pressed", String(o === b));
       $("#chart-title").textContent =
-        timeline.mode === "posted" ? "Images per day, by date posted" : "Images per day, by date saved to the folder";
+        timeline.mode === "posted" ? "Works per day, by date posted" : "Works per day, by date saved to the folder";
       drawChart();
     });
   }
