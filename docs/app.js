@@ -8,8 +8,14 @@
   const CELL_RATIO = 1.25; // height / width of a grid cell
   const OVERSCAN = 2; // rows rendered above and below the viewport
   const FAME_SIZE = 50; // Hall of Fame: 50 works
-  // Gem shelves, one work per artist: at least the first number of likes and fewer than the second.
-  const GEM_RANGES = { big: [5000, 10000], gems: [2000, 5000], hidden: [200, 2000] };
+  // Like-range shelves, one work per artist: at least the first number of likes and fewer than the second.
+  const SHELF_LIKE_RANGES = {
+    famous: [20000, 50000],
+    popular: [10000, 20000],
+    big: [5000, 10000],
+    gems: [2000, 5000],
+    hidden: [200, 2000],
+  };
   const BURIED_MAX = 200; // Buried Malfoid: every work under this many likes
   const SMALL_FOLLOWERS = 2000; // Small Artists: fewer followers than this (and not in Buried Malfoid)
   // Overlooked Malfoid: every work whose likes fall under this share of the artist's followers,
@@ -23,7 +29,7 @@
     yunayuispink: { text: "Thank You 🩷", label: "Thank you, @yunayuispink's livestream on YouTube", url: "https://www.youtube.com/watch?v=uXFL084iKvk" },
   };
   const SHELF_SIZE = 30; // works shown at once in the shuffled shelves
-  const RANDOM_SHELF_SIZE = 20; // works shown at once in Big Gems, Gems, Hidden Gems and Buried Malfoid
+  const RANDOM_SHELF_SIZE = 20; // works shown at once in the like-range shelves and Buried Malfoid
   const RANDOM_SIZE = 50; // works shown in the Random tab, one per artist
   const LONG_VIDEO = 30; // videos this many seconds or longer count as Videos (see isVideo)
   const VIDEO_ARTISTS = new Set(["alessandro49472"]); // every work by these artists counts as Videos
@@ -124,8 +130,8 @@
   let viewerPushed = false; // the open viewer owns a history entry that closing should leave
   let restoring = false; // history restoration must not write more history entries
 
-  const numberFmt = new Intl.NumberFormat("en-US");
-  const compactFmt = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1, roundingMode: "trunc" }); // 1,950 reads 1.9K, never "2K" for an under-2,000 work
+  const numberFmt = new Intl.NumberFormat("en-US", { useGrouping: false }); // plain digits: 6165
+  const compactFmt = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1, roundingMode: "trunc" }); // 1950 reads 1.9K, never "2K" for an under-2000 work
   // Artist like totals: three significant digits, so 1.06M and 1.03M don't both read "1M".
   const totalFmt = new Intl.NumberFormat("en-US", { notation: "compact", maximumSignificantDigits: 3, roundingMode: "trunc" });
   const dateFmt = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric" });
@@ -1174,10 +1180,12 @@
 
   // ---------- Home: shelves ----------
 
-  const shelves = { pick: [], fame: [], big: [], gems: [], hidden: [], small: [], buried: [], overlooked: [] };
-  const shelfPools = { big: [], gems: [], hidden: [], small: [], buried: [] };
+  const shelves = { pick: [], fame: [], famous: [], popular: [], big: [], gems: [], hidden: [], small: [], buried: [], overlooked: [] };
+  const shelfPools = { famous: [], popular: [], big: [], gems: [], hidden: [], small: [], buried: [] };
   // Shelves that draw a fresh set on every load (Shuffle picks another), one artist at a time, and how many they show.
-  const RANDOM_SHELVES = { big: RANDOM_SHELF_SIZE, gems: RANDOM_SHELF_SIZE, hidden: RANDOM_SHELF_SIZE, buried: RANDOM_SHELF_SIZE };
+  const RANDOM_SHELVES = Object.fromEntries(
+    [...Object.keys(SHELF_LIKE_RANGES), "buried"].map((k) => [k, RANDOM_SHELF_SIZE])
+  );
   const shelfSeeds = Object.fromEntries(Object.keys(RANDOM_SHELVES).map((k) => [k, newSeed()]));
   // Overlooked and My Personal Favorite show all their works in a fresh order on every load, kept for the visit
   // so the pick shelf doesn't jump while picks are edited.
@@ -1216,8 +1224,8 @@
       const best = bestByArtist.get(it._al);
       if (!best || it.v > best.v) bestByArtist.set(it._al, it);
     }
-    // Small Artists shows an artist's best work, so those artists stay off the gem shelves.
-    // The gem shelves and Buried Malfoid draw from every work in their like range, one artist at a time.
+    // Small Artists shows an artist's best work, so those artists stay off the like-range shelves.
+    // The like-range shelves and Buried Malfoid draw from every work in their like range, one artist at a time.
     const bests = [...bestByArtist.values()];
     // Overlooked shows every qualifying work, shuffled; those works stay off Buried Malfoid.
     shelves.overlooked = tweets
@@ -1232,7 +1240,7 @@
       (it) => it.v >= BURIED_MAX && (artistStats.get(it._al).followers ?? Infinity) < SMALL_FOLLOWERS
     );
     const small = new Set(shelfPools.small.map((it) => it._al));
-    for (const [k, [min, max]] of Object.entries(GEM_RANGES)) {
+    for (const [k, [min, max]] of Object.entries(SHELF_LIKE_RANGES)) {
       shelfPools[k] = tweets.filter((it) => it.v >= min && it.v < max && !small.has(it._al));
     }
 
@@ -1356,7 +1364,14 @@
     e.preventDefault();
     showGallery({ kind: "pick", q: "", artist: "", likes: "", followers: "" });
   });
-  for (const [id, likes] of [["#big-link", "5k"], ["#gems-link", "2k"], ["#hidden-link", "200"], ["#buried-link", "0"]]) {
+  for (const [id, likes] of [
+    ["#famous-link", "20k"],
+    ["#popular-link", "10k"],
+    ["#big-link", "5k"],
+    ["#gems-link", "2k"],
+    ["#hidden-link", "200"],
+    ["#buried-link", "0"],
+  ]) {
     $(id).addEventListener("click", (e) => {
       e.preventDefault();
       gallerySeed = newSeed();
@@ -1900,7 +1915,7 @@
     );
     el.artistCount.textContent = plural(list.length, "artist", "artists");
 
-    // Render in chunks so 2,700+ rows never block the main thread.
+    // Render in chunks so 2700+ rows never block the main thread.
     cancelAnimationFrame(artistFrame);
     el.artists.replaceChildren();
     let i = 0;

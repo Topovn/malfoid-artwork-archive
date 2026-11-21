@@ -24,7 +24,7 @@
   <link rel="stylesheet" href="../styles.css?v=25">
   <script src="../theme.js?v=2"></script>
   <script src="../config.js"></script>
-  <script src="../app.js?v=26" defer></script>
+  <script src="../app.js?v=27" defer></script>
 </head>
 <body>
 
@@ -63,7 +63,7 @@
       <div class="hero-notes open" id="hero-notes">
         <div class="hero-notes-inner">
           <p class="hero-coverage" id="tl-coverage" hidden data-main-only><span>Below are all the works I can find predates Oct 2026, counting all the platforms, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed any, especially those predates September 23 2026<br>Before Malfoid became a thing, she appeared as Female Draco Malfoy in #drarry tag</span></p>
-          <p class="hero-coverage" id="x-coverage" data-main-only><span>Covers hand-drawn artwork posted on Twitter (X) only. NO AI arts, 18+ ver exists if you can find it. Art on Pixiv, Instagram and other sites isn't tracked since I'm too lazy to manually tag<br>This is not every art out there on Twitter nor I have every pieces of every artists on this site, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed your art or you found any AI/18+ arts that doesn't belong here</span></p>
+          <p class="hero-coverage" id="x-coverage" data-main-only><span>Covers hand-drawn artwork posted on Twitter (X) only. NO AI arts, 18+ ver exists if you can find it. Art on Pixiv, Instagram and other sites isn't tracked since I'm too lazy to manually tag<br>This is not every art out there on Twitter nor I have every pieces of every artists on this site, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed your art or you found any AI/18+ arts that doesn't belong here<br>Or if you want your artwork to be removed please DM me too</span></p>
           <p class="hero-coverage" id="h-coverage" data-adult-only><span>I don't actively save R18 artworks on Twitter</span></p>
         </div>
       </div>
@@ -84,11 +84,41 @@
         <div class="shelf-track" id="fame-track"></div>
       </section>
 
+      <section class="shelf" id="famous-works" aria-labelledby="famous-title">
+        <div class="shelf-head">
+          <div>
+            <h2 id="famous-title"><a href="?likes=20k#gallery" id="famous-link">Famous Works</a></h2>
+            <p class="shelf-sub">Works with 20000 to 50000 likes, one per artist</p>
+          </div>
+          <div class="shelf-controls">
+            <button type="button" class="shelf-shuffle" data-shuffle="famous">Shuffle</button>
+            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll Famous Works left">‹</button>
+            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll Famous Works right">›</button>
+          </div>
+        </div>
+        <div class="shelf-track" id="famous-track"></div>
+      </section>
+
+      <section class="shelf" id="popular-works" aria-labelledby="popular-title">
+        <div class="shelf-head">
+          <div>
+            <h2 id="popular-title"><a href="?likes=10k#gallery" id="popular-link">Popular Works</a></h2>
+            <p class="shelf-sub">Works with 10000 to 20000 likes, one per artist</p>
+          </div>
+          <div class="shelf-controls">
+            <button type="button" class="shelf-shuffle" data-shuffle="popular">Shuffle</button>
+            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll Popular Works left">‹</button>
+            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll Popular Works right">›</button>
+          </div>
+        </div>
+        <div class="shelf-track" id="popular-track"></div>
+      </section>
+
       <section class="shelf" id="big-gems" aria-labelledby="big-title">
         <div class="shelf-head">
           <div>
             <h2 id="big-title"><a href="?likes=5k#gallery" id="big-link">Big Gems</a></h2>
-            <p class="shelf-sub">Works with 5,000 to 10,000 likes, one per artist</p>
+            <p class="shelf-sub">Works with 5000 to 10000 likes, one per artist</p>
           </div>
           <div class="shelf-controls">
             <button type="button" class="shelf-shuffle" data-shuffle="big">Shuffle</button>
@@ -103,7 +133,7 @@
         <div class="shelf-head">
           <div>
             <h2 id="gems-title"><a href="?likes=2k#gallery" id="gems-link">Gems</a></h2>
-            <p class="shelf-sub">Works with 2,000 to 5,000 likes, one per artist</p>
+            <p class="shelf-sub">Works with 2000 to 5000 likes, one per artist</p>
           </div>
           <div class="shelf-controls">
             <button type="button" class="shelf-shuffle" data-shuffle="gems">Shuffle</button>
@@ -118,7 +148,7 @@
         <div class="shelf-head">
           <div>
             <h2 id="hidden-title"><a href="?likes=200#gallery" id="hidden-link">Hidden Gems</a></h2>
-            <p class="shelf-sub">Works with 200 to 2,000 likes, one per artist</p>
+            <p class="shelf-sub">Works with 200 to 2000 likes, one per artist</p>
           </div>
           <div class="shelf-controls">
             <button type="button" class="shelf-shuffle" data-shuffle="hidden">Shuffle</button>
@@ -133,7 +163,7 @@
         <div class="shelf-head">
           <div>
             <h2 id="small-title"><a href="?followers=0&amp;sort=liked#gallery" id="small-link">Small Artists</a></h2>
-            <p class="shelf-sub">Artists with under 2,000 followers, showing their best work</p>
+            <p class="shelf-sub">Artists with under 2000 followers, showing their best work</p>
           </div>
           <div class="shelf-controls">
             <button type="button" class="shelf-shuffle" data-shuffle="small">Shuffle</button>
