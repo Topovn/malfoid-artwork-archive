@@ -958,7 +958,7 @@
     }
 
     el.viewerTags.replaceChildren();
-    el.viewerTags.append(badge(it.k === "anim" ? "Animation" : "Static art", false));
+    el.viewerTags.append(badge(it.k === "anim" ? "Animation" : "Artwork", false));
     el.viewerTags.append(badge(it.x.toUpperCase(), false));
     if (it.l) el.viewerTags.append(badge("Lost tweet", false, "badge-lost"));
 
