@@ -27,6 +27,12 @@
   const RANDOM_SIZE = 50; // works shown in the Random tab, one per artist
   const LONG_VIDEO = 30; // videos this many seconds or longer count as Videos (see isVideo)
   const VIDEO_ARTISTS = new Set(["alessandro49472"]); // every work by these artists counts as Videos
+  const ANIMATION_WORKS = new Set([ // long works that still count as Animations
+    "felutiahime-2117929539955560644-01.mp4",
+    "NakanouKouheiii-2117761397958275391-01.mp4",
+    "Coolboy1234510-2114767762493235555-01.mp4",
+    "Allamas_Llamas-2109004627169644734-01.mp4",
+  ]);
   const TIMEZONE = "Australia/Sydney"; // days on the timeline, as in the original dashboard
   const TIMELINE_START = "2026-09-01";
   const TIMELINE_VIEW_END = "2026-10-01"; // the Timeline tab covers the early days, before the October wave
@@ -129,8 +135,10 @@
   // File-name order as macOS Finder shows it: case-insensitive, numbers by value, "_" before digits and letters.
   const nameCollator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
   const plural = (n, one, many) => `${numberFmt.format(n)} ${n === 1 ? one : many}`;
-  // Long videos, and everything by VIDEO_ARTISTS (under a current or former handle), form the Videos filter.
-  const isVideo = (it) => it.s >= LONG_VIDEO || VIDEO_ARTISTS.has(it._al) || VIDEO_ARTISTS.has(it._ao);
+  // Long videos, and everything by VIDEO_ARTISTS (under a current or former handle), form the Videos filter,
+  // except the works listed in ANIMATION_WORKS.
+  const isVideo = (it) => !ANIMATION_WORKS.has(it.f) &&
+    (it.s >= LONG_VIDEO || VIDEO_ARTISTS.has(it._al) || VIDEO_ARTISTS.has(it._ao));
 
   const thumbUrl = (it) => "thumbs/" + encodeURIComponent(it.f) + ".webp";
   const onLocalhost = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
