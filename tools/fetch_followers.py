@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch approximate follower counts for every artist in the gallery, on the main site and the 18+ page.
+"""Fetch approximate follower counts for every artist in the gallery, on both sites.
 
 X's own no-login endpoints no longer expose follower counts, so this uses the public FxTwitter API
 (https://github.com/FxEmbed/FxEmbed), which needs no login.
@@ -38,7 +38,7 @@ from trace_handles import HANDLES, TWEETS_PER_HANDLE, trace  # noqa: E402
 from site_paths import full_manifests  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-# Both sites share the caches: the main site and the 18+ page at docs/h/.
+# Both sites share the caches.
 # The full manifests, so hidden artists (see tools/site_paths.py) stay current in the owner's view too.
 MANIFESTS = full_manifests()
 FOLLOWERS = ROOT / "data" / "followers.json"

@@ -11,7 +11,7 @@ so the next run can say what was added to the folder since then.
 Usage:
     python3 tools/sync_status.py                       # report; prints the scan time to pass to --mark
     python3 tools/sync_status.py --mark --at <ISO>     # record a finished sync that scanned at <ISO>
-    python3 tools/sync_status.py --audience adult      # the same for the 18+ page (Malfoid H/, data/last_sync_h.json)
+    python3 tools/sync_status.py --audience adult      # the same for the second site (data/last_sync_h.json)
 
 --mark refuses while works are still missing from the site or from Releases, so the date only moves
 once a sync really finished. --force records it anyway.
@@ -37,7 +37,7 @@ from site_paths import hidden_files, manifest_path  # noqa: E402
 from upload_originals import LOCK, MAX_ASSET_BYTES  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-# Each site keeps its own manifest and sync date; the main site reads Malfoid/, the 18+ page Malfoid H/.
+# Each site keeps its own manifest, source folder and sync date.
 SITES = {
     "main": {"src": MAIN_SRC, "manifest": DEFAULT_SITE / "data" / "manifest.json", "last_sync": DATA / "last_sync.json"},
     "adult": {"src": ADULT_SRC, "manifest": ADULT_SITE / "data" / "manifest.json", "last_sync": DATA / "last_sync_h.json"},

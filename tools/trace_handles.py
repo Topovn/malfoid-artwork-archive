@@ -31,7 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from site_paths import full_manifests  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-# Both sites share the cache: the main site and the 18+ page at docs/h/.
+# Both sites share the cache.
 # The full manifests, so hidden artists (see tools/site_paths.py) stay current in the owner's view too.
 MANIFESTS = full_manifests()
 HANDLES = ROOT / "data" / "handles.json"

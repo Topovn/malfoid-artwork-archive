@@ -195,8 +195,28 @@ button, input, select { font: inherit; color: inherit; }
   white-space: nowrap;
 }
 .brand-out:hover { border-color: var(--accent); color: var(--accent); }
+/* The owner's switch between the admin view and the visitor view; only tools/serve.py shows it. */
+.admin-toggle {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.admin-toggle[hidden] { display: none; }
+.admin-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.admin-toggle[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.admin-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.admin-toggle[aria-pressed="true"] .eye-off,
+.admin-toggle[aria-pressed="false"] .eye { display: none; }
 
-/* The 18+ page (docs/h/): a way back out, none of the parts marked data-main-only, and its own data-adult-only parts. */
+/* The second site: a way back out, none of the parts marked data-main-only, and its own data-adult-only parts. */
 :root[data-site="h"] .brand-out { display: inline-flex; }
 :root[data-site="h"] .brand-tip,
 :root[data-site="h"] .brand-tip::before { border-color: var(--tl-red); }

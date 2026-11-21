@@ -3,15 +3,14 @@
 
 The main build scans the top level of the Malfoid folder plus its _LostTweets subfolder,
 skipping the works listed in data/audience.json. It writes the site in docs/.
-The 18+ build scans only the top level of the 'Malfoid H' folder; its subfolders are ignored.
+The second build (--audience adult) scans only the top level of its own source folder; its subfolders are ignored.
 A work there counts as a lost tweet when the lost-tweet log (_LostTweets.csv) lists it.
-It writes the site in docs/h/, which GitHub Pages publishes as the /h/ page of the main site.
-That page shares the main site's code, styles and icons and adds only its own data and thumbnails.
+That site shares the main site's code, styles and icons and adds only its own data and thumbnails.
 Malfoid AI/ is never scanned by either build.
 
 Writes data/manifest.json and one WebP thumbnail per work into the chosen site folder.
 Works by hidden artists (see tools/site_paths.py) stay out of it: the build also writes a full copy of the site's
-manifest, post texts and the hidden works' thumbnails to data/private/site/ (or site/h/), which only the owner's
+manifest, post texts and the hidden works' thumbnails to data/private/site/, which only the owner's
 local server shows.
 Thumbnails are only regenerated when the source file is newer, so reruns are cheap.
 
@@ -41,13 +40,13 @@ from site_paths import FULL_SITES, hidden_handles  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_SITE = REPO / "docs"  # the main site; GitHub Pages publishes this folder
-ADULT_SITE = DEFAULT_SITE / "h"  # the 18+ page, published at <main site>/h/
+ADULT_SITE = DEFAULT_SITE / "h"  # the second site
 DATA = REPO / "data"  # working caches (likes, followers, handles, releases); never published
 HARVEST_ROOT = Path.home() / "Downloads/twitter_media_harvest"
 MAIN_SRC = HARVEST_ROOT / "Malfoid"
 ADULT_SRC = HARVEST_ROOT / "Malfoid H"
 AI_SRC = HARVEST_ROOT / "Malfoid AI"
-# Relative links in the main index.html that the 18+ page keeps pointing at its own folder.
+# Relative links in the main index.html that the second site keeps pointing at its own folder.
 OWN_PATH_PREFIXES = ("data/", "thumbs/", "media/")
 MAIN_TITLE = "The Malfoid Artwork Archive"
 ADULT_TITLE = "R18 Malfoid Artwork Archive"
@@ -142,8 +141,8 @@ def make_thumb(job: tuple[str, str, str]) -> tuple[str, int, int, float | None, 
 def source_files(src: Path, audience: str = "main") -> list[tuple[Path, bool]]:
     """Every work the chosen site should show, as (path, is lost tweet), in a stable order.
 
-    The main site reads the top level and _LostTweets, skipping excluded and 18+ works.
-    The adult site reads only the top level of Malfoid H/, skipping excluded works.
+    The main site reads the top level and _LostTweets, skipping excluded works and those listed for the second site.
+    The second site reads only the top level of its folder, skipping excluded works.
     The source files always stay where the owner put them.
     """
     exclude_path = DATA / "exclude.json"
@@ -174,7 +173,7 @@ def source_files(src: Path, audience: str = "main") -> list[tuple[Path, bool]]:
 
 
 def write_adult_page() -> None:
-    """Write the 18+ index.html from the main one, so both pages always share one layout.
+    """Write the second site's index.html from the main one, so both pages always share one layout.
 
     It is the main page marked with data-site="h", with the shared code, styles and icons
     loaded from the main site one folder up. Its data, thumbnails and media stay in its own folder.
@@ -197,7 +196,7 @@ def write_adult_page() -> None:
     html = html.replace(MAIN_QUOTE, ADULT_QUOTE)  # the speech bubble under the icon
     ADULT_SITE.mkdir(parents=True, exist_ok=True)
     (ADULT_SITE / "index.html").write_text(html, encoding="utf-8")
-    # The page also asks for My Pick and the Timeline's early works; neither exists for 18+ works.
+    # The page also asks for My Pick and the Timeline's early works; neither exists there.
     for name, empty in (("picks.json", {"picks": []}), ("early.json", {"early": []})):
         path = ADULT_SITE / "data" / name
         if not path.exists():
@@ -263,7 +262,7 @@ def main() -> int:
     if not src.is_dir():
         sys.exit(f"Source folder not found: {src}")
 
-    # Lost tweets moved to Malfoid H/ keep their row in the main folder's log.
+    # Lost tweets moved to the second site's folder keep their row in the main folder's log.
     lost_logs = [MAIN_SRC, src] if args.audience == "adult" else [src]
     lost_meta = {row["file"]: row for folder in lost_logs for row in read_csv(folder / LOST_DIR / f"{LOST_DIR}.csv")}
     danbooru = {}
@@ -342,7 +341,7 @@ def main() -> int:
     items = []
     for p, lost in files:
         if args.audience == "adult":
-            lost = p.name in lost_meta  # the 18+ page has no _LostTweets folder
+            lost = p.name in lost_meta  # the second site has no _LostTweets folder
         ext = p.suffix.lower().lstrip(".")
         w, h, seconds = results.get(f"{p.name}.webp", (0, 0, None))
         if not w:
@@ -415,7 +414,7 @@ def main() -> int:
     totals = {"works": len(items), "artists": len({it["a"].lower() for it in items})}
     write_site_data(site_data, public, followers, rel, text_cache, totals)
     write_site_data(full_site / "data", items, followers, rel, text_cache, totals)
-    # The 18+ page copies the main index.html, so either build refreshes it once it exists.
+    # The second site copies the main index.html, so either build refreshes it once it exists.
     if args.audience == "adult" or ADULT_SITE.is_dir():
         write_adult_page()
 

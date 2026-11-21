@@ -14,7 +14,9 @@ to show the heart buttons and the Comic tag toggle.
 
 It also shows the full copy of each site (see tools/site_paths.py): the manifest and post texts come from
 data/private/site/, and thumbnails missing from docs/ are looked up there, so the hidden artists' works appear
-here, marked Hidden, while the published site never has them.
+here, marked Hidden, while the published site never has them. Those responses carry an X-Malfoid-Admin header,
+which shows the page's admin toggle; with ?view=visitor they come from docs/ instead, so the owner can see the
+site exactly as visitors do.
 It listens on 127.0.0.1 only, refuses requests addressed to any other host name (DNS rebinding),
 and rejects cross-site writes, so only the owner's own browser can edit.
 
@@ -44,7 +46,7 @@ from site_paths import FULL_SITES  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "docs"  # serve only the published site, never tools/ or the working caches
-FULL = FULL_SITES["main"]  # the full copy, laid out like docs/ (the 18+ page in its h/ folder)
+FULL = FULL_SITES["main"]  # the full copy, laid out like docs/ (the second site in its own subfolder)
 FULL_FILES = {"/data/manifest.json", "/data/texts.json", "/h/data/manifest.json", "/h/data/texts.json"}
 FULL_FALLBACK = ("/thumbs/", "/h/thumbs/")
 PICKS = SITE / "data" / "picks.json"
@@ -132,6 +134,9 @@ class Handler(SimpleHTTPRequestHandler):
         """Map the manifests and texts to the full copy, and fall back to it for thumbnails docs/ lacks."""
         local = super().translate_path(path)
         rel = urllib.parse.unquote(path.split("?", 1)[0].split("#", 1)[0])
+        query = urllib.parse.parse_qs(urllib.parse.urlsplit(path).query)
+        if rel in FULL_FILES and query.get("view") == ["visitor"]:
+            return local  # the admin toggle is off: the published copy
         if rel in FULL_FILES or (rel.startswith(FULL_FALLBACK) and not os.path.exists(local)):
             full = (FULL / rel.lstrip("/")).resolve()
             if full.is_relative_to(FULL.resolve()) and full.is_file():
@@ -148,6 +153,10 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND)
             return None
         self._range = None
+        if self._path() in FULL_FILES:
+            # One URL serves the full or the published copy, and both are written in the same second, so the date
+            # can't tell them apart: always send the file instead of a 304 that keeps the other copy in the browser.
+            del self.headers["If-Modified-Since"]
         path = self.translate_path(self.path)
         self._ranges_ok = os.path.isfile(path)
         m = RANGE_RE.match(self.headers.get("Range", "").strip())
@@ -207,7 +216,10 @@ class Handler(SimpleHTTPRequestHandler):
     def end_headers(self) -> None:
         if self._ranges_ok:
             self.send_header("Accept-Ranges", "bytes")
-        if self._path() in EDIT_PATHS:
+        if self._path() in FULL_FILES:
+            self.send_header("X-Malfoid-Admin", "1")
+            self.send_header("Cache-Control", "no-store")
+        elif self._path() in EDIT_PATHS:
             self.send_header("X-Malfoid-Edit", "1")
             self.send_header("Cache-Control", "no-store")
         else:

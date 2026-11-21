@@ -1,15 +1,14 @@
 """Where each site's files live, shared by the build and the tools around it.
 
 Each site has two copies:
-- the public copy in docs/ (main) and docs/h/ (18+), which GitHub Pages publishes, and
-- the full copy in data/private/site/ and data/private/site/h/, which is gitignored and served only by tools/serve.py.
+- the public copy in docs/ (the second site in a subfolder), which GitHub Pages publishes, and
+- the full copy in data/private/site/, laid out the same, which is gitignored and served only by tools/serve.py.
 
 The full copy holds everything the public one does plus the works of hidden artists: artists whose X bio forbids
 reposting or using their art (see tools/fetch_bios.py). Their works are marked "z" in the full manifest, and their
 thumbnails live only in the full copy, so visitors never see them. The site's numbers still count them (the manifests'
-"totals"), and their originals stay on GitHub Releases, unlinked from the public site. The public copy keeps the shared files
-(code, styles, icons, My Pick, early works); the full copy holds just the manifest, post texts and hidden thumbnails,
-and tools/serve.py fills in the rest from docs/.
+"totals"). The public copy keeps the shared files (code, styles, icons, My Pick, early works); the full copy holds just
+the manifest, post texts and hidden thumbnails, and tools/serve.py fills in the rest from docs/.
 """
 
 from __future__ import annotations

@@ -12,7 +12,7 @@ Usage:
     python3 tools/upload_originals.py --limit 5         # upload at most 5 files (a quick test)
     python3 tools/upload_originals.py --only a.jpg b.mp4  # upload just these files
     python3 tools/upload_originals.py                   # upload everything missing
-    python3 tools/upload_originals.py --audience adult  # the same for the 18+ page (Malfoid H/)
+    python3 tools/upload_originals.py --audience adult  # the same for the second site
 
 Run tools/build_malfoid_gallery.py (with the same --audience) first so the manifest lists the current works.
 Both sites share the releases and data/releases.json, so a work moved between them is never uploaded twice.
@@ -125,7 +125,7 @@ def main() -> int:
     for it in items:
         if only and it["f"] not in only:
             continue
-        # Only the main site keeps lost tweets in _LostTweets/; the 18+ page has them at the top level of Malfoid H/.
+        # Only the main site keeps lost tweets in _LostTweets/; the second site has them at the top level of its folder.
         path = src / ("_LostTweets" if "l" in it and args.audience == "main" else "") / it["f"]
         if not path.exists():
             print(f"skip, not found locally: {path}")

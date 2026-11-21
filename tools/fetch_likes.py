@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch approximate like counts for every tweet in the gallery, on the main site and the 18+ page.
+"""Fetch approximate like counts for every tweet in the gallery, on both sites.
 
 Uses X's public embed endpoint (the one that powers embedded tweets), which needs no login.
 That endpoint hides sensitive (age-restricted) tweets behind an empty tombstone, so those are
@@ -32,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from site_paths import full_manifests  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-# Both sites share the caches: the main site and the 18+ page at docs/h/.
+# Both sites share the caches.
 # The full manifests, so hidden artists (see tools/site_paths.py) stay current in the owner's view too.
 MANIFESTS = full_manifests()
 LIKES = ROOT / "data" / "likes.json"

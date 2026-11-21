@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch the post text of every live tweet in the gallery, on the main site and the 18+ page.
+"""Fetch the post text of every live tweet in the gallery, on both sites.
 
 Uses the public FxTwitter API, which needs no login, sees sensitive (age-restricted) tweets,
 and returns clean text: entities decoded, t.co links expanded, media links dropped and long posts in full.

@@ -95,11 +95,11 @@
     next: $("#next"),
   };
 
-  // The 18+ page (docs/h/) has only the Gallery and Artists tabs, opens on the Gallery,
+  // The second site has only the Gallery and Artists tabs, opens on the Gallery,
   // and has no My Personal Favorite or Lost tweets filter.
   const ADULT_SITE = document.documentElement.dataset.site === "h";
   const VIEWS = ADULT_SITE ? ["gallery", "artists"] : ["home", "random", "gallery", "timeline", "artists"];
-  const DEFAULT_VIEW = VIEWS[0]; // shown at the bare address; the 18+ page then moves it to #gallery
+  const DEFAULT_VIEW = VIEWS[0]; // shown at the bare address; the second site then moves it to #gallery
   const MAIN_ONLY_KINDS = new Set(["pick"]);
   const state = { q: "", artist: "", likes: "", followers: "", kind: "", sort: "shuffle", seed: 0, page: 1, view: DEFAULT_VIEW };
   const PER_PAGE_OPTIONS = [50, 100, 150, 200, 250, 300];
@@ -128,6 +128,37 @@
   // The archive's totals. The published manifest leaves out hidden artists' works but carries the totals with them
   // ("totals"), so the site's numbers stay the whole archive's; without it they are counted from the works here.
   let manifestTotals = null;
+
+  // ---------- Admin toggle ----------
+  // tools/serve.py, the owner's local server, serves the full archive with the hidden artists' works and marks it with
+  // an X-Malfoid-Admin header; that shows a toggle next to the icon. Off, the page asks for the published copy
+  // (?view=visitor) and looks exactly as visitors see it. The choice is remembered for both sites.
+  const VISITOR_VIEW_KEY = "malfoid-visitor-view";
+  let visitorView = false;
+  try {
+    visitorView = localStorage.getItem(VISITOR_VIEW_KEY) === "1";
+  } catch {
+    // Storage blocked: always the admin view.
+  }
+  const dataUrl = (path) => (visitorView ? path + "?view=visitor" : path);
+
+  function setupAdminToggle(res) {
+    const btn = document.getElementById("admin-toggle");
+    if (!btn || res.headers.get("X-Malfoid-Admin") !== "1") return;
+    btn.setAttribute("aria-pressed", String(!visitorView));
+    btn.setAttribute("aria-label", "Admin view");
+    btn.title = visitorView ? "Visitor view" : "Admin view";
+    btn.hidden = false;
+    btn.addEventListener("click", () => {
+      try {
+        if (visitorView) localStorage.removeItem(VISITOR_VIEW_KEY);
+        else localStorage.setItem(VISITOR_VIEW_KEY, "1");
+      } catch {
+        return;
+      }
+      location.reload();
+    });
+  }
   const totalWorks = () => manifestTotals?.works ?? items.length;
   const totalArtists = () => manifestTotals?.artists ?? artistStats.size;
   const itemByFile = new Map();
@@ -174,7 +205,7 @@
     if (CONFIG.useReleases && releaseBase && it.u && !local) {
       return releaseBase + it.u.split("/").map(encodeURIComponent).join("/");
     }
-    return CONFIG.mediaBase + (it.l && !ADULT_SITE ? CONFIG.lostFolder : "") + encodeURIComponent(it.f); // 18+ lost tweets stay at the top level
+    return CONFIG.mediaBase + (it.l && !ADULT_SITE ? CONFIG.lostFolder : "") + encodeURIComponent(it.f); // the second site's lost tweets stay at the top level
   };
   const tweetUrl = (it) => (it.t ? `https://x.com/${encodeURIComponent(it.a)}/status/${it.t}` : "");
   const profileUrl = (it) => `https://x.com/${encodeURIComponent(it.a)}`;
@@ -614,7 +645,7 @@
   // the viewer's Comic tag is a toggle; corrections go to data/comics.json through PUT /api/comics and
   // reach the published manifests at the next build. Everywhere else the tag is read-only.
 
-  const COMICS_API = ADULT_SITE ? "../api/comics" : "api/comics"; // the server's root, also from /h/
+  const COMICS_API = ADULT_SITE ? "../api/comics" : "api/comics"; // the server's root, also from the second site's subfolder
   const comicFix = { comic: new Set(), art: new Set() };
   let comicsEditable = false;
   let comicSave = Promise.resolve();
@@ -893,7 +924,7 @@
 
   async function loadTexts() {
     try {
-      const res = await fetch("data/texts.json");
+      const res = await fetch(dataUrl("data/texts.json"));
       if (!res.ok) return;
       postTexts = await res.json();
     } catch {
@@ -2149,7 +2180,7 @@
   window.addEventListener("popstate", restoreFromUrl);
   window.addEventListener("hashchange", restoreFromUrl);
 
-  // The 18+ page greets each arrival with its speech bubble, as if the icon were hovered:
+  // The second site greets each arrival with its speech bubble, as if the icon were hovered:
   // it grows out, holds, then lingers and fades on the bubble's own transition.
   if (ADULT_SITE) {
     const tip = $(".brand-tip");
@@ -2338,7 +2369,8 @@
 
     let data;
     try {
-      const [res] = await Promise.all([fetch("data/manifest.json"), loadPicks(), loadEarly(), loadComicFixes()]);
+      const [res] = await Promise.all([fetch(dataUrl("data/manifest.json")), loadPicks(), loadEarly(), loadComicFixes()]);
+      setupAdminToggle(res);
       if (!res.ok) throw new Error(res.status + " " + res.statusText);
       data = await res.json();
     } catch (err) {
