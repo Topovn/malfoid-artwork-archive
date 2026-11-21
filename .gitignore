@@ -10,3 +10,5 @@ docs/h/thumbs/*.tmp
 docs/h/thumbs/*.frame.png
 # Held by tools/upload_originals.py while it runs.
 data/.upload.lock
+# Local graphify knowledge graph.
+graphify-out/
