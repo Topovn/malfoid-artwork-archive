@@ -4,6 +4,7 @@
 The main build scans the top level of the Malfoid folder plus its _LostTweets subfolder,
 skipping the works listed in data/audience.json. It writes the site in docs/.
 The 18+ build scans only the top level of the 'Malfoid H' folder; its subfolders are ignored.
+A work there counts as a lost tweet when the lost-tweet log (_LostTweets.csv) lists it.
 It writes the site in docs/h/, which GitHub Pages publishes as the /h/ page of the main site.
 That page shares the main site's code, styles and icons and adds only its own data and thumbnails.
 Malfoid AI/ is never scanned by either build.
@@ -227,7 +228,9 @@ def main() -> int:
     if not src.is_dir():
         sys.exit(f"Source folder not found: {src}")
 
-    lost_meta = {row["file"]: row for row in read_csv(src / LOST_DIR / f"{LOST_DIR}.csv")}
+    # Lost tweets moved to Malfoid H/ keep their row in the main folder's log.
+    lost_logs = [MAIN_SRC, src] if args.audience == "adult" else [src]
+    lost_meta = {row["file"]: row for folder in lost_logs for row in read_csv(folder / LOST_DIR / f"{LOST_DIR}.csv")}
     danbooru = {}
     for row in read_csv(src / "Malfoid non-Twitter sources.csv"):
         m = re.search(r"/status/(\d+)", row.get("Source", ""))
@@ -282,6 +285,8 @@ def main() -> int:
 
     items = []
     for p, lost in files:
+        if args.audience == "adult":
+            lost = p.name in lost_meta  # the 18+ page has no _LostTweets folder
         ext = p.suffix.lower().lstrip(".")
         w, h, seconds = results.get(f"{p.name}.webp", (0, 0, None))
         if not w:

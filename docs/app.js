@@ -82,7 +82,7 @@
   const ADULT_SITE = document.documentElement.dataset.site === "h";
   const VIEWS = ADULT_SITE ? ["gallery", "artists"] : ["home", "random", "gallery", "timeline", "artists"];
   const DEFAULT_VIEW = VIEWS[0]; // shown at the bare address; the 18+ page then moves it to #gallery
-  const MAIN_ONLY_KINDS = new Set(["pick", "lost"]);
+  const MAIN_ONLY_KINDS = new Set(["pick"]);
   const state = { q: "", artist: "", likes: "", followers: "", kind: "", sort: "shuffle", seed: 0, page: 1, view: DEFAULT_VIEW };
   const PER_PAGE_OPTIONS = [50, 100, 150, 200, 250, 300];
   const DEFAULT_PER_PAGE = 100;
@@ -150,7 +150,7 @@
     if (CONFIG.useReleases && releaseBase && it.u && !local) {
       return releaseBase + it.u.split("/").map(encodeURIComponent).join("/");
     }
-    return CONFIG.mediaBase + (it.l ? CONFIG.lostFolder : "") + encodeURIComponent(it.f);
+    return CONFIG.mediaBase + (it.l && !ADULT_SITE ? CONFIG.lostFolder : "") + encodeURIComponent(it.f); // 18+ lost tweets stay at the top level
   };
   const tweetUrl = (it) => (it.t ? `https://x.com/${encodeURIComponent(it.a)}/status/${it.t}` : "");
   const profileUrl = (it) => `https://x.com/${encodeURIComponent(it.a)}`;
