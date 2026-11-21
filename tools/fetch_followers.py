@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch approximate follower counts for every artist in the gallery.
+"""Fetch approximate follower counts for every artist in the gallery, on the main site and the 18+ page.
 
 X's own no-login endpoints no longer expose follower counts, so this uses the public FxTwitter API
 (https://github.com/FxEmbed/FxEmbed), which needs no login.
@@ -11,7 +11,7 @@ When an artist's profile can't be fetched, the account may have been renamed: it
 the artist's newest tweets (as tools/trace_handles.py does) and recorded in data/handles.json, and the count is
 fetched under the new handle. The site then shows the new handle; files keep the name they were saved under.
 A rename can't be found once all of an artist's tweets are deleted; data/aliases.json takes those by hand.
-Run tools/build_malfoid_gallery.py afterwards to put the counts and handles into the manifest.
+Run tools/build_malfoid_gallery.py (and with --audience adult) afterwards to put the counts and handles into the manifests.
 
 Usage:
     python3 tools/fetch_followers.py                   # fetch artists never fetched or older than 30 days
@@ -37,7 +37,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from trace_handles import HANDLES, TWEETS_PER_HANDLE, trace  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-MANIFEST = ROOT / "docs" / "data" / "manifest.json"
+# Both sites share the caches: the main site and the 18+ page at docs/h/.
+MANIFESTS = (ROOT / "docs" / "data" / "manifest.json", ROOT / "docs" / "h" / "data" / "manifest.json")
 FOLLOWERS = ROOT / "data" / "followers.json"
 ENDPOINT = "https://api.fxtwitter.com/2/profile/{handle}"
 WORKERS = 2
@@ -104,7 +105,7 @@ def main() -> int:
     ap.add_argument("--max-age-days", type=float, default=30)
     args = ap.parse_args()
 
-    items = json.loads(MANIFEST.read_text())["items"]
+    items = [it for m in MANIFESTS if m.exists() for it in json.loads(m.read_text())["items"]]
     cache: dict[str, dict] = json.loads(FOLLOWERS.read_text()) if FOLLOWERS.exists() else {}
     cutoff = time.time() - args.max_age_days * 86400
     # One spelling per account; skip names that can't be X handles (files saved without one).

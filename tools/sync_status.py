@@ -2,13 +2,15 @@
 """Compare the Malfoid folder with the gallery, and record when it was last synced.
 
 The gallery is in sync when every work in the folder has a thumbnail in docs/data/manifest.json
-and a full-size original on GitHub Releases (data/releases.json).
+and a full-size original on GitHub Releases (data/releases.json), and no work moved to Malfoid AI/
+still has its original there.
 The last sync time lives in data/last_sync.json and is committed with each sync,
 so the next run can say what was added to the folder since then.
 
 Usage:
     python3 tools/sync_status.py                       # report; prints the scan time to pass to --mark
     python3 tools/sync_status.py --mark --at <ISO>     # record a finished sync that scanned at <ISO>
+    python3 tools/sync_status.py --audience adult      # the same for the 18+ page (Malfoid H/, data/last_sync_h.json)
 
 --mark refuses while works are still missing from the site or from Releases, so the date only moves
 once a sync really finished. --force records it anyway.
@@ -28,12 +30,16 @@ from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_malfoid_gallery import DATA, DEFAULT_SITE, MAIN_SRC, added_ms, source_files  # noqa: E402
+from build_malfoid_gallery import ADULT_SITE, ADULT_SRC, DATA, DEFAULT_SITE, MAIN_SRC, added_ms, source_files  # noqa: E402
+from prune_ai_originals import ai_assets  # noqa: E402
 from upload_originals import LOCK, MAX_ASSET_BYTES  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-LAST_SYNC = DATA / "last_sync.json"
-MANIFEST = DEFAULT_SITE / "data" / "manifest.json"  # the main site only
+# Each site keeps its own manifest and sync date; the main site reads Malfoid/, the 18+ page Malfoid H/.
+SITES = {
+    "main": {"src": MAIN_SRC, "manifest": DEFAULT_SITE / "data" / "manifest.json", "last_sync": DATA / "last_sync.json"},
+    "adult": {"src": ADULT_SRC, "manifest": ADULT_SITE / "data" / "manifest.json", "last_sync": DATA / "last_sync_h.json"},
+}
 RELEASES = DATA / "releases.json"
 SHOW = 10
 
@@ -42,12 +48,12 @@ def now_iso() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
-def last_sync() -> tuple[datetime | None, str]:
+def last_sync(site: dict) -> tuple[datetime | None, str]:
     """When the last sync scanned the folder, and where that date came from."""
-    if LAST_SYNC.exists():
-        return datetime.fromisoformat(json.loads(LAST_SYNC.read_text())["synced_at"]), "data/last_sync.json"
+    if site["last_sync"].exists():
+        return datetime.fromisoformat(json.loads(site["last_sync"].read_text())["synced_at"]), f"data/{site['last_sync'].name}"
     # Before the first marked sync, the last commit of the manifest is the best estimate.
-    r = subprocess.run(["git", "-C", str(ROOT), "log", "-1", "--format=%cI", "--", str(MANIFEST)],
+    r = subprocess.run(["git", "-C", str(ROOT), "log", "-1", "--format=%cI", "--", str(site["manifest"])],
                        capture_output=True, text=True)
     if r.stdout.strip():
         return datetime.fromisoformat(r.stdout.strip()), "last manifest commit (no sync recorded yet)"
@@ -65,9 +71,10 @@ def upload_running() -> bool:
     return subprocess.run(["pgrep", "-f", "tools/upload_originals.py"], capture_output=True).returncode == 0
 
 
-def scan(src: Path) -> dict:
-    files = {p.name: p for p, _ in source_files(src)}
-    on_site = {it["f"] for it in json.loads(MANIFEST.read_text())["items"]} if MANIFEST.exists() else set()
+def scan(src: Path, audience: str) -> dict:
+    manifest = SITES[audience]["manifest"]
+    files = {p.name: p for p, _ in source_files(src, audience)}
+    on_site = {it["f"] for it in json.loads(manifest.read_text())["items"]} if manifest.exists() else set()
     uploaded = set(json.loads(RELEASES.read_text())["assets"]) if RELEASES.exists() else set()
     too_big = {f for f, p in files.items() if p.stat().st_size > MAX_ASSET_BYTES}
     return {
@@ -76,6 +83,8 @@ def scan(src: Path) -> dict:
         "gone_from_folder": sorted(on_site - set(files)),
         "not_uploaded": sorted(set(files) - uploaded - too_big),
         "too_big": sorted(too_big),
+        # Shared by both sites: originals of works moved to Malfoid AI/ (tools/prune_ai_originals.py).
+        "ai_on_releases": sorted(e["tag"] + "/" + e["name"] for e in ai_assets().values()),
     }
 
 
@@ -89,18 +98,22 @@ def listing(label: str, names: list[str]) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--src", default=str(MAIN_SRC))
+    ap.add_argument("--audience", choices=("main", "adult"), default="main")
+    ap.add_argument("--src", help="main-site source folder (default Malfoid/); the 18+ page always reads Malfoid H/")
     ap.add_argument("--mark", action="store_true", help="record a finished sync")
     ap.add_argument("--at", help="scan time printed by the report at the start of the sync (ISO 8601)")
     ap.add_argument("--force", action="store_true", help="with --mark, record even if works are still pending")
     args = ap.parse_args()
-    src = Path(args.src).expanduser()
+    site = SITES[args.audience]
+    if args.audience == "adult" and args.src:
+        sys.exit("The 18+ page always reads Malfoid H/; --src is only for the main site.")
+    src = Path(args.src).expanduser() if args.src else site["src"]
     if not src.is_dir():
         sys.exit(f"Source folder not found: {src}")
 
     scan_time = now_iso()
-    s = scan(src)
-    pending = bool(s["missing_from_site"] or s["gone_from_folder"] or s["not_uploaded"])
+    s = scan(src, args.audience)
+    pending = bool(s["missing_from_site"] or s["gone_from_folder"] or s["not_uploaded"] or s["ai_on_releases"])
 
     if args.mark:
         if not args.at:
@@ -110,15 +123,17 @@ def main() -> int:
             listing("Not on the site yet", s["missing_from_site"])
             listing("On the site but gone from the folder", s["gone_from_folder"])
             listing("Originals not on GitHub Releases yet", s["not_uploaded"])
+            listing("AI works still on GitHub Releases", s["ai_on_releases"])
             sys.exit("Sync is not finished, so the date was not recorded. Use --force to record it anyway.")
-        tmp = LAST_SYNC.with_suffix(".json.tmp")
+        tmp = site["last_sync"].with_suffix(".json.tmp")
         tmp.write_text(json.dumps({"synced_at": at.isoformat(timespec="seconds"), "works": len(s["files"])},
                                   indent=1) + "\n")
-        os.replace(tmp, LAST_SYNC)
-        print(f"Recorded sync at {at.isoformat(timespec='seconds')} ({len(s['files'])} works) in data/last_sync.json.")
+        os.replace(tmp, site["last_sync"])
+        print(f"Recorded sync at {at.isoformat(timespec='seconds')} ({len(s['files'])} works) in data/{site['last_sync'].name}.")
         return 0
 
-    since, origin = last_sync()
+    since, origin = last_sync(site)
+    print(f"Site: {'18+ page (Malfoid H/)' if args.audience == 'adult' else 'main (Malfoid/)'}")
     print(f"Scan time: {scan_time}")
     print(f"Last sync: {since.isoformat(timespec='seconds') if since else 'never'} ({origin})")
     print(f"Works in folder: {len(s['files'])}")
@@ -129,6 +144,7 @@ def main() -> int:
     listing("Not on the site yet", s["missing_from_site"])
     listing("On the site but gone from the folder", s["gone_from_folder"])
     listing("Originals not on GitHub Releases yet", s["not_uploaded"])
+    listing("AI works still on GitHub Releases", s["ai_on_releases"])
     if s["too_big"]:
         listing("Over the 2 GiB release asset limit (stay local)", s["too_big"])
     print(f"Upload running: {'yes' if upload_running() else 'no'}")

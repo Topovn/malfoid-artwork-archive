@@ -12,8 +12,10 @@ Usage:
     python3 tools/upload_originals.py --limit 5         # upload at most 5 files (a quick test)
     python3 tools/upload_originals.py --only a.jpg b.mp4  # upload just these files
     python3 tools/upload_originals.py                   # upload everything missing
+    python3 tools/upload_originals.py --audience adult  # the same for the 18+ page (Malfoid H/)
 
-Run tools/build_malfoid_gallery.py first so data/manifest.json lists the current works.
+Run tools/build_malfoid_gallery.py (with the same --audience) first so the manifest lists the current works.
+Both sites share the releases and data/releases.json, so a work moved between them is never uploaded twice.
 The manifest is rebuilt at the end so the site points at the uploaded files.
 """
 
@@ -32,7 +34,9 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MANIFEST = ROOT / "docs" / "data" / "manifest.json"
+MANIFESTS = {"main": ROOT / "docs" / "data" / "manifest.json", "adult": ROOT / "docs" / "h" / "data" / "manifest.json"}
+SOURCES = {"main": Path.home() / "Downloads/twitter_media_harvest/Malfoid",
+           "adult": Path.home() / "Downloads/twitter_media_harvest/Malfoid H"}
 RELEASES = ROOT / "data" / "releases.json"
 LOCK = ROOT / "data" / ".upload.lock"  # held while a run is active, so two runs never upload the same files
 DEFAULT_REPO = "Topovn/malfoid-artwork-archive"
@@ -83,15 +87,18 @@ def remote_assets(repo: str) -> dict[str, dict[str, int]]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--src", default=str(Path.home() / "Downloads/twitter_media_harvest/Malfoid"))
+    ap.add_argument("--audience", choices=("main", "adult"), default="main")
+    ap.add_argument("--src", help="main-site source folder (default Malfoid/); the 18+ page always reads Malfoid H/")
     ap.add_argument("--repo", default=DEFAULT_REPO)
     ap.add_argument("--dry-run", action="store_true", help="print the plan without uploading")
     ap.add_argument("--limit", type=int, default=0, help="upload at most this many files")
     ap.add_argument("--only", nargs="+", metavar="FILE", help="restrict the run to these local filenames (for tests)")
     args = ap.parse_args()
-    src = Path(args.src).expanduser()
+    if args.audience == "adult" and args.src:
+        sys.exit("The 18+ page always reads Malfoid H/; --src is only for the main site.")
+    src = Path(args.src).expanduser() if args.src else SOURCES[args.audience]
 
-    items = json.loads(MANIFEST.read_text())["items"]
+    items = json.loads(MANIFESTS[args.audience].read_text())["items"]
     record = json.loads(RELEASES.read_text()) if RELEASES.exists() else {"repo": args.repo, "assets": {}}
     if record.get("repo") != args.repo:
         sys.exit(f"data/releases.json belongs to {record.get('repo')}, not {args.repo}. Asset URLs include the repo name.")
@@ -223,7 +230,8 @@ def main() -> int:
     print(f"Recorded {len(json.loads(RELEASES.read_text())['assets'])} uploaded files in {RELEASES.relative_to(ROOT)}.")
 
     print("Rebuilding the manifest...")
-    subprocess.run([sys.executable, str(ROOT / "tools" / "build_malfoid_gallery.py"), "--src", str(src)], check=True)
+    build = ["--audience", "adult"] if args.audience == "adult" else ["--src", str(src)]
+    subprocess.run([sys.executable, str(ROOT / "tools" / "build_malfoid_gallery.py"), *build], check=True)
     return 0
 
 

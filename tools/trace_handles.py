@@ -28,7 +28,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MANIFEST = ROOT / "docs" / "data" / "manifest.json"
+# Both sites share the cache: the main site and the 18+ page at docs/h/.
+MANIFESTS = (ROOT / "docs" / "data" / "manifest.json", ROOT / "docs" / "h" / "data" / "manifest.json")
 HANDLES = ROOT / "data" / "handles.json"
 ENDPOINT = "https://cdn.syndication.twimg.com/tweet-result?id={id}&lang=en&token=0"
 WORKERS = 4
@@ -105,7 +106,7 @@ def main() -> int:
     ap.add_argument("--max-age-days", type=float, default=30)
     args = ap.parse_args()
 
-    items = json.loads(MANIFEST.read_text())["items"]
+    items = [it for m in MANIFESTS if m.exists() for it in json.loads(m.read_text())["items"]]
     cache: dict[str, dict] = json.loads(HANDLES.read_text()) if HANDLES.exists() else {}
     cutoff = time.time() - args.max_age_days * 86400
 

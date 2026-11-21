@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Fetch approximate like counts for every tweet in the gallery.
+"""Fetch approximate like counts for every tweet in the gallery, on the main site and the 18+ page.
 
 Uses X's public embed endpoint (the one that powers embedded tweets), which needs no login.
 That endpoint hides sensitive (age-restricted) tweets behind an empty tombstone, so those are
 looked up again through the public FxTwitter API, which still sees them.
 Both are undocumented, so requests are paced gently and retried on rate limits.
 Results are cached in data/likes.json, and tweets fetched recently are skipped, so reruns are cheap.
-Run tools/build_malfoid_gallery.py afterwards to put the counts into the manifest.
+Run tools/build_malfoid_gallery.py (and with --audience adult) afterwards to put the counts into the manifests.
 
 Usage:
     python3 tools/fetch_likes.py                  # fetch tweets never fetched or older than 7 days
@@ -27,7 +27,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MANIFEST = ROOT / "docs" / "data" / "manifest.json"
+# Both sites share the caches: the main site and the 18+ page at docs/h/.
+MANIFESTS = (ROOT / "docs" / "data" / "manifest.json", ROOT / "docs" / "h" / "data" / "manifest.json")
 LIKES = ROOT / "data" / "likes.json"
 ENDPOINT = "https://cdn.syndication.twimg.com/tweet-result?id={id}&lang=en&token=0"
 FALLBACK = "https://api.fxtwitter.com/status/{id}"
@@ -103,7 +104,7 @@ def main() -> int:
     ap.add_argument("--max-age-days", type=float, default=7)
     args = ap.parse_args()
 
-    items = json.loads(MANIFEST.read_text())["items"]
+    items = [it for m in MANIFESTS if m.exists() for it in json.loads(m.read_text())["items"]]
     cache: dict[str, dict] = json.loads(LIKES.read_text()) if LIKES.exists() else {}
     cutoff = time.time() - args.max_age_days * 86400
     ids = sorted({it["t"] for it in items if it["t"]})
