@@ -66,7 +66,7 @@
       <p class="hero-meta" id="hero-meta">Loading the collection…<button type="button" class="info-toggle" id="info-toggle" aria-expanded="true" aria-controls="hero-notes" aria-label="About this archive"><span aria-hidden="true">i</span></button></p>
       <div class="hero-notes open" id="hero-notes">
         <div class="hero-notes-inner">
-          <p class="hero-coverage" id="tl-coverage" hidden data-main-only><span>Below are all the works I can find predates Oct 2026, counting all the platforms, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed any, especially those predates September 23 2026<br>Before Malfoid became a thing, she appeared as Female Draco Malfoy in #drarry tag</span></p>
+          <p class="hero-coverage" id="tl-coverage" hidden data-main-only><span>Below are all the works I can find predates Oct 2026, counting all the platforms, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed any, especially those predates September 23 2026<br>Before Malfoid became a thing, she appeared as genderbent Draco Malfoy in #drarry tag across platforms</span></p>
           <p class="hero-coverage" id="x-coverage" data-main-only><span>Covers hand-drawn artwork posted on Twitter (X) only. NO AI arts, 18+ ver exists if you can find it. Art on Pixiv, Instagram and other sites isn't tracked since I'm too lazy to manually tag<br>This is not every art out there on Twitter nor I have every pieces of every artists on this site, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed your art or you found any AI/18+ arts that doesn't belong here<br>Or if you want your artwork to be removed please DM me too</span></p>
           <p class="hero-coverage" id="h-coverage" data-adult-only><span>I don't actively save R18 artworks on Twitter</span></p>
         </div>
@@ -193,6 +193,7 @@
         <div class="shelf-track" id="buried-track"></div>
       </section>
 
+      <!-- Overlooked Malfoid artworks is switched off for now (see buildShelves in app.js).
       <section class="shelf" id="overlooked-malfoid" aria-labelledby="overlooked-title">
         <div class="shelf-head">
           <div>
@@ -205,6 +206,35 @@
           </div>
         </div>
         <div class="shelf-track" id="overlooked-track"></div>
+      </section>
+      -->
+
+      <section class="shelf" id="recently-added" aria-labelledby="added-title">
+        <div class="shelf-head">
+          <div>
+            <h2 id="added-title"><a href="?sort=added#gallery" id="added-link">Recently Added Works</a></h2>
+            <p class="shelf-sub">New works' like counts are not stable for likes filtering</p>
+          </div>
+          <div class="shelf-controls">
+            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll Recently Added Works left">‹</button>
+            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll Recently Added Works right">›</button>
+          </div>
+        </div>
+        <div class="shelf-track" id="added-track"></div>
+      </section>
+
+      <section class="shelf" id="newest-posted" aria-labelledby="newest-title">
+        <div class="shelf-head">
+          <div>
+            <h2 id="newest-title"><a href="?sort=newest#gallery" id="newest-link">Newest Posted Works</a></h2>
+            <p class="shelf-sub">New works' like counts are not stable for likes filtering</p>
+          </div>
+          <div class="shelf-controls">
+            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll Newest Posted Works left">‹</button>
+            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll Newest Posted Works right">›</button>
+          </div>
+        </div>
+        <div class="shelf-track" id="newest-track"></div>
       </section>
 
       <section class="shelf" id="my-pick" aria-labelledby="pick-title" hidden>

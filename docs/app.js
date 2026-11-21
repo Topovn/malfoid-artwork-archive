@@ -30,6 +30,7 @@
   };
   const SHELF_SIZE = 30; // works shown at once in the shuffled shelves
   const RANDOM_SHELF_SIZE = 20; // works shown at once in the like-range shelves and Buried Malfoid
+  const LATEST_SHELF_SIZE = 20; // works shown in Recently Added Works and Newest Posted Works
   const RANDOM_SIZE = 50; // works shown in the Random tab, one per artist
   const LONG_VIDEO = 30; // videos this many seconds or longer count as Videos (see isVideo)
   const VIDEO_ARTISTS = new Set(["alessandro49472"]); // every work by these artists counts as Videos
@@ -185,6 +186,10 @@
   const fmtLikes = (n) => compactFmt.format(n);
   // When a work was posted, in ms. "y" is a posting year for works with no exact date (no tweet id); it counts as Jan 1.
   const postedMs = (it) => it.p || (it.y ? Date.UTC(it.y, 0, 1) : 0);
+  // The gallery's Recently added and Newest posted orders, shared with their home shelves.
+  const byFile = (a, b) => (a.f < b.f ? -1 : a.f > b.f ? 1 : 0);
+  const byAdded = (a, b) => b.d - a.d || byFile(a, b);
+  const byNewest = (a, b) => postedMs(b) - postedMs(a) || byFile(a, b);
   // Likes for sorting and filtering: the real count, else a lost tweet's hidden estimate (the artist's average).
   const rankLikes = (it) => it.v ?? it.e;
   const fmtPosted = (it) => (it.p ? fmtDate(it.p) : it.y ? String(it.y) : "Unknown");
@@ -364,10 +369,9 @@
       return true;
     });
 
-    const byFile = (a, b) => (a.f < b.f ? -1 : a.f > b.f ? 1 : 0);
     const sorters = {
-      added: (a, b) => b.d - a.d || byFile(a, b),
-      newest: (a, b) => postedMs(b) - postedMs(a) || byFile(a, b),
+      added: byAdded,
+      newest: byNewest,
       // Images from one tweet share its count, so they stay together.
       liked: (a, b) => (rankLikes(b) ?? -1) - (rankLikes(a) ?? -1) || (a.t < b.t ? -1 : a.t > b.t ? 1 : 0) || a.i - b.i || byFile(a, b),
       oldest: (a, b) => (postedMs(a) || Infinity) - (postedMs(b) || Infinity) || byFile(a, b),
@@ -1297,16 +1301,16 @@
 
   // ---------- Home: shelves ----------
 
-  const shelves = { pick: [], fame: [], famous: [], popular: [], big: [], gems: [], hidden: [], small: [], buried: [], overlooked: [] };
+  const shelves = { pick: [], fame: [], famous: [], popular: [], big: [], gems: [], hidden: [], small: [], buried: [], added: [], newest: [] };
   const shelfPools = { famous: [], popular: [], big: [], gems: [], hidden: [], small: [], buried: [] };
   // Shelves that draw a fresh set on every load (Shuffle picks another), one artist at a time, and how many they show.
   const RANDOM_SHELVES = Object.fromEntries(
     [...Object.keys(SHELF_LIKE_RANGES), "buried"].map((k) => [k, RANDOM_SHELF_SIZE])
   );
   const shelfSeeds = Object.fromEntries(Object.keys(RANDOM_SHELVES).map((k) => [k, newSeed()]));
-  // Overlooked and My Personal Favorite show all their works in a fresh order on every load, kept for the visit
-  // so the pick shelf doesn't jump while picks are edited.
-  const overlookedSeed = newSeed();
+  // My Personal Favorite shows all its works in a fresh order on every load, kept for the visit
+  // so the pick shelf doesn't jump while picks are edited. (Overlooked did too; it is switched off for now.)
+  // const overlookedSeed = newSeed();
   const pickSeed = newSeed();
 
   // A small seeded shuffle for Small Artists, which draws a fresh set on every load.
@@ -1344,15 +1348,16 @@
     // Small Artists shows an artist's best work, so those artists stay off the like-range shelves.
     // The like-range shelves and Buried Malfoid draw from every work in their like range, one artist at a time.
     const bests = [...bestByArtist.values()];
-    // Overlooked shows every qualifying work, shuffled; those works stay off Buried Malfoid.
-    shelves.overlooked = tweets
-      .filter((it) => {
-        const fo = artistStats.get(it._al).followers;
-        return fo >= OVERLOOKED_MIN_FOLLOWERS && !COMIC_DUBBERS.has(it._al) && it.v < fo * OVERLOOKED_RATIO;
-      })
-      .sort((a, b) => randomRank(a, overlookedSeed) - randomRank(b, overlookedSeed) || (a.f < b.f ? -1 : 1));
-    const overlooked = new Set(shelves.overlooked);
-    shelfPools.buried = tweets.filter((it) => it.v < BURIED_MAX && !overlooked.has(it));
+    // Overlooked Malfoid artworks is switched off for now, with its section in index.html.
+    // It showed every qualifying work, shuffled, and kept those works off Buried Malfoid.
+    // shelves.overlooked = tweets
+    //   .filter((it) => {
+    //     const fo = artistStats.get(it._al).followers;
+    //     return fo >= OVERLOOKED_MIN_FOLLOWERS && !COMIC_DUBBERS.has(it._al) && it.v < fo * OVERLOOKED_RATIO;
+    //   })
+    //   .sort((a, b) => randomRank(a, overlookedSeed) - randomRank(b, overlookedSeed) || (a.f < b.f ? -1 : 1));
+    // const overlooked = new Set(shelves.overlooked);
+    shelfPools.buried = tweets.filter((it) => it.v < BURIED_MAX);
     shelfPools.small = bests.filter(
       (it) => it.v >= BURIED_MAX && (artistStats.get(it._al).followers ?? Infinity) < SMALL_FOLLOWERS
     );
@@ -1363,8 +1368,14 @@
 
     for (const name of Object.keys(RANDOM_SHELVES)) shuffleShelf(name, shelfSeeds[name]);
     shuffleShelf("small");
+    // The gallery's first works when ordered by Recently added and by Newest posted, videos included.
+    shelves.added = items.slice().sort(byAdded).slice(0, LATEST_SHELF_SIZE);
+    shelves.newest = items.slice().sort(byNewest).slice(0, LATEST_SHELF_SIZE);
+
     renderShelf("fame");
-    renderShelf("overlooked");
+    // renderShelf("overlooked");
+    renderShelf("added");
+    renderShelf("newest");
   }
 
   // One artist max: pick artists with the seed, then one of that artist's works in the pool, in shuffled order.
@@ -1477,6 +1488,15 @@
     e.preventDefault();
     showGallery({ sort: "liked", q: "", artist: "", likes: "", followers: "", kind: "" });
   });
+  for (const [id, sort] of [
+    ["#added-link", "added"],
+    ["#newest-link", "newest"],
+  ]) {
+    $(id).addEventListener("click", (e) => {
+      e.preventDefault();
+      showGallery({ sort, q: "", artist: "", likes: "", followers: "", kind: "", page: 1 });
+    });
+  }
   $("#pick-link").addEventListener("click", (e) => {
     e.preventDefault();
     showGallery({ kind: "pick", q: "", artist: "", likes: "", followers: "" });
