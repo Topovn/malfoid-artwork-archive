@@ -78,7 +78,7 @@
   };
 
   // The 18+ page (docs/h/) has only the Gallery and Artists tabs, opens on the Gallery,
-  // and has no My Personal Pick or Lost tweets filter.
+  // and has no My Personal Favorite or Lost tweets filter.
   const ADULT_SITE = document.documentElement.dataset.site === "h";
   const VIEWS = ADULT_SITE ? ["gallery", "artists"] : ["home", "random", "gallery", "timeline", "artists"];
   const DEFAULT_VIEW = VIEWS[0]; // shown at the bare address; the 18+ page then moves it to #gallery
@@ -487,11 +487,11 @@
       (it.v != null ? `, about ${fmtLikes(it.v)} likes` : "") +
       (it.k === "anim" ? ", animation" : "") +
       (it.l ? ", lost tweet" : "") +
-      (pickSet.has(it.f) ? ", in My Personal Pick" : "")
+      (pickSet.has(it.f) ? ", in My Personal Favorite" : "")
     );
   }
 
-  // ---------- My Personal Pick ----------
+  // ---------- My Personal Favorite ----------
   // The list lives in data/picks.json. It can only be changed through tools/serve.py, the owner's
   // local server, which marks data/picks.json with an X-Malfoid-Edit header and accepts PUT /api/picks.
   // Everywhere else (GitHub Pages, a plain static server) picks are read-only.
@@ -544,7 +544,7 @@
     const on = pickSet.has(it.f);
     if (pickEl.tagName === "BUTTON") {
       pickEl.setAttribute("aria-pressed", String(on));
-      pickEl.setAttribute("aria-label", on ? "Remove from My Personal Pick" : "Add to My Personal Pick");
+      pickEl.setAttribute("aria-label", on ? "Remove from My Personal Favorite" : "Add to My Personal Favorite");
     } else {
       pickEl.hidden = !on;
     }
@@ -570,7 +570,7 @@
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       })
       .catch(async (err) => {
-        console.error("Couldn't save My Personal Pick:", err);
+        console.error("Couldn't save My Personal Favorite:", err);
         // Fall back to whatever the server holds, or to the list before this change.
         try {
           const res = await fetch("api/picks", { cache: "no-store" });
@@ -1023,7 +1023,7 @@
     if (b.hidden) return;
     const on = pickSet.has(it.f);
     b.setAttribute("aria-pressed", String(on));
-    b.querySelector("span").textContent = on ? "Remove from My Personal Pick" : "Add to My Personal Pick";
+    b.querySelector("span").textContent = on ? "Remove from My Personal Favorite" : "Add to My Personal Favorite";
   }
 
   function preloadNeighbours(index) {
@@ -1081,8 +1081,12 @@
   // Shelves that draw a fresh set on every load (Shuffle picks another), one artist at a time, and how many they show.
   const RANDOM_SHELVES = { big: RANDOM_SHELF_SIZE, gems: RANDOM_SHELF_SIZE, hidden: RANDOM_SHELF_SIZE, buried: RANDOM_SHELF_SIZE };
   const shelfSeeds = Object.fromEntries(Object.keys(RANDOM_SHELVES).map((k) => [k, newSeed()]));
+  // Overlooked and My Personal Favorite show all their works in a fresh order on every load, kept for the visit
+  // so the pick shelf doesn't jump while picks are edited.
+  const overlookedSeed = newSeed();
+  const pickSeed = newSeed();
 
-  // A small seeded shuffle, so Small Artists changes once a day and stays put on reload.
+  // A small seeded shuffle for Small Artists, which draws a fresh set on every load.
   function seededShuffle(list, seed) {
     const out = list.slice();
     let s = seed >>> 0 || 1;
@@ -1098,7 +1102,7 @@
     // One entry per tweet: its first image, carrying the tweet's like count.
     const byTweet = new Map();
     for (const it of items) {
-      if (it.v == null || !it.t || isVideo(it)) continue; // Videos stay off the home shelves (My Personal Pick excepted)
+      if (it.v == null || !it.t || isVideo(it)) continue; // Videos stay off the home shelves (My Personal Favorite excepted)
       const cur = byTweet.get(it.t);
       if (!cur || it.i < cur.i) byTweet.set(it.t, it);
     }
@@ -1117,14 +1121,13 @@
     // Small Artists shows an artist's best work, so those artists stay off the gem shelves.
     // The gem shelves and Buried Malfoid draw from every work in their like range, one artist at a time.
     const bests = [...bestByArtist.values()];
-    // Overlooked shows every qualifying work, lowest reach first; those works stay off Buried Malfoid.
-    const reach = (it) => it.v / artistStats.get(it._al).followers;
+    // Overlooked shows every qualifying work, shuffled; those works stay off Buried Malfoid.
     shelves.overlooked = tweets
       .filter((it) => {
         const fo = artistStats.get(it._al).followers;
         return fo >= OVERLOOKED_MIN_FOLLOWERS && !COMIC_DUBBERS.has(it._al) && it.v < fo * OVERLOOKED_RATIO;
       })
-      .sort((a, b) => reach(a) - reach(b) || (a.f < b.f ? -1 : 1));
+      .sort((a, b) => randomRank(a, overlookedSeed) - randomRank(b, overlookedSeed) || (a.f < b.f ? -1 : 1));
     const overlooked = new Set(shelves.overlooked);
     shelfPools.buried = tweets.filter((it) => it.v < BURIED_MAX && !overlooked.has(it));
     shelfPools.small = bests.filter(
@@ -1136,7 +1139,7 @@
     }
 
     for (const name of Object.keys(RANDOM_SHELVES)) shuffleShelf(name, shelfSeeds[name]);
-    shuffleShelf("small", Math.floor(Date.now() / 864e5) * 7 + 3);
+    shuffleShelf("small");
     renderShelf("fame");
     renderShelf("overlooked");
   }
@@ -1164,14 +1167,15 @@
       shuffleOnePerArtist(name, seed ?? newSeed());
       return;
     }
-    shelves[name] = seededShuffle(shelfPools[name], seed ?? Math.random() * 2 ** 32)
-      .slice(0, SHELF_SIZE)
-      .sort((a, b) => b.v - a.v);
+    shelves[name] = seededShuffle(shelfPools[name], seed ?? newSeed()).slice(0, SHELF_SIZE);
     renderShelf(name);
   }
 
   function renderPickShelf(keepScroll) {
-    shelves.pick = picks.map((f) => itemByFile.get(f)).filter(Boolean);
+    shelves.pick = picks
+      .map((f) => itemByFile.get(f))
+      .filter(Boolean)
+      .sort((a, b) => randomRank(a, pickSeed) - randomRank(b, pickSeed) || (a.f < b.f ? -1 : 1));
     $("#my-pick").hidden = !shelves.pick.length && !picksEditable;
     renderShelf("pick", keepScroll);
   }
