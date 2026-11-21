@@ -12,3 +12,5 @@ docs/h/thumbs/*.frame.png
 data/.upload.lock
 # Local graphify knowledge graph.
 graphify-out/
+# Python environment for tools/detect_comics.py (see tools/requirements-comics.txt).
+.venv/

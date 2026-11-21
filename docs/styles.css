@@ -772,6 +772,11 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 .viewer-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
 .viewer-tags .badge { backdrop-filter: none; background: #262c29; }
 .viewer-tags .badge-lost { background: #b86e00; margin-left: 0; }
+/* The owner's Comic toggle (local server only): outlined when off, filled when on. */
+.viewer-tags .badge-toggle { border: 1px dashed #4a524e; background: transparent; color: #8e9893; font: inherit; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; cursor: pointer; }
+.viewer-tags .badge-toggle:hover { border-color: #8e9893; color: #e8ece9; }
+.viewer-tags .badge-toggle[aria-pressed="true"] { border-style: solid; border-color: transparent; background: #262c29; color: #fff; }
+.viewer-tags .badge-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .viewer-lost {
   margin: 14px 0 0;
   padding: 10px 12px;
@@ -846,6 +851,9 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   .select::after { right: 14px; }
   .segmented { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; }
   .segmented button[role="radio"] { padding: 0 10px; }
+  /* An odd number of filters leaves the last alone on its row; let it take the full width. */
+  :root:not([data-site="h"]) .segmented button[role="radio"]:last-child:nth-child(odd),
+  :root[data-site="h"] .segmented button[role="radio"]:last-child:nth-child(odd of :not([data-main-only])) { grid-column: 1 / -1; }
   .card-meta { opacity: 1; font-size: 12px; padding: 22px 8px 7px; }
   .card-link { opacity: 1; visibility: visible; left: 8px; bottom: 7px; }
   #per-page { min-width: 0; }

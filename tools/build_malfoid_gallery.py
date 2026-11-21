@@ -32,6 +32,9 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import detect_comics  # noqa: E402
+
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_SITE = REPO / "docs"  # the main site; GitHub Pages publishes this folder
 ADULT_SITE = DEFAULT_SITE / "h"  # the 18+ page, published at <main site>/h/
@@ -271,6 +274,9 @@ def main() -> int:
     # Approximate like counts from tools/fetch_likes.py.
     likes_path = DATA / "likes.json"
     likes = json.loads(likes_path.read_text()) if likes_path.exists() else {}
+    # Comics: tools/detect_comics.py measures each still image; the owner's corrections in data/comics.json win.
+    comic_feats = detect_comics.load_json(detect_comics.FEATURES, {})
+    comic_fixes = detect_comics.load_json(detect_comics.DECISIONS, {})
     # Current handles from tools/trace_handles.py, keyed by lowercased saved handle.
     handles_path = DATA / "handles.json"
     handles = json.loads(handles_path.read_text()) if handles_path.exists() else {}
@@ -327,6 +333,8 @@ def main() -> int:
             item["y"] = int(years[p.name])  # posting year only; no exact date is known
         if tweet in danbooru:
             item["b"] = danbooru[tweet]
+        if item["k"] == "art" and detect_comics.is_comic(p.name, comic_feats.get(p.name), comic_fixes):
+            item["c"] = 1
         if tweet in likes and likes[tweet].get("likes") is not None:
             item["v"] = likes[tweet]["likes"]
         if p.name in released:

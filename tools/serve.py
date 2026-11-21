@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""Serve the gallery locally with My Pick editing turned on.
+"""Serve the gallery locally with My Pick and Comic tag editing turned on.
 
 Static hosting (GitHub Pages) can't save anything, so My Pick is edited here and published by committing
 data/picks.json. This server serves the gallery folder like `python3 -m http.server` and adds:
 
     GET /api/picks   the current list
     PUT /api/picks   replace the list, body {"picks": ["<filename>", ...]}
+    GET /api/comics  the owner's Comic corrections, {"comic": [...], "art": [...]}
+    PUT /api/comics  replace them (stored in data/comics.json, applied to the manifests by the next build)
 
-Responses for data/picks.json carry an X-Malfoid-Edit header, which tells the page to show the heart buttons.
+Responses for data/picks.json and /api/comics carry an X-Malfoid-Edit header, which tells the page
+to show the heart buttons and the Comic tag toggle.
 It listens on 127.0.0.1 only, refuses requests addressed to any other host name (DNS rebinding),
 and rejects cross-site writes, so only the owner's own browser can edit.
 
@@ -15,7 +18,7 @@ Usage:
     python3 tools/serve.py [--port 8770]
     then open http://127.0.0.1:8770/ and tap the heart on any work.
 
-Publishing: commit and push data/picks.json. On the live site the list is read-only.
+Publishing: commit and push data/picks.json; rebuild for Comic corrections. On the live site both are read-only.
 """
 
 from __future__ import annotations
@@ -33,9 +36,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "docs"  # serve only the published site, never tools/ or the working caches
 PICKS = SITE / "data" / "picks.json"
+COMICS = ROOT / "data" / "comics.json"  # the owner's Comic corrections; private, applied by the next build
 MAX_PICKS = 20000
 MAX_BODY = 4 * 1024 * 1024
-EDIT_PATHS = {"/data/picks.json", "/api/picks"}
+EDIT_PATHS = {"/data/picks.json", "/api/picks", "/api/comics"}
 
 
 def read_picks() -> list[str]:
@@ -47,34 +51,58 @@ def read_picks() -> list[str]:
     return [p for p in picks if isinstance(p, str)]
 
 
-def write_picks(picks: list[str]) -> None:
+def write_json(path: Path, data: dict) -> None:
     """Write atomically, so a crash never leaves a half-written file."""
-    PICKS.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=PICKS.parent, prefix=".picks.", suffix=".tmp")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.stem}.", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            json.dump({"picks": picks}, fh, indent=1, ensure_ascii=False)
+            json.dump(data, fh, indent=1, ensure_ascii=False)
             fh.write("\n")
         os.chmod(tmp, 0o644)  # mkstemp creates 0600; keep the file readable like the rest of the site
-        os.replace(tmp, PICKS)
+        os.replace(tmp, path)
     except BaseException:
         Path(tmp).unlink(missing_ok=True)
         raise
 
 
-def validate(body: object) -> list[str]:
-    if not isinstance(body, dict) or not isinstance(body.get("picks"), list):
-        raise ValueError('expected {"picks": [...]}')
+def filenames(items: object, what: str) -> list[str]:
+    if not isinstance(items, list):
+        raise ValueError(f"expected a list of {what}")
     seen: set[str] = set()
     out = []
-    for p in body["picks"]:
+    for p in items:
         if not isinstance(p, str) or not 0 < len(p) <= 300 or "/" in p or "\\" in p:
             raise ValueError(f"not a gallery filename: {p!r}")
         if p not in seen:
             seen.add(p)
             out.append(p)
     if len(out) > MAX_PICKS:
-        raise ValueError("too many picks")
+        raise ValueError(f"too many {what}")
+    return out
+
+
+def validate(body: object) -> list[str]:
+    if not isinstance(body, dict):
+        raise ValueError('expected {"picks": [...]}')
+    return filenames(body.get("picks"), "picks")
+
+
+def read_comics() -> dict:
+    """{"comic": [...], "art": [...]}: works the owner marked as comics, and as not comics."""
+    try:
+        data = json.loads(COMICS.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        data = {}
+    return {k: [f for f in data.get(k, []) if isinstance(f, str)] for k in ("comic", "art")}
+
+
+def validate_comics(body: object) -> dict:
+    if not isinstance(body, dict):
+        raise ValueError('expected {"comic": [...], "art": [...]}')
+    out = {k: sorted(filenames(body.get(k, []), k)) for k in ("comic", "art")}
+    if set(out["comic"]) & set(out["art"]):
+        raise ValueError("a work can't be marked both comic and art")
     return out
 
 
@@ -179,11 +207,13 @@ class Handler(SimpleHTTPRequestHandler):
             return
         if self._path() == "/api/picks":
             self._json(HTTPStatus.OK, {"picks": read_picks()})
+        elif self._path() == "/api/comics":
+            self._json(HTTPStatus.OK, read_comics())
         else:
             super().do_GET()
 
     def do_PUT(self) -> None:
-        if self._path() != "/api/picks":
+        if self._path() not in ("/api/picks", "/api/comics"):
             self.send_error(HTTPStatus.NOT_FOUND)
             return
         if not self._host_ok():
@@ -200,13 +230,15 @@ class Handler(SimpleHTTPRequestHandler):
         if length > MAX_BODY:
             self.send_error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
             return
+        comics = self._path() == "/api/comics"
         try:
-            picks = validate(json.loads(self.rfile.read(length) or b"null"))
+            body = json.loads(self.rfile.read(length) or b"null")
+            data = validate_comics(body) if comics else {"picks": validate(body)}
         except (ValueError, json.JSONDecodeError) as exc:
             self._json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
             return
-        write_picks(picks)
-        self._json(HTTPStatus.OK, {"picks": picks})
+        write_json(COMICS if comics else PICKS, data)
+        self._json(HTTPStatus.OK, data)
 
     def log_message(self, fmt: str, *args) -> None:
         # Keep the console readable: only API calls and errors.

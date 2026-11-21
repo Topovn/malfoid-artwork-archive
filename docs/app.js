@@ -291,6 +291,7 @@
       const kindOk =
         state.kind === "lost" ? !!it.l
         : state.kind === "pick" ? pickSet.has(it.f)
+        : state.kind === "comic" ? !!it.c
         : state.kind === "video" ? isVideo(it)
         : state.kind === "anim" ? it.k === "anim" && !isVideo(it)
         : !state.kind || it.k === state.kind;
@@ -579,6 +580,82 @@
           setPicks(before);
         }
         refreshPicks();
+      });
+  }
+
+  // ---------- Comic tag ----------
+  // The build marks comics ("c") from tools/detect_comics.py. On the owner's local server (tools/serve.py)
+  // the viewer's Comic tag is a toggle; corrections go to data/comics.json through PUT /api/comics and
+  // reach the published manifests at the next build. Everywhere else the tag is read-only.
+
+  const COMICS_API = ADULT_SITE ? "../api/comics" : "api/comics"; // the server's root, also from /h/
+  const comicFix = { comic: new Set(), art: new Set() };
+  let comicsEditable = false;
+  let comicSave = Promise.resolve();
+
+  async function loadComicFixes() {
+    if (!["127.0.0.1", "localhost"].includes(location.hostname)) return; // the API only exists locally
+    try {
+      const res = await fetch(COMICS_API, { cache: "no-store" });
+      if (!res.ok || res.headers.get("X-Malfoid-Edit") !== "1") return;
+      setComicFixes(await res.json());
+      comicsEditable = true;
+    } catch {
+      // A plain static server: no corrections to apply.
+    }
+  }
+
+  function setComicFixes(data) {
+    for (const k of ["comic", "art"]) comicFix[k] = new Set(Array.isArray(data?.[k]) ? data[k].filter((f) => typeof f === "string") : []);
+  }
+
+  // Corrections not yet built into the manifest win over it.
+  function applyComicFixes() {
+    for (const it of items) {
+      if (comicFix.comic.has(it.f)) it.c = 1;
+      else if (comicFix.art.has(it.f)) delete it.c;
+    }
+  }
+
+  function comicToggle(it) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "badge badge-toggle";
+    b.textContent = "Comic";
+    b.setAttribute("aria-pressed", String(!!it.c));
+    b.addEventListener("click", () => toggleComic(it));
+    return b;
+  }
+
+  function refreshComic(it) {
+    if (state.kind === "comic") applyFilters();
+    if (el.viewer.open && viewerList[viewerIndex] === it) {
+      const b = el.viewerTags.querySelector(".badge-toggle");
+      if (b) b.setAttribute("aria-pressed", String(!!it.c));
+    }
+  }
+
+  function toggleComic(it) {
+    const before = { comic: new Set(comicFix.comic), art: new Set(comicFix.art), c: it.c };
+    const on = !it.c;
+    if (on) it.c = 1;
+    else delete it.c;
+    comicFix[on ? "comic" : "art"].add(it.f);
+    comicFix[on ? "art" : "comic"].delete(it.f);
+    refreshComic(it);
+    const body = JSON.stringify({ comic: [...comicFix.comic], art: [...comicFix.art] });
+    comicSave = comicSave
+      .then(async () => {
+        const res = await fetch(COMICS_API, { method: "PUT", headers: { "Content-Type": "application/json" }, body });
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      })
+      .catch((err) => {
+        console.error("Couldn't save the Comic tag:", err);
+        comicFix.comic = before.comic;
+        comicFix.art = before.art;
+        if (before.c) it.c = before.c;
+        else delete it.c;
+        refreshComic(it);
       });
   }
 
@@ -959,6 +1036,8 @@
 
     el.viewerTags.replaceChildren();
     el.viewerTags.append(badge(it.k === "anim" ? "Animation" : "Artwork", false));
+    if (comicsEditable && it.k === "art") el.viewerTags.append(comicToggle(it));
+    else if (it.c) el.viewerTags.append(badge("Comic", false));
     el.viewerTags.append(badge(it.x.toUpperCase(), false));
     if (it.l) el.viewerTags.append(badge("Lost tweet", false, "badge-lost"));
 
@@ -2135,7 +2214,7 @@
 
     let data;
     try {
-      const [res] = await Promise.all([fetch("data/manifest.json"), loadPicks(), loadEarly()]);
+      const [res] = await Promise.all([fetch("data/manifest.json"), loadPicks(), loadEarly(), loadComicFixes()]);
       if (!res.ok) throw new Error(res.status + " " + res.statusText);
       data = await res.json();
     } catch (err) {
@@ -2146,6 +2225,7 @@
 
     items = data.items;
     for (const it of items) itemByFile.set(it.f, it);
+    applyComicFixes();
     if (data.releaseBase && isSafeUrl(data.releaseBase)) releaseBase = data.releaseBase;
     const followers = data.followers || {};
     for (const it of items) {

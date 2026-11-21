@@ -1,0 +1,5 @@
+# The anime image classifier tools/detect_comics.py uses, on top of the system Python packages
+# (numpy, Pillow, opencv-python, pyobjc-framework-Vision). Set up with:
+#   python3 -m venv --system-site-packages .venv && .venv/bin/pip install -r tools/requirements-comics.txt
+dghs-imgutils
+onnxruntime
