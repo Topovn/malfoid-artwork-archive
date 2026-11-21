@@ -857,7 +857,7 @@
     return site ? `View on ${site[1]} ↗` : "View source ↗";
   }
 
-  // Early art carries no artist, tweet or file details: only the image and its year.
+  // Early art carries no tweet or file details: only the image, its year or posting date, and any credit or source.
   function renderEarlyViewer(it) {
     el.viewerNote.hidden = true;
     const media = document.createElement("img");
@@ -883,9 +883,9 @@
     el.viewerLost.hidden = true;
     el.viewerMeta.replaceChildren();
     const dt = document.createElement("dt");
-    dt.textContent = "Year";
+    dt.textContent = it.p ? "Posted" : "Year";
     const dd = document.createElement("dd");
-    dd.textContent = it.label;
+    dd.textContent = it.p ? fmtDate(it.p) : it.label;
     el.viewerMeta.append(dt, dd);
     el.viewerTweet.hidden = !it.source;
     if (it.source) {
@@ -1617,7 +1617,9 @@
           const links = (Array.isArray(e.links) ? e.links : []).filter(
             (l) => l && typeof l.label === "string" && l.label && typeof l.url === "string" && isSafeUrl(l.url)
           );
-          return { _early: true, e, label: String(e.label || e.year), credit, source, title, links };
+          // "p" (posted, ms) puts the work on its day; without it the work sits under its year label.
+          const p = Number.isFinite(e.p) && e.p > 0 ? e.p : 0;
+          return { _early: true, e, p, label: String(e.label || e.year), credit, source, title, links };
         });
     } catch {
       // No early art: the Timeline simply starts in 2026.
@@ -1686,10 +1688,12 @@
 
   function buildTimelineView() {
     const when = (it) => postedMs(it) || it.d;
-    const recent = items
+    const name = (it) => (it._early ? it.e.id : it.f);
+    // Early works with an exact date join the dated works on their day.
+    const recent = [...items, ...earlyItems.filter((it) => it.p)]
       .filter((it) => dayKey(when(it)) < TIMELINE_VIEW_END)
-      .sort((a, b) => when(a) - when(b) || (a.f < b.f ? -1 : 1));
-    tlView.list = [...earlyItems, ...recent];
+      .sort((a, b) => when(a) - when(b) || (name(a) < name(b) ? -1 : 1));
+    tlView.list = [...earlyItems.filter((it) => !it.p), ...recent];
 
     // Entries: one per early year label, a "2026"-style year marker, then one per day.
     // Works known only by year sit on that year's marker; there is no day to show.
@@ -1704,14 +1708,15 @@
         marker(String(it.y)).works.push(i);
         return;
       }
-      if (!it._early && TIMELINE_GROUPED_YEARS.has(dayKey(when(it)).slice(0, 4))) {
+      const undated = it._early && !it.p;
+      if (!undated && TIMELINE_GROUPED_YEARS.has(dayKey(when(it)).slice(0, 4))) {
         marker(dayKey(when(it)).slice(0, 4)).works.push(i);
         return;
       }
-      const key = it._early ? "early:" + it.label : dayKey(when(it));
+      const key = undated ? "early:" + it.label : dayKey(when(it));
       let cur = entries[entries.length - 1];
       if (!cur || cur.key !== key) {
-        if (it._early) {
+        if (undated) {
           cur = { key, year: String(it.e.year), label: it.label, early: true, works: [] };
         } else {
           marker(key.slice(0, 4));

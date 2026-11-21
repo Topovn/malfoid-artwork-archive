@@ -6,6 +6,7 @@ The handles in those filenames belong to reposters, not the artists, so nothing 
 files get neutral names like 2013-1, are converted to sRGB and re-encoded with no metadata,
 and docs/data/early.json carries only years and labels.
 Entries the owner marks with a 'credit' (artist name and link), a public 'source' link, a 'title' and extra 'links' are published with them.
+An entry with a 'posted' time sits on its exact day of the Timeline; the rest sit under their year label.
 These works never enter the main manifest, the gallery, the shelves or the artist list.
 
 Usage:
@@ -18,6 +19,7 @@ import argparse
 import io
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from PIL import Image, ImageCms, ImageOps
@@ -91,6 +93,9 @@ def main() -> int:
             entries[-1]["source"] = meta["source"]
         if meta.get("title"):
             entries[-1]["title"] = meta["title"]
+        # An exact posting time (ms) puts the work on its day of the Timeline instead of under its year.
+        if meta.get("posted"):
+            entries[-1]["p"] = round(datetime.fromisoformat(meta["posted"]).timestamp() * 1000)
         links = [{"label": l["label"], "url": l["url"]} for l in meta.get("links", []) if l.get("url", "").startswith("https://")]
         if links:
             entries[-1]["links"] = links

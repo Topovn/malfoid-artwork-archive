@@ -1,5 +1,5 @@
 {
- "_note": "Works shown only on the Timeline. 'dir' is the folder inside Malfoid/ (default '_Early Arts'). Entries without 'credit' are anonymous: their filename handles are reposters, so no names are published. 'credit' (artist name and link) and 'source' (an https link), 'title' and 'links' (extra https links, each with a label) are published; 'note' is private and never published.",
+ "_note": "Works shown only on the Timeline. 'dir' is the folder inside Malfoid/ (default '_Early Arts'). Entries without 'credit' are anonymous: their filename handles are reposters, so no names are published. 'credit' (artist name and link) and 'source' (an https link), 'title' and 'links' (extra https links, each with a label) are published; 'posted' (an ISO time) places a work on its exact day instead of under its year. 'note' is private and never published.",
  "works": {
   "Papa_Ph0-2107441303034495447-01.jpg": {
    "year": 2008,
@@ -99,6 +99,17 @@
      "url": "https://novelpia.com/novel/3291"
     }
    ]
+  },
+  "viria-809912496878157824-01.jpg": {
+   "year": 2026,
+   "label": "2026",
+   "posted": "2026-03-01T19:19:06Z",
+   "note": "Original Tumblr post by the artist, tagged 'my art'.",
+   "credit": {
+    "name": "viria",
+    "url": "https://www.tumblr.com/viria"
+   },
+   "source": "https://www.tumblr.com/viria/809912496878157824/wlw-drarry-because-i-had-an-itch-i-needed"
   }
  }
 }
