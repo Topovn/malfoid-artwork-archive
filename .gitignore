@@ -14,3 +14,6 @@ data/.upload.lock
 graphify-out/
 # Python environment for tools/detect_comics.py (see tools/requirements-comics.txt).
 .venv/
+# Private exports and caches, never published.
+*.csv
+data/private/

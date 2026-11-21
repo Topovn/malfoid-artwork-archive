@@ -75,6 +75,9 @@
     viewerLink: $("#viewer-link"),
     viewerTags: $("#viewer-tags"),
     viewerLost: $("#viewer-lost"),
+    viewerPost: $("#viewer-post"),
+    viewerText: $("#viewer-text"),
+    viewerTextMore: $("#viewer-text-more"),
     viewerMeta: $("#viewer-meta"),
     viewerTweet: $("#viewer-tweet"),
     viewerDanbooru: $("#viewer-danbooru"),
@@ -115,6 +118,11 @@
     "100k": [100000, Infinity],
   };
   let items = [];
+  // The archive's totals. The published manifest leaves out hidden artists' works but carries the totals with them
+  // ("totals"), so the site's numbers stay the whole archive's; without it they are counted from the works here.
+  let manifestTotals = null;
+  const totalWorks = () => manifestTotals?.works ?? items.length;
+  const totalArtists = () => manifestTotals?.artists ?? artistStats.size;
   const itemByFile = new Map();
   let artistStats = new Map(); // lowercased handle -> {key, handle, count, latest, cover}
   const formerHandles = new Map(); // lowercased former handle -> lowercased current handle
@@ -336,11 +344,11 @@
     if (lastFilterKey !== null && key !== lastFilterKey) state.page = 1;
     lastFilterKey = key;
 
-    const total = numberFmt.format(items.length);
+    const total = numberFmt.format(totalWorks());
     const artistsShown = new Set(out.map((it) => it._al)).size;
     el.count.textContent =
       out.length === items.length
-        ? `${total} works by ${numberFmt.format(artistStats.size)} artists`
+        ? `${total} works by ${numberFmt.format(totalArtists())} artists`
         : state.artist
         ? `${numberFmt.format(out.length)} of ${total} works` // the artist chip already names the one artist
         : `${numberFmt.format(out.length)} of ${total} works · ${plural(artistsShown, "artist", "artists")}`;
@@ -746,6 +754,7 @@
       badges.replaceChildren();
       if (it.k === "anim") badges.append(badge(it.x === "gif" ? "GIF" : "Video", true));
       if (it.l) badges.append(badge("Lost tweet", false, "badge-lost"));
+      if (it.z) badges.append(badge("Hidden", false, "badge-hidden")); // owner's local view only (tools/serve.py)
       node.style.width = cellW + "px";
       node.style.height = cellH + "px";
       node.style.transform = `translate(${x}px, ${y}px)`;
@@ -868,6 +877,72 @@
     writeUrl(undefined, true);
   }
 
+  // ---------- Post text ----------
+  // tools/fetch_texts.py caches each live tweet's text and the build writes data/texts.json, keyed by tweet ID.
+  // It loads after the page is up so the archive index stays small; an open viewer fills in once it arrives.
+
+  let postTexts = {};
+
+  async function loadTexts() {
+    try {
+      const res = await fetch("data/texts.json");
+      if (!res.ok) return;
+      postTexts = await res.json();
+    } catch {
+      return;
+    }
+    if (el.viewer.open && viewerList[viewerIndex]) renderPostText(viewerList[viewerIndex]);
+  }
+
+  // Links, @mentions and #hashtags, linked the way the tweet links them. A hashtag needs a letter, so "#1" stays text.
+  const POST_TOKEN_RE = /(https?:\/\/\S+)|(?<![\w@])@(\w{1,15})|(?<![\w&#])#(?=[\p{N}_]*\p{L})([\p{L}\p{M}\p{N}_]+)/gu;
+
+  function linkedText(text) {
+    const frag = document.createDocumentFragment();
+    let last = 0;
+    for (const m of text.matchAll(POST_TOKEN_RE)) {
+      let label = m[0];
+      let href;
+      if (m[1]) href = label = label.replace(/[.,;:!?'")\]}>]+$/, ""); // punctuation after a link is prose
+      else if (m[2]) href = `https://x.com/${m[2]}`;
+      else href = `https://x.com/hashtag/${encodeURIComponent(m[3])}`;
+      frag.append(text.slice(last, m.index));
+      const a = document.createElement("a");
+      a.href = href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = label;
+      frag.append(a);
+      last = m.index + label.length;
+    }
+    frag.append(text.slice(last));
+    return frag;
+  }
+
+  // Long posts start clamped to a few lines; "Show more" appears only when the text overflows.
+  function renderPostText(it) {
+    const text = !it._early && !it.l && it.t ? postTexts[it.t] : "";
+    el.viewerPost.hidden = !text;
+    el.viewerText.replaceChildren(text ? linkedText(text) : "");
+    setPostExpanded(false);
+  }
+
+  function setPostExpanded(open) {
+    el.viewerText.classList.toggle("clamped", !open);
+    el.viewerTextMore.setAttribute("aria-expanded", String(open));
+    el.viewerTextMore.textContent = open ? "Show less" : "Show more";
+    fitPostText();
+  }
+
+  function fitPostText() {
+    if (el.viewerPost.hidden || el.viewerTextMore.getAttribute("aria-expanded") === "true") return;
+    el.viewerTextMore.hidden = el.viewerText.scrollHeight <= el.viewerText.clientHeight + 1;
+  }
+
+  // Also measures once the dialog opens, since a closed dialog has no layout.
+  new ResizeObserver(fitPostText).observe(el.viewerText);
+  el.viewerTextMore.addEventListener("click", () => setPostExpanded(el.viewerTextMore.getAttribute("aria-expanded") !== "true"));
+
   // ---------- Viewer ----------
 
   function openViewer(index, list = viewerList, from = null, push = true) {
@@ -968,6 +1043,7 @@
     el.viewerLink.hidden = true;
     el.viewerTags.replaceChildren(badge("Early art", false));
     el.viewerLost.hidden = true;
+    renderPostText(it);
     el.viewerMeta.replaceChildren();
     const dt = document.createElement("dt");
     dt.textContent = it.p ? "Posted" : "Year";
@@ -1050,9 +1126,11 @@
     else if (it.c) el.viewerTags.append(badge("Comic", false));
     el.viewerTags.append(badge(it.x.toUpperCase(), false));
     if (it.l) el.viewerTags.append(badge("Lost tweet", false, "badge-lost"));
+    if (it.z) el.viewerTags.append(badge("Hidden", false, "badge-hidden"));
 
     el.viewerLost.hidden = !it.l;
     if (it.l) el.viewerLost.textContent = it.l;
+    renderPostText(it);
 
     el.viewerMeta.replaceChildren();
     const followers = artistStats.get(it._al)?.followers;
@@ -1913,7 +1991,7 @@
         ? artistRank(a.key, artistSeed) - artistRank(b.key, artistSeed) || (a.key < b.key ? -1 : 1)
         : b.count - a.count || (a.key < b.key ? -1 : 1)
     );
-    el.artistCount.textContent = plural(list.length, "artist", "artists");
+    el.artistCount.textContent = plural(list.length === artistStats.size ? totalArtists() : list.length, "artist", "artists");
 
     // Render in chunks so 2700+ rows never block the main thread.
     cancelAnimationFrame(artistFrame);
@@ -2211,7 +2289,7 @@
     date.className = "nowrap";
     date.append(fmtDate(data.generated), $("#info-toggle"));
     el.heroMeta.replaceChildren(
-      `${numberFmt.format(items.length)} works · ${plural(artistStats.size, "artist", "artists")} · Updated `,
+      `${numberFmt.format(totalWorks())} works · ${plural(totalArtists(), "artist", "artists")} · Updated `,
       date,
     );
 
@@ -2262,6 +2340,8 @@
     }
 
     items = data.items;
+    const t = data.totals;
+    if (t && Number.isInteger(t.works) && Number.isInteger(t.artists)) manifestTotals = t;
     for (const it of items) itemByFile.set(it.f, it);
     applyComicFixes();
     if (data.releaseBase && isSafeUrl(data.releaseBase)) releaseBase = data.releaseBase;
@@ -2294,6 +2374,7 @@
     }
 
     renderHero(data);
+    loadTexts();
 
 
     applyFilters();

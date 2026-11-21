@@ -10,6 +10,9 @@ That page shares the main site's code, styles and icons and adds only its own da
 Malfoid AI/ is never scanned by either build.
 
 Writes data/manifest.json and one WebP thumbnail per work into the chosen site folder.
+Works by hidden artists (see tools/site_paths.py) stay out of it: the build also writes a full copy of the site's
+manifest, post texts and the hidden works' thumbnails to data/private/site/ (or site/h/), which only the owner's
+local server shows.
 Thumbnails are only regenerated when the source file is newer, so reruns are cheap.
 
 Usage:
@@ -34,6 +37,7 @@ from PIL import Image, ImageOps
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import detect_comics  # noqa: E402
+from site_paths import FULL_SITES, hidden_handles  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_SITE = REPO / "docs"  # the main site; GitHub Pages publishes this folder
@@ -205,6 +209,30 @@ def write_adult_page() -> None:
         media.symlink_to(ADULT_SRC, target_is_directory=True)
 
 
+def write_site_data(site_data: Path, items: list[dict], followers: dict, rel: dict, text_cache: dict,
+                    totals: dict) -> None:
+    """Write one copy's manifest and post texts, covering only the given works and their artists."""
+    manifest = {"generated": max((it["d"] for it in items), default=0), "count": len(items), "totals": totals, "items": items}
+    artist_keys = {it["a"].lower() for it in items}
+    manifest["followers"] = {
+        k: v["followers"]
+        for k, v in sorted(followers.items())
+        if k in artist_keys and v.get("followers") is not None
+    }
+    if rel.get("repo"):
+        manifest["releaseBase"] = f"https://github.com/{rel['repo']}/releases/download/"
+    site_data.mkdir(parents=True, exist_ok=True)
+    (site_data / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":"), ensure_ascii=False))
+    # Post texts from tools/fetch_texts.py, keyed by tweet ID, for live tweets only.
+    # They sit in their own file, which the viewer loads after the page is up, so the manifest stays small.
+    texts = {
+        tid: text
+        for tid in sorted({it["t"] for it in items if it["t"] and "l" not in it})
+        if (text := text_cache.get(tid, {}).get("text"))
+    }
+    (site_data / "texts.json").write_text(json.dumps(texts, separators=(",", ":"), ensure_ascii=False))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", help="main-build source folder (default Malfoid/)")
@@ -228,6 +256,10 @@ def main() -> int:
         site = REPO / site
     thumbs = site / "thumbs"
     site_data = site / "data"
+    # The full copy, with the hidden artists' works; a test build to another folder keeps its own next to it.
+    full_site = FULL_SITES[args.audience] if site in (DEFAULT_SITE, ADULT_SITE) else site.with_name(site.name + "-full")
+    full_thumbs = full_site / "thumbs"
+    hidden = hidden_handles()
     if not src.is_dir():
         sys.exit(f"Source folder not found: {src}")
 
@@ -242,13 +274,32 @@ def main() -> int:
 
     files = source_files(src, args.audience)
 
+    # Current handles from tools/trace_handles.py, keyed by lowercased saved handle.
+    handles_path = DATA / "handles.json"
+    handles = json.loads(handles_path.read_text()) if handles_path.exists() else {}
+    # Manual renames for handles the tracer can't resolve.
+    aliases_path = DATA / "aliases.json"
+    aliases = {k.lower(): v for k, v in (json.loads(aliases_path.read_text()) if aliases_path.exists() else {}).get("handles", {}).items()}
+
+    def artist(p: Path) -> tuple[str, str | None]:
+        """(saved handle, current handle if the account was renamed) of one work."""
+        handle = lost_meta.get(p.name, {}).get("artist_handle") or parse_name(p.stem)[0]
+        return handle, aliases.get(handle.lower()) or handles.get(handle.lower(), {}).get("current")
+
+    hidden_files = {p.name for p, _ in files if any(h and h.lower() in hidden for h in artist(p))}
+
     thumbs.mkdir(parents=True, exist_ok=True)
+    full_thumbs.mkdir(parents=True, exist_ok=True)
     DATA.mkdir(parents=True, exist_ok=True)
 
     jobs = []
     for p, _ in files:
         kind = "video" if p.suffix.lower().lstrip(".") in VIDEO_EXTS else "image"
-        jobs.append((str(p), str(thumbs / f"{p.name}.webp"), kind))
+        name = f"{p.name}.webp"
+        dst, other = (full_thumbs, thumbs) if p.name in hidden_files else (thumbs, full_thumbs)
+        if (other / name).exists() and not (dst / name).exists():
+            os.replace(other / name, dst / name)  # an artist was hidden or unhidden: move the thumbnail over
+        jobs.append((str(p), str(dst / name), kind))
 
     print(f"Processing {len(jobs)} files with {os.cpu_count()} workers...", flush=True)
     results = {}
@@ -261,11 +312,12 @@ def main() -> int:
             if i % 500 == 0:
                 print(f"  {i}/{len(jobs)}", flush=True)
 
-    # Drop thumbnails whose source no longer exists.
-    wanted = {Path(j[1]).name for j in jobs}
-    for t in thumbs.glob("*.webp"):
-        if t.name not in wanted:
-            t.unlink()
+    # Drop thumbnails whose source no longer exists, or that belong in the other copy.
+    for folder in (thumbs, full_thumbs):
+        wanted = {Path(j[1]).name for j in jobs if Path(j[1]).parent == folder}
+        for t in folder.glob("*.webp"):
+            if t.name not in wanted:
+                t.unlink()
 
     # Full-size originals uploaded by tools/upload_originals.py, as "tag/asset name".
     rel_path = DATA / "releases.json"
@@ -277,12 +329,8 @@ def main() -> int:
     # Comics: tools/detect_comics.py measures each still image; the owner's corrections in data/comics.json win.
     comic_feats = detect_comics.load_json(detect_comics.FEATURES, {})
     comic_fixes = detect_comics.load_json(detect_comics.DECISIONS, {})
-    # Current handles from tools/trace_handles.py, keyed by lowercased saved handle.
-    handles_path = DATA / "handles.json"
-    handles = json.loads(handles_path.read_text()) if handles_path.exists() else {}
-    # Manual renames for handles the tracer can't resolve, and known posting years for undated works.
-    aliases_path, dates_path = DATA / "aliases.json", DATA / "dates.json"
-    aliases = {k.lower(): v for k, v in (json.loads(aliases_path.read_text()) if aliases_path.exists() else {}).get("handles", {}).items()}
+    # Known posting years for undated works.
+    dates_path = DATA / "dates.json"
     years = (json.loads(dates_path.read_text()) if dates_path.exists() else {}).get("files", {})
     estimates_path = DATA / "like_estimates.json"
     estimates = (json.loads(estimates_path.read_text()) if estimates_path.exists() else {}).get("tweets", {})
@@ -299,10 +347,9 @@ def main() -> int:
         w, h, seconds = results.get(f"{p.name}.webp", (0, 0, None))
         if not w:
             continue
-        handle, tweet, idx = parse_name(p.stem)
+        _, tweet, idx = parse_name(p.stem)
         meta = lost_meta.get(p.name, {})
-        if meta.get("artist_handle"):
-            handle = meta["artist_handle"]
+        handle, current = artist(p)
         item = {
             "f": p.name,
             "a": handle,
@@ -326,7 +373,6 @@ def main() -> int:
                 pass
         # Show renamed artists under their current handle; "o" keeps the saved one for search.
         # Two saved handles of one account resolve to the same current handle, so they merge.
-        current = aliases.get(handle.lower()) or handles.get(handle.lower(), {}).get("current")
         if current and current != handle:
             item["a"] = current
             if current.lower() != handle.lower():
@@ -341,6 +387,8 @@ def main() -> int:
             item["v"] = likes[tweet]["likes"]
         if p.name in released:
             item["u"] = f"{released[p.name]['tag']}/{released[p.name]['name']}"
+        if p.name in hidden_files:
+            item["z"] = 1  # by a hidden artist: in the full copy only
         items.append(item)
 
     # Lost tweets were mostly deleted before their likes could be fetched. Give those a hidden estimate ("e"):
@@ -360,22 +408,19 @@ def main() -> int:
         elif "l" in it and counts:
             it["e"] = round(sum(counts.values()) / len(counts))
 
-    manifest = {"generated": max((it["d"] for it in items), default=0), "count": len(items), "items": items}
-    artist_keys = {it["a"].lower() for it in items}
-    manifest["followers"] = {
-        k: v["followers"]
-        for k, v in sorted(followers.items())
-        if k in artist_keys and v.get("followers") is not None
-    }
-    if rel.get("repo"):
-        manifest["releaseBase"] = f"https://github.com/{rel['repo']}/releases/download/"
-    site_data.mkdir(parents=True, exist_ok=True)
-    (site_data / "manifest.json").write_text(json.dumps(manifest, separators=(",", ":"), ensure_ascii=False))
+    texts_path = DATA / "texts.json"
+    text_cache = json.loads(texts_path.read_text()) if texts_path.exists() else {}
+    public = [it for it in items if "z" not in it]
+    # Both copies show the whole archive's totals, so hiding artists never changes the site's numbers.
+    totals = {"works": len(items), "artists": len({it["a"].lower() for it in items})}
+    write_site_data(site_data, public, followers, rel, text_cache, totals)
+    write_site_data(full_site / "data", items, followers, rel, text_cache, totals)
     # The 18+ page copies the main index.html, so either build refreshes it once it exists.
     if args.audience == "adult" or ADULT_SITE.is_dir():
         write_adult_page()
 
-    print(f"Wrote {len(items)} {args.audience} works ({sum(1 for i in items if 'l' in i)} lost tweets) to {site}.")
+    print(f"Wrote {len(public)} {args.audience} works ({sum(1 for i in public if 'l' in i)} lost tweets) to {site}, "
+          f"and {len(items) - len(public)} more by hidden artists to {full_site}.")
     if errors:
         print(f"{len(errors)} files failed:")
         for name, err in errors:

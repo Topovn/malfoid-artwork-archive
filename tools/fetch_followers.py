@@ -35,10 +35,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from trace_handles import HANDLES, TWEETS_PER_HANDLE, trace  # noqa: E402
+from site_paths import full_manifests  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 # Both sites share the caches: the main site and the 18+ page at docs/h/.
-MANIFESTS = (ROOT / "docs" / "data" / "manifest.json", ROOT / "docs" / "h" / "data" / "manifest.json")
+# The full manifests, so hidden artists (see tools/site_paths.py) stay current in the owner's view too.
+MANIFESTS = full_manifests()
 FOLLOWERS = ROOT / "data" / "followers.json"
 ENDPOINT = "https://api.fxtwitter.com/2/profile/{handle}"
 WORKERS = 2
@@ -68,6 +70,12 @@ def pace() -> None:
 
 def fetch(handle: str) -> tuple[str, int | None, str]:
     """Return (lowercased handle, followers or None if the account is gone, status)."""
+    key, user, status = fetch_profile(handle)
+    return key, int(user["followers"]) if user else None, status
+
+
+def fetch_profile(handle: str) -> tuple[str, dict | None, str]:
+    """Return (lowercased handle, FxTwitter user object or None if the account is gone, status)."""
     key = handle.lower()
     backoff = 5.0
     for _ in range(6):
@@ -80,7 +88,7 @@ def fetch(handle: str) -> tuple[str, int | None, str]:
             user = data.get("user") or {}
             if data.get("code") != 200 or "followers" not in user:
                 return key, None, "gone"
-            return key, int(user["followers"]), "ok"
+            return key, user, "ok"
         except urllib.error.HTTPError as e:
             if e.code in (401, 403, 404):  # missing, suspended or protected
                 return key, None, "gone"

@@ -28,9 +28,13 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from site_paths import full_manifests  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 # Both sites share the caches: the main site and the 18+ page at docs/h/.
-MANIFESTS = (ROOT / "docs" / "data" / "manifest.json", ROOT / "docs" / "h" / "data" / "manifest.json")
+# The full manifests, so hidden artists (see tools/site_paths.py) stay current in the owner's view too.
+MANIFESTS = full_manifests()
 LIKES = ROOT / "data" / "likes.json"
 ENDPOINT = "https://cdn.syndication.twimg.com/tweet-result?id={id}&lang=en&token=0"
 FALLBACK = "https://api.fxtwitter.com/status/{id}"

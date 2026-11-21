@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Compare the Malfoid folder with the gallery, and record when it was last synced.
 
-The gallery is in sync when every work in the folder has a thumbnail in docs/data/manifest.json
-and a full-size original on GitHub Releases (data/releases.json), and no work moved to Malfoid AI/
-still has its original there.
+The gallery is in sync when every work in the folder is in the site's full manifest (data/private/site/,
+see tools/site_paths.py), every published work has a full-size original on GitHub Releases (data/releases.json),
+and no work moved to Malfoid AI/ still has its original there. Hidden artists' works are never uploaded,
+so they don't need an original.
 The last sync time lives in data/last_sync.json and is committed with each sync,
 so the next run can say what was added to the folder since then.
 
@@ -32,6 +33,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_malfoid_gallery import ADULT_SITE, ADULT_SRC, DATA, DEFAULT_SITE, MAIN_SRC, added_ms, source_files  # noqa: E402
 from prune_ai_originals import ai_assets  # noqa: E402
+from site_paths import hidden_files, manifest_path  # noqa: E402
 from upload_originals import LOCK, MAX_ASSET_BYTES  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -72,10 +74,12 @@ def upload_running() -> bool:
 
 
 def scan(src: Path, audience: str) -> dict:
-    manifest = SITES[audience]["manifest"]
+    # The full manifest also lists the hidden artists' works, which are built but never published.
+    full = manifest_path(audience, full=True)
+    manifest = full if full.exists() else SITES[audience]["manifest"]
     files = {p.name: p for p, _ in source_files(src, audience)}
     on_site = {it["f"] for it in json.loads(manifest.read_text())["items"]} if manifest.exists() else set()
-    uploaded = set(json.loads(RELEASES.read_text())["assets"]) if RELEASES.exists() else set()
+    uploaded = (set(json.loads(RELEASES.read_text())["assets"]) if RELEASES.exists() else set()) | hidden_files()
     too_big = {f for f, p in files.items() if p.stat().st_size > MAX_ASSET_BYTES}
     return {
         "files": files,

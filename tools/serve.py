@@ -11,6 +11,10 @@ data/picks.json. This server serves the gallery folder like `python3 -m http.ser
 
 Responses for data/picks.json and /api/comics carry an X-Malfoid-Edit header, which tells the page
 to show the heart buttons and the Comic tag toggle.
+
+It also shows the full copy of each site (see tools/site_paths.py): the manifest and post texts come from
+data/private/site/, and thumbnails missing from docs/ are looked up there, so the hidden artists' works appear
+here, marked Hidden, while the published site never has them.
 It listens on 127.0.0.1 only, refuses requests addressed to any other host name (DNS rebinding),
 and rejects cross-site writes, so only the owner's own browser can edit.
 
@@ -27,14 +31,22 @@ import argparse
 import json
 import os
 import re
+import sys
 import tempfile
+import urllib.parse
 from functools import partial
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from site_paths import FULL_SITES  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "docs"  # serve only the published site, never tools/ or the working caches
+FULL = FULL_SITES["main"]  # the full copy, laid out like docs/ (the 18+ page in its h/ folder)
+FULL_FILES = {"/data/manifest.json", "/data/texts.json", "/h/data/manifest.json", "/h/data/texts.json"}
+FULL_FALLBACK = ("/thumbs/", "/h/thumbs/")
 PICKS = SITE / "data" / "picks.json"
 COMICS = ROOT / "data" / "comics.json"  # the owner's Comic corrections; private, applied by the next build
 MAX_PICKS = 20000
@@ -115,6 +127,16 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _path(self) -> str:
         return self.path.split("?", 1)[0].split("#", 1)[0]
+
+    def translate_path(self, path: str) -> str:
+        """Map the manifests and texts to the full copy, and fall back to it for thumbnails docs/ lacks."""
+        local = super().translate_path(path)
+        rel = urllib.parse.unquote(path.split("?", 1)[0].split("#", 1)[0])
+        if rel in FULL_FILES or (rel.startswith(FULL_FALLBACK) and not os.path.exists(local)):
+            full = (FULL / rel.lstrip("/")).resolve()
+            if full.is_relative_to(FULL.resolve()) and full.is_file():
+                return str(full)
+        return local
 
     def _allowed_hosts(self) -> set[str]:
         port = self.server.server_address[1]
