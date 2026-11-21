@@ -24,13 +24,16 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import os
 import re
 import subprocess
 import sys
+from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from PIL import Image, ImageOps
 
@@ -53,6 +56,10 @@ ADULT_TITLE = "R18 Malfoid Artwork Archive"
 MAIN_QUOTE = "Since when have you been collecting my artwork, Potter?"
 ADULT_QUOTE = "Caught you gooning, Potter"
 ASSET_REF_RE = re.compile(r'\b(href|src)="([^"#?:]+)(\?[^"]*)?"')
+
+# Archive Activity counts days in this time zone from this date on, as docs/app.js does.
+ACTIVITY_TZ = ZoneInfo("Australia/Sydney")
+ACTIVITY_START = "2026-09-01"
 
 THUMB_WIDTH = 400
 THUMB_QUALITY = 72
@@ -206,6 +213,33 @@ def write_adult_page() -> None:
     media = ADULT_SITE / "media"
     if not media.exists() and not media.is_symlink():
         media.symlink_to(ADULT_SRC, target_is_directory=True)
+
+
+def activity_totals(items: list[dict]) -> dict:
+    """The Archive Activity headline numbers for these works, worked out as docs/app.js does from a manifest:
+    artists first seen in the latest 7 days with posts, and works posted per day over those 7 days."""
+    def day(ms: int) -> str:
+        return datetime.fromtimestamp(ms / 1000, ACTIVITY_TZ).date().isoformat()
+
+    posted = []
+    for it in items:
+        ms = it["p"] or (int(datetime(it["y"], 1, 1, tzinfo=timezone.utc).timestamp() * 1000) if it.get("y") else 0)
+        posted.append((it["a"].lower(), day(ms or it["d"])))
+    first: dict[str, str] = {}
+    for artist, d in posted:
+        first[artist] = min(first.get(artist, d), d)
+    per_day = Counter(d for _, d in posted)
+    shown = sorted(k for k in per_day if k >= ACTIVITY_START)
+    if not shown:
+        return {}
+    last = datetime.fromisoformat(shown[-1])
+    week = [(last - timedelta(days=i)).date().isoformat() for i in range(7)]
+    week_from = max(week[-1], shown[0])
+    return {
+        "newArtists7": sum(1 for d in first.values() if week_from <= d <= week[0]),
+        "perDay7": math.floor(sum(per_day[d] for d in week) / 7 * 10 + 0.5) / 10,
+        "weekEnding": week[0],
+    }
 
 
 def write_site_data(site_data: Path, items: list[dict], followers: dict, rel: dict, text_cache: dict,
@@ -411,7 +445,8 @@ def main() -> int:
     text_cache = json.loads(texts_path.read_text()) if texts_path.exists() else {}
     public = [it for it in items if "z" not in it]
     # Both copies show the whole archive's totals, so hiding artists never changes the site's numbers.
-    totals = {"works": len(items), "artists": len({it["a"].lower() for it in items})}
+    totals = {"works": len(items), "posts": len({it["t"] or it["f"] for it in items}), "artists": len({it["a"].lower() for it in items}),
+              **activity_totals(items)}
     write_site_data(site_data, public, followers, rel, text_cache, totals)
     write_site_data(full_site / "data", items, followers, rel, text_cache, totals)
     # The second site copies the main index.html, so either build refreshes it once it exists.

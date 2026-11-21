@@ -8,5 +8,4 @@ window.MALFOID_CONFIG = {
   preferLocalMedia: true,
   mediaBase: "media/",
   lostFolder: "_LostTweets/",
-  dashboardUrl: "https://claude.ai/artifact/XNMy4X18xxzNn5FjkxD8aY",
 };

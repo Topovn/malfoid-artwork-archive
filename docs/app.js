@@ -2,7 +2,7 @@
   "use strict";
 
   const CONFIG = Object.assign(
-    { useReleases: true, preferLocalMedia: true, mediaBase: "media/", lostFolder: "_LostTweets/", dashboardUrl: "" },
+    { useReleases: true, preferLocalMedia: true, mediaBase: "media/", lostFolder: "_LostTweets/" },
     window.MALFOID_CONFIG || {}
   );
   const CELL_RATIO = 1.25; // height / width of a grid cell
@@ -1519,7 +1519,7 @@
     new ResizeObserver(() => updateShelfButtons(track)).observe(track);
   }
 
-  // ---------- Home: timeline (rebuilt from the "Malfoid Art Timeline" Claude dashboard) ----------
+  // ---------- Home: Archive Activity ----------
 
   const timeline = { daily: [], weekly: [], mode: "posted", summary: null };
   const dayKeyFmt = new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit" });
@@ -1529,6 +1529,7 @@
   const keyIso = (ms) => new Date(ms).toISOString().slice(0, 10);
   const shortDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
   const longDay = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  const dateDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
   const fmtKey = (k) => shortDay.format(new Date(keyMs(k)));
   const fmtKeyLong = (k) => longDay.format(new Date(keyMs(k)));
   const round1 = (n) => Math.round(n * 10) / 10;
@@ -1557,7 +1558,7 @@
     }
     const keys = [...days.keys()].sort();
     const last = keys[keys.length - 1];
-    // The chart starts at the first day with art on or after the start date, as in the original dashboard.
+    // The chart starts at the first day with art on or after the start date.
     const from = keys.find((k) => k >= TIMELINE_START) || TIMELINE_START;
     for (let t = keyMs(from); t <= keyMs(last); t += DAY) day(keyIso(t));
     const count = (k, f) => (days.has(k) ? days.get(k)[f] : 0);
@@ -1620,12 +1621,13 @@
     const weekFrom = keyIso(keyMs(lastPosted.date) - 6 * DAY);
     const newLast7 = timeline.daily.filter((d) => d.date >= weekFrom && d.date <= lastPosted.date).reduce((n, d) => n + d.new_artists, 0);
     timeline.summary = {
-      works: works.length,
-      posts: new Set(works.map((work) => work.post)).size,
-      artists: new Set(works.map((work) => work.artist)).size,
-      newLast7,
-      lastDate: lastPosted.date,
-      last7: lastPosted.posted_avg7,
+      // The archive's totals, the same as the site header's.
+      works: totalWorks(),
+      posts: manifestTotals?.posts ?? new Set(works.map((work) => work.post)).size,
+      artists: totalArtists(),
+      newLast7: manifestTotals?.newArtists7 ?? newLast7,
+      lastDate: manifestTotals?.weekEnding ?? lastPosted.date,
+      last7: manifestTotals?.perDay7 ?? lastPosted.posted_avg7,
       change: bestWeek ? lastPosted.posted_avg7 / bestWeek - 1 : 0,
       before,
     };
@@ -1638,9 +1640,12 @@
     const s = timeline.summary;
 
     $("#t-works").textContent = numberFmt.format(s.works);
+    $("#t-posts").textContent = numberFmt.format(s.posts);
     $("#t-artists").textContent = numberFmt.format(s.artists);
     $("#t-new").textContent = numberFmt.format(s.newLast7);
     $("#t-last7").textContent = String(s.last7);
+    // A rolling window ending on the latest day with a posted work, so it can end on any weekday.
+    $("#t-last7-range").textContent = `${shortDay.format(new Date(keyMs(s.lastDate) - 6 * DAY))} – ${dateDay.format(new Date(keyMs(s.lastDate)))}`;
   }
 
   function renderWeekly() {
@@ -2359,10 +2364,6 @@
   }
 
   async function boot() {
-    const dash = $("#dashboard-link");
-    if (CONFIG.dashboardUrl && isSafeUrl(CONFIG.dashboardUrl)) dash.href = CONFIG.dashboardUrl;
-    else dash.hidden = true;
-
     const workParam = readUrl();
     syncControls();
     showView();

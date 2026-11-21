@@ -1106,7 +1106,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   -webkit-backdrop-filter: blur(6px);
 }
 
-/* Home: timeline (rebuilt from the Claude dashboard) */
+/* Home: Archive Activity */
 .timeline { margin: 8px 0 0; padding-top: 32px; border-top: 1px solid var(--border); }
 .timeline-take { max-width: 760px; margin: 6px 0 0; color: var(--muted); font-size: 16px; }
 .timeline-take b { color: var(--text); font-variant-numeric: tabular-nums; }
