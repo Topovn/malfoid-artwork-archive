@@ -333,6 +333,8 @@
     el.count.textContent =
       out.length === items.length
         ? `${total} works by ${numberFmt.format(artistStats.size)} artists`
+        : state.artist
+        ? `${numberFmt.format(out.length)} of ${total} works` // the artist chip already names the one artist
         : `${numberFmt.format(out.length)} of ${total} works · ${plural(artistsShown, "artist", "artists")}`;
     el.empty.hidden = out.length > 0;
 
