@@ -1059,9 +1059,24 @@
     if (e.key === "ArrowLeft") openViewer(viewerIndex - 1);
     else if (e.key === "ArrowRight") openViewer(viewerIndex + 1);
   });
+  // Whether a point falls on the picture itself. Images fill the stage with object-fit: contain,
+  // so the bars beside a tall image (or above a wide one) belong to the <img> without being picture.
+  function onPicture(img, x, y) {
+    const nw = img.naturalWidth;
+    const nh = img.naturalHeight;
+    if (!nw || !nh) return true;
+    const r = img.getBoundingClientRect();
+    const scale = Math.min(r.width / nw, r.height / nh);
+    const w = nw * scale;
+    const h = nh * scale;
+    const left = r.left + (r.width - w) / 2;
+    const top = r.top + (r.height - h) / 2;
+    return x >= left && x <= left + w && y >= top && y <= top + h;
+  }
   // Clicking the dark area around the media closes the viewer.
   el.viewerMedia.addEventListener("click", (e) => {
-    if (e.target === el.viewerMedia) closeViewer();
+    const t = e.target;
+    if (t === el.viewerMedia || (t instanceof HTMLImageElement && !onPicture(t, e.clientX, e.clientY))) closeViewer();
   });
 
   // Swipe left and right on touch screens.

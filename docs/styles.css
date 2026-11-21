@@ -716,6 +716,9 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   line-height: 1;
   cursor: pointer;
 }
+/* A click near an arrow counts as the arrow: the hit area fills its side margin and reaches 64px above and below. */
+.viewer-nav::before { content: ""; position: absolute; inset: -64px -12px; }
+.viewer-nav:disabled::before { content: none; }
 .viewer-nav:hover { background: rgb(255 255 255 / 16%); }
 .viewer-nav:disabled { opacity: 0.25; cursor: default; }
 .viewer-nav.prev { left: 12px; }
@@ -814,6 +817,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   .viewer-media { padding: 8px; }
   .viewer-nav { width: 36px; height: 56px; margin-top: -28px; font-size: 26px; background: rgb(0 0 0 / 45%); }
   .viewer-nav:disabled { opacity: 0; }
+  .viewer-nav::before { content: none; } /* the arrows sit over the picture here, where swipes need the room */
   .viewer-nav.prev { left: 6px; }
   .viewer-nav.next { right: 6px; }
   .viewer-info { max-height: 42dvh; padding: 18px 16px 16px; border-left: 0; border-top: 1px solid #262c29; }
