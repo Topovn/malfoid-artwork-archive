@@ -2,7 +2,7 @@
 
 ## The Malfoid Artwork Archive
 
-A browsable archive of Malfoid fan art and animations posted on Twitter (X), searchable by artist, with a gallery, artist index, timeline and random picks.
+A browsable archive of Malfoid fan art and animations posted on Twitter (X), searchable by artist, with a gallery view, artist index and a timeline view before Oct 2026
 
 https://topovn.github.io/malfoid-artwork-archive/
 
