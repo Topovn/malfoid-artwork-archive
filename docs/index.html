@@ -21,10 +21,10 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=23">
+  <link rel="stylesheet" href="styles.css?v=24">
   <script src="theme.js?v=2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=21" defer></script>
+  <script src="app.js?v=22" defer></script>
 </head>
 <body>
 
@@ -59,10 +59,14 @@
   <main id="main">
     <section class="hero">
       <h1>The Malfoid Artwork Archive</h1>
-      <p class="hero-meta" id="hero-meta">Loading the collection…</p>
-      <p class="hero-coverage" id="tl-coverage" hidden data-main-only><span>Below are all the works I can find predates Oct 2026, counting all the platforms, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed any, especially those predates September 23 2026<br>Before Malfoid became a thing, she appeared as Female Draco Malfoy in #drarry tag</span></p>
-      <p class="hero-coverage" id="x-coverage" data-main-only><span>Covers hand-drawn artwork posted on Twitter (X) only. NO AI arts, 18+ ver exists if you can find it. Art on Pixiv, Instagram and other sites isn't tracked since I'm too lazy to manually tag<br>This is not every art out there on Twitter nor I have every pieces of every artists on this site, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed your art or you found any AI/18+ arts that doesn't belong here</span></p>
-      <p class="hero-coverage" id="h-coverage" data-adult-only><span>I dont actively save R18 artworks on Twitter</span></p>
+      <p class="hero-meta" id="hero-meta">Loading the collection…<button type="button" class="info-toggle" id="info-toggle" aria-expanded="true" aria-controls="hero-notes" aria-label="About this archive"><span aria-hidden="true">i</span></button></p>
+      <div class="hero-notes open" id="hero-notes">
+        <div class="hero-notes-inner">
+          <p class="hero-coverage" id="tl-coverage" hidden data-main-only><span>Below are all the works I can find predates Oct 2026, counting all the platforms, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed any, especially those predates September 23 2026<br>Before Malfoid became a thing, she appeared as Female Draco Malfoy in #drarry tag</span></p>
+          <p class="hero-coverage" id="x-coverage" data-main-only><span>Covers hand-drawn artwork posted on Twitter (X) only. NO AI arts, 18+ ver exists if you can find it. Art on Pixiv, Instagram and other sites isn't tracked since I'm too lazy to manually tag<br>This is not every art out there on Twitter nor I have every pieces of every artists on this site, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed your art or you found any AI/18+ arts that doesn't belong here</span></p>
+          <p class="hero-coverage" id="h-coverage" data-adult-only><span>I dont actively save R18 artworks on Twitter</span></p>
+        </div>
+      </div>
     </section>
 
     <section id="view-home" class="view" data-main-only>
@@ -239,7 +243,7 @@
         <div class="tiles">
           <div class="tile" id="tile-images"><span class="tile-label">Images</span><span class="tile-num" id="t-images">—</span></div>
           <div class="tile" id="tile-artists"><span class="tile-label">Artists</span><span class="tile-num" id="t-artists">—</span></div>
-          <div class="tile" id="tile-peak"><span class="tile-label">Busiest day</span><span class="tile-num" id="t-peak">—</span><span class="tile-sub" id="t-peak-date"></span></div>
+          <div class="tile" id="tile-new"><span class="tile-label">New artists</span><span class="tile-num"><span id="t-new">—</span> <span class="tile-unit">in 7 days</span></span></div>
           <div class="tile" id="tile-last7"><span class="tile-label">Latest 7 days</span><span class="tile-num"><span id="t-last7">—</span> <span class="tile-unit">a day</span></span></div>
         </div>
 
@@ -353,13 +357,13 @@
           </span>
         </label>
         <div class="segmented" role="radiogroup" aria-label="Type of work" id="kind">
-          <button type="button" role="radio" data-kind="" aria-checked="true">All works</button>
-          <button type="button" role="radio" data-kind="art" aria-checked="false">Artwork</button>
-          <button type="button" role="radio" data-kind="comic" aria-checked="false">Comics</button>
-          <button type="button" role="radio" data-kind="anim" aria-checked="false">Animations</button>
-          <button type="button" role="radio" data-kind="video" aria-checked="false">Videos</button>
-          <button type="button" role="radio" data-kind="pick" aria-checked="false" aria-describedby="pick-note" data-main-only>My Favorite</button>
-          <button type="button" role="radio" data-kind="lost" aria-checked="false" aria-describedby="lost-note">Lost tweets</button>
+          <button type="button" role="radio" data-kind="" aria-checked="true"><svg class="kind-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="kind-label">All works</span></button>
+          <button type="button" role="radio" data-kind="art" aria-checked="false"><svg class="kind-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg><span class="kind-label">Artwork</span></button>
+          <button type="button" role="radio" data-kind="comic" aria-checked="false"><svg class="kind-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 11h18M12 3v8M9 11v10"/></svg><span class="kind-label">Comics</span></button>
+          <button type="button" role="radio" data-kind="anim" aria-checked="false"><svg class="kind-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18M3 12h18M3 7.5h4M3 16.5h4M17 7.5h4M17 16.5h4"/></svg><span class="kind-label">Animations</span></button>
+          <button type="button" role="radio" data-kind="video" aria-checked="false"><svg class="kind-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="kind-label">Videos</span></button>
+          <button type="button" role="radio" data-kind="pick" aria-checked="false" aria-describedby="pick-note" data-main-only><svg class="kind-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg><span class="kind-label">My Favorite</span></button>
+          <button type="button" role="radio" data-kind="lost" aria-checked="false" aria-describedby="lost-note"><svg class="kind-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 10h.01M15 10h.01M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z"/></svg><span class="kind-label">Lost tweets</span></button>
         </div>
         <!-- Shown only while the matching type is selected (see .kind-note in styles.css). -->
         <p class="kind-note" id="pick-note" data-kind="pick">My (Topovn) personal favorite collection of Malfoid, will grow over time as I look back at the library.</p>

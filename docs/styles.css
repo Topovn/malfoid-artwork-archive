@@ -212,6 +212,9 @@ button, input, select { font: inherit; color: inherit; }
   scrollbar-width: none;
 }
 .nav::-webkit-scrollbar { display: none; }
+.nav.more-right { mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent); }
+.nav.more-left { mask-image: linear-gradient(to left, #000 calc(100% - 16px), transparent); }
+.nav.more-left.more-right { mask-image: linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent); }
 .nav a {
   padding: 7px 14px;
   border-radius: 8px;
@@ -264,30 +267,55 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   letter-spacing: -0.02em;
 }
 .hero-meta { margin: 10px 0 0; color: var(--muted); }
-.hero-coverage {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 8px 0 0;
+.hero-meta .nowrap { white-space: nowrap; } /* the date and the "i" wrap together */
+/* The circled "i" after the stats line opens the coverage notes below it. */
+.info-toggle {
+  display: inline-grid;
+  vertical-align: middle;
+  margin: -4px 0 -2px 2px;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
   color: var(--muted);
-  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.15s;
 }
-.hero-coverage a { color: inherit; }
-.hero-coverage a:hover { color: var(--accent); }
-.hero-coverage::before {
-  content: "i";
-  flex: none;
+.info-toggle span {
   display: grid;
   place-items: center;
   width: 18px;
   height: 18px;
   border: 1.5px solid currentColor;
   border-radius: 50%;
-  font-size: 11px;
-  font-weight: 800;
-  font-style: italic;
-  font-family: Georgia, serif;
+  font: italic 800 11px/1 Georgia, serif;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
+@media (hover: hover) { .info-toggle:hover { color: var(--accent); } }
+.info-toggle[aria-expanded="true"] { color: var(--accent); }
+.info-toggle[aria-expanded="true"] span { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.hero-notes {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 0.2s ease, visibility 0s 0.2s;
+}
+.hero-notes.open { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows 0.2s ease; }
+.hero-notes-inner { min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .hero-notes, .hero-notes.open { transition: none; }
+}
+.hero-coverage {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.hero-coverage a { color: inherit; }
+.hero-coverage a:hover { color: var(--accent); }
 /* Description under the type buttons, for the selected My Personal Pick or Lost tweets filter */
 .kind-note {
   display: none;
@@ -373,6 +401,20 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.15s, border-color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.kind-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .segmented button[role="radio"]:hover { border-color: var(--accent); }
 .segmented button[role="radio"][aria-checked="true"] {
@@ -845,15 +887,15 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   .field-search { flex-basis: 100%; max-width: none; }
   #toolbar .field-search input { max-width: none; }
   .field-search .field-label { display: none; }
-  .field-search input, .select select, .segmented button[role="radio"] { height: 42px; }
+  .field-search input, .select select { height: 42px; }
   .field-inline { flex: 1 1 calc(50% - 5px); flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; }
   .select select { min-width: 0; width: 100%; padding-left: 12px; padding-right: 36px; }
   .select::after { right: 14px; }
-  .segmented { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; }
-  .segmented button[role="radio"] { padding: 0 10px; }
-  /* An odd number of filters leaves the last alone on its row; let it take the full width. */
-  :root:not([data-site="h"]) .segmented button[role="radio"]:last-child:nth-child(odd),
-  :root[data-site="h"] .segmented button[role="radio"]:last-child:nth-child(odd of :not([data-main-only])) { grid-column: 1 / -1; }
+  /* The type buttons shrink to icons on one row; the names stay for screen readers. */
+  .segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; width: 100%; }
+  .segmented button[role="radio"] { height: 40px; padding: 0; }
+  .kind-icon { width: 20px; height: 20px; }
+  .kind-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .card-meta { opacity: 1; font-size: 12px; padding: 22px 8px 7px; }
   .card-link { opacity: 1; visibility: visible; left: 8px; bottom: 7px; }
   #per-page { min-width: 0; }

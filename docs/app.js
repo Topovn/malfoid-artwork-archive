@@ -1479,16 +1479,16 @@
       });
 
     // Headline numbers, by date posted.
-    const peak = timeline.daily.reduce((a, b) => (b.posted > a.posted ? b : a), timeline.daily[0]);
     const lastPosted = [...timeline.daily].reverse().find((d) => d.posted > 0) || timeline.daily[timeline.daily.length - 1];
     const bestWeek = Math.max(...timeline.daily.map((d) => d.posted_avg7));
     const before = images.filter((im) => im.posted < TIMELINE_START).length;
+    const weekFrom = keyIso(keyMs(lastPosted.date) - 6 * DAY);
+    const newLast7 = timeline.daily.filter((d) => d.date >= weekFrom && d.date <= lastPosted.date).reduce((n, d) => n + d.new_artists, 0);
     timeline.summary = {
       images: images.length,
       posts: new Set(images.map((im) => im.post)).size,
       artists: new Set(images.map((im) => im.artist)).size,
-      peakDate: peak.date,
-      peakImages: peak.posted,
+      newLast7,
       lastDate: lastPosted.date,
       last7: lastPosted.posted_avg7,
       change: bestWeek ? lastPosted.posted_avg7 / bestWeek - 1 : 0,
@@ -1504,8 +1504,7 @@
 
     $("#t-images").textContent = numberFmt.format(s.images);
     $("#t-artists").textContent = numberFmt.format(s.artists);
-    $("#t-peak").textContent = numberFmt.format(s.peakImages);
-    $("#t-peak-date").textContent = fmtKey(s.peakDate);
+    $("#t-new").textContent = numberFmt.format(s.newLast7);
     $("#t-last7").textContent = String(s.last7);
   }
 
@@ -1950,6 +1949,13 @@
 
   // ---------- Views ----------
 
+  // On narrow screens the tabs scroll sideways; fade whichever edge has more tabs past it.
+  function markNavEdges() {
+    const nav = $(".nav");
+    nav.classList.toggle("more-left", nav.scrollLeft > 1);
+    nav.classList.toggle("more-right", nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1);
+  }
+
   function showView() {
     for (const v of VIEWS) $(`#view-${v}`).hidden = state.view !== v;
     // The Timeline gathers early works from every platform, so it has its own coverage note.
@@ -1968,6 +1974,7 @@
       if (c.right > n.right) nav.scrollLeft += c.right - n.right;
       else if (c.left < n.left) nav.scrollLeft -= n.left - c.left;
     }
+    markNavEdges();
     if (state.view === "gallery") grid.relayout();
     else grid.schedule(); // drops grid nodes while hidden
     if (state.view === "random") randomGrid.relayout();
@@ -2138,6 +2145,13 @@
   });
   // The search form never submits anywhere; Enter just keeps the live filter.
   $("#toolbar").addEventListener("submit", (e) => e.preventDefault());
+  $(".nav").addEventListener("scroll", markNavEdges, { passive: true });
+  window.addEventListener("resize", markNavEdges);
+  $("#info-toggle").addEventListener("click", (e) => {
+    const open = e.currentTarget.getAttribute("aria-expanded") !== "true";
+    e.currentTarget.setAttribute("aria-expanded", String(open));
+    $("#hero-notes").classList.toggle("open", open);
+  });
   el.kind.addEventListener("click", (e) => {
     const b = e.target.closest("button[role=radio]");
     if (!b) return;
@@ -2174,8 +2188,14 @@
 
   function renderHero(data) {
     const lostItems = items.filter((it) => it.l);
-    el.heroMeta.textContent =
-      `${numberFmt.format(items.length)} works · ${plural(artistStats.size, "artist", "artists")} · Updated ${fmtDate(data.generated)}`;
+    // The info button rides along with the date, so it never wraps onto a line by itself.
+    const date = document.createElement("span");
+    date.className = "nowrap";
+    date.append(fmtDate(data.generated), $("#info-toggle"));
+    el.heroMeta.replaceChildren(
+      `${numberFmt.format(items.length)} works · ${plural(artistStats.size, "artist", "artists")} · Updated `,
+      date,
+    );
 
     // Explain lost tweets, with the reasons as recorded when each one was found missing.
     const reasons = new Map();
