@@ -6,10 +6,12 @@ That endpoint hides sensitive (age-restricted) tweets behind an empty tombstone,
 looked up again through the public FxTwitter API, which still sees them.
 Both are undocumented, so requests are paced gently and retried on rate limits.
 Results are cached in data/likes.json, and tweets fetched recently are skipped, so reruns are cheap.
+A count taken during a tweet's first week is still climbing, so those tweets are fetched again on every run
+until a count is taken after their first week.
 Run tools/build_malfoid_gallery.py (and with --audience adult) afterwards to put the counts into the manifests.
 
 Usage:
-    python3 tools/fetch_likes.py                  # fetch tweets never fetched or older than 7 days
+    python3 tools/fetch_likes.py                  # fetch tweets never fetched, fetched young, or older than 7 days
     python3 tools/fetch_likes.py --max-age-days 0 # refetch everything
 """
 
@@ -32,6 +34,8 @@ MANIFESTS = (ROOT / "docs" / "data" / "manifest.json", ROOT / "docs" / "h" / "da
 LIKES = ROOT / "data" / "likes.json"
 ENDPOINT = "https://cdn.syndication.twimg.com/tweet-result?id={id}&lang=en&token=0"
 FALLBACK = "https://api.fxtwitter.com/status/{id}"
+SETTLE_DAYS = 7  # a count taken before the tweet is this old is refetched on every run
+SNOWFLAKE_EPOCH_MS = 1288834974657  # X tweet IDs carry their creation time in milliseconds since this epoch
 WORKERS = 4
 MIN_INTERVAL = 0.15  # seconds between requests across all workers
 
@@ -99,6 +103,17 @@ def fetch(tweet_id: str) -> tuple[str, int | None, str]:
     return tweet_id, None, "failed"
 
 
+def posted_at(tweet_id: str) -> float:
+    """Seconds since the Unix epoch when the tweet was posted, read from its ID."""
+    return ((int(tweet_id) >> 22) + SNOWFLAKE_EPOCH_MS) / 1000
+
+
+def needs_fetch(tweet_id: str, entry: dict | None, cutoff: float) -> bool:
+    if entry is None or entry.get("status") != "ok" or entry["at"] < cutoff:
+        return True
+    return entry["at"] - posted_at(tweet_id) < SETTLE_DAYS * 86400  # taken while the count was still climbing
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--max-age-days", type=float, default=7)
@@ -108,7 +123,7 @@ def main() -> int:
     cache: dict[str, dict] = json.loads(LIKES.read_text()) if LIKES.exists() else {}
     cutoff = time.time() - args.max_age_days * 86400
     ids = sorted({it["t"] for it in items if it["t"]})
-    todo = [i for i in ids if i not in cache or cache[i]["at"] < cutoff or cache[i].get("status") != "ok"]
+    todo = [i for i in ids if needs_fetch(i, cache.get(i), cutoff)]
     print(f"{len(ids)} tweets, {len(ids) - len(todo)} cached, {len(todo)} to fetch.", flush=True)
 
     counts: dict[str, int] = {}
