@@ -125,7 +125,8 @@ def main() -> int:
     for it in items:
         if only and it["f"] not in only:
             continue
-        path = src / ("_LostTweets" if "l" in it else "") / it["f"]
+        # Only the main site keeps lost tweets in _LostTweets/; the 18+ page has them at the top level of Malfoid H/.
+        path = src / ("_LostTweets" if "l" in it and args.audience == "main" else "") / it["f"]
         if not path.exists():
             print(f"skip, not found locally: {path}")
             continue
