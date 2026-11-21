@@ -2222,7 +2222,7 @@
       el.lostNote.append(
         strong,
         ` are works whose original post on Twitter is gone: ${list}. ` +
-          "The art was saved before it disappeared, so it stays here with an orange tag, but its link to Twitter no longer opens."
+          "The art was saved before it disappeared, so it stays here with an orange tag, but its link to Twitter no longer opens"
       );
     }
   }
