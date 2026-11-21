@@ -33,6 +33,13 @@
   const RANDOM_SIZE = 50; // works shown in the Random tab, one per artist
   const LONG_VIDEO = 30; // videos this many seconds or longer count as Videos (see isVideo)
   const VIDEO_ARTISTS = new Set(["alessandro49472"]); // every work by these artists counts as Videos
+  const VIDEO_WORKS = new Set([ // short works that still count as Videos
+    "tenmeida-2108357386880606323-01.mp4",
+    "Genshin_T1-2107730480061911364-01.mp4",
+    "ThonasGareth-2106629595285831850-01.mp4",
+    "skoomaaddict08-2115148786314195381-01.mp4",
+    "yunayuispink-2113764723632332947-01.mp4",
+  ]);
   const ANIMATION_WORKS = new Set([ // long works that still count as Animations
     "felutiahime-2117929539955560644-01.mp4",
     "NakanouKouheiii-2117761397958275391-01.mp4",
@@ -153,10 +160,11 @@
   // File-name order as macOS Finder shows it: case-insensitive, numbers by value, "_" before digits and letters.
   const nameCollator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
   const plural = (n, one, many) => `${numberFmt.format(n)} ${n === 1 ? one : many}`;
-  // Long videos, and everything by VIDEO_ARTISTS (under a current or former handle), form the Videos filter,
-  // except the works listed in ANIMATION_WORKS.
-  const isVideo = (it) => !ANIMATION_WORKS.has(it.f) &&
-    (it.s >= LONG_VIDEO || VIDEO_ARTISTS.has(it._al) || VIDEO_ARTISTS.has(it._ao));
+  // Long videos, everything by VIDEO_ARTISTS (under a current or former handle) and the works listed in
+  // VIDEO_WORKS form the Videos filter, except the works listed in ANIMATION_WORKS.
+  const isVideo = (it) => VIDEO_WORKS.has(it.f) || (!ANIMATION_WORKS.has(it.f) &&
+    (it.s >= LONG_VIDEO || VIDEO_ARTISTS.has(it._al) || VIDEO_ARTISTS.has(it._ao)));
+  const kindLabel = (it) => (isVideo(it) ? "Video" : it.k === "anim" ? "Animation" : "Artwork");
 
   const thumbUrl = (it) => "thumbs/" + encodeURIComponent(it.f) + ".webp";
   const onLocalhost = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
@@ -504,7 +512,7 @@
     return (
       `Work by @${it.a}` +
       (it.v != null ? `, about ${fmtLikes(it.v)} likes` : "") +
-      (it.k === "anim" ? ", animation" : "") +
+      (it.k === "anim" ? ", " + kindLabel(it).toLowerCase() : "") +
       (it.l ? ", lost tweet" : "") +
       (pickSet.has(it.f) ? ", in My Personal Favorite" : "")
     );
@@ -1072,7 +1080,7 @@
     if (it._early) return renderEarlyViewer(it);
     el.viewerArtist.hidden = false;
     el.viewerExtra.hidden = true;
-    const isVideo = VIDEO_EXTS.has(it.x);
+    const isClip = VIDEO_EXTS.has(it.x);
     el.viewerNote.hidden = true;
     const current = () => viewerList[viewerIndex] === it;
     const showMissing = () => {
@@ -1081,7 +1089,7 @@
     };
 
     let media;
-    if (isVideo) {
+    if (isClip) {
       media = document.createElement("video");
       media.poster = thumbUrl(it);
       media.controls = true;
@@ -1121,7 +1129,7 @@
     }
 
     el.viewerTags.replaceChildren();
-    el.viewerTags.append(badge(it.k === "anim" ? "Animation" : "Artwork", false));
+    el.viewerTags.append(badge(kindLabel(it), false));
     if (comicsEditable && it.k === "art") el.viewerTags.append(comicToggle(it));
     else if (it.c) el.viewerTags.append(badge("Comic", false));
     el.viewerTags.append(badge(it.x.toUpperCase(), false));
