@@ -131,6 +131,8 @@
   const fmtLikes = (n) => compactFmt.format(n);
   // When a work was posted, in ms. "y" is a posting year for works with no exact date (no tweet id); it counts as Jan 1.
   const postedMs = (it) => it.p || (it.y ? Date.UTC(it.y, 0, 1) : 0);
+  // Likes for sorting and filtering: the real count, else a lost tweet's hidden estimate (the artist's average).
+  const rankLikes = (it) => it.v ?? it.e;
   const fmtPosted = (it) => (it.p ? fmtDate(it.p) : it.y ? String(it.y) : "Unknown");
   // File-name order as macOS Finder shows it: case-insensitive, numbers by value, "_" before digits and letters.
   const nameCollator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
@@ -280,7 +282,8 @@
 
     const out = items.filter((it) => {
       if (artist && it._al !== artist) return false;
-      if (state.likes && (it.v == null || it.v < minLikes || it.v >= maxLikes)) return false;
+      const likes = rankLikes(it);
+      if (state.likes && (likes == null || likes < minLikes || likes >= maxLikes)) return false;
       if (state.followers) {
         const f = artistStats.get(it._al)?.followers;
         if (f == null || f < minFollowers || f >= maxFollowers) return false;
@@ -310,7 +313,7 @@
       added: (a, b) => b.d - a.d || byFile(a, b),
       newest: (a, b) => postedMs(b) - postedMs(a) || byFile(a, b),
       // Images from one tweet share its count, so they stay together.
-      liked: (a, b) => (b.v ?? -1) - (a.v ?? -1) || (a.t < b.t ? -1 : a.t > b.t ? 1 : 0) || a.i - b.i || byFile(a, b),
+      liked: (a, b) => (rankLikes(b) ?? -1) - (rankLikes(a) ?? -1) || (a.t < b.t ? -1 : a.t > b.t ? 1 : 0) || a.i - b.i || byFile(a, b),
       oldest: (a, b) => (postedMs(a) || Infinity) - (postedMs(b) || Infinity) || byFile(a, b),
       artist: (a, b) => (a._al < b._al ? -1 : a._al > b._al ? 1 : postedMs(b) - postedMs(a) || byFile(a, b)),
       name: (a, b) => nameCollator.compare(a._fn, b._fn) || byFile(a, b),

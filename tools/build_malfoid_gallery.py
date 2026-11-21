@@ -328,6 +328,18 @@ def main() -> int:
             item["u"] = f"{released[p.name]['tag']}/{released[p.name]['name']}"
         items.append(item)
 
+    # Lost tweets were mostly deleted before their likes could be fetched. Give those a hidden estimate ("e"):
+    # the artist's average likes per tweet still up, counting each tweet once however many images it has.
+    # The site sorts and filters by it but never shows it, since it is a guess.
+    live_likes: dict[str, dict[str, int]] = {}
+    for it in items:
+        if "v" in it and "l" not in it and it["t"]:
+            live_likes.setdefault(it["a"].lower(), {})[it["t"]] = it["v"]
+    for it in items:
+        counts = live_likes.get(it["a"].lower())
+        if "l" in it and "v" not in it and counts:
+            it["e"] = round(sum(counts.values()) / len(counts))
+
     manifest = {"generated": max((it["d"] for it in items), default=0), "count": len(items), "items": items}
     artist_keys = {it["a"].lower() for it in items}
     manifest["followers"] = {
