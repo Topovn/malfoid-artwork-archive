@@ -284,6 +284,8 @@ def main() -> int:
     aliases_path, dates_path = DATA / "aliases.json", DATA / "dates.json"
     aliases = {k.lower(): v for k, v in (json.loads(aliases_path.read_text()) if aliases_path.exists() else {}).get("handles", {}).items()}
     years = (json.loads(dates_path.read_text()) if dates_path.exists() else {}).get("files", {})
+    estimates_path = DATA / "like_estimates.json"
+    estimates = (json.loads(estimates_path.read_text()) if estimates_path.exists() else {}).get("tweets", {})
 
     # Approximate follower counts from tools/fetch_followers.py, keyed by lowercased handle.
     followers_path = DATA / "followers.json"
@@ -348,9 +350,14 @@ def main() -> int:
     for it in items:
         if "v" in it and "l" not in it and it["t"]:
             live_likes.setdefault(it["a"].lower(), {})[it["t"]] = it["v"]
+    # A manual estimate in data/like_estimates.json wins over the average, and also covers deleted tweets outside _LostTweets.
     for it in items:
         counts = live_likes.get(it["a"].lower())
-        if "l" in it and "v" not in it and counts:
+        if "v" in it:
+            continue
+        if it["t"] in estimates:
+            it["e"] = int(estimates[it["t"]])
+        elif "l" in it and counts:
             it["e"] = round(sum(counts.values()) / len(counts))
 
     manifest = {"generated": max((it["d"] for it in items), default=0), "count": len(items), "items": items}

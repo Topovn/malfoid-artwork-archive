@@ -1,0 +1,6 @@
+{
+ "_note": "Hidden like estimates for deleted tweets, keyed by tweet ID. Becomes 'e' in the manifest when the tweet has no fetched likes, and wins over the artist-average estimate given to lost tweets. The site sorts and filters by it but never shows it.",
+ "tweets": {
+  "2109238086542733472": 20000
+ }
+}
