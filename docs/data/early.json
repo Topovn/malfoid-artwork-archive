@@ -57,6 +57,22 @@
    "fh": 1342
   },
   {
+   "id": "2012-2",
+   "year": 2012,
+   "label": "2012",
+   "thumb": "early/2012-2.webp",
+   "full": "early/2012-2-full.webp",
+   "w": 400,
+   "h": 706,
+   "fw": 680,
+   "fh": 1200,
+   "credit": {
+    "name": "朝",
+    "url": "https://www.pixiv.net/en/users/4709014"
+   },
+   "source": "https://www.pixiv.net/en/artworks/28703773"
+  },
+  {
    "id": "2013-1",
    "year": 2013,
    "label": "2013",
@@ -194,6 +210,40 @@
    "label": "2026",
    "thumb": "early/2026-1.webp",
    "full": "early/2026-1-full.webp",
+   "w": 400,
+   "h": 773,
+   "fw": 621,
+   "fh": 1200,
+   "credit": {
+    "name": "みるく",
+    "url": "https://www.pixiv.net/en/users/92102414"
+   },
+   "source": "https://www.pixiv.net/en/artworks/140555039",
+   "p": 1769769240000
+  },
+  {
+   "id": "2026-2",
+   "year": 2026,
+   "label": "2026",
+   "thumb": "early/2026-2.webp",
+   "full": "early/2026-2-full.webp",
+   "w": 400,
+   "h": 561,
+   "fw": 856,
+   "fh": 1200,
+   "credit": {
+    "name": "月相水螅",
+    "url": "https://www.pixiv.net/en/users/2289238"
+   },
+   "source": "https://www.pixiv.net/en/artworks/141005134",
+   "p": 1770716880000
+  },
+  {
+   "id": "2026-3",
+   "year": 2026,
+   "label": "2026",
+   "thumb": "early/2026-3.webp",
+   "full": "early/2026-3-full.webp",
    "w": 400,
    "h": 400,
    "fw": 1600,
