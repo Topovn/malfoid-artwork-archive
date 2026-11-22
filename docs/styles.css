@@ -404,9 +404,9 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   background: var(--surface-2);
   width: 100%;
 }
-/* The Gallery search has a row to itself; the filters sit on the row below. */
-#toolbar .field-search { flex-basis: 100%; max-width: none; }
-#toolbar .search-box { max-width: 420px; }
+/* The Gallery search has a row to itself (shared only with the admin view's Danbooru filter); the filters sit on the row below. */
+.search-row { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px; }
+#toolbar .field-search { flex: 0 1 420px; max-width: 420px; }
 /* The type buttons always get their own line, however few there are; their note matches the row's width. */
 .kind-group { flex-basis: 100%; display: grid; grid-template-columns: fit-content(100%); gap: 12px; }
 .field-search input::placeholder { color: var(--muted); opacity: 0.8; }
@@ -439,6 +439,8 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   cursor: pointer;
 }
 .select select:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+/* Focused like the search box: one accent border and a soft glow, never the offset ring that reads as a double border. */
+.select select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 
 .segmented { display: flex; flex-wrap: wrap; gap: 10px; }
 .segmented button[role="radio"] {
@@ -633,6 +635,40 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 .pick-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media (hover: none) {
   .pick-btn { opacity: 1; }
+}
+
+/* H marks: the owner's local view only (tools/serve.py), under the heart */
+.hmark-btn {
+  position: absolute;
+  top: 46px;
+  right: 6px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 50%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: opacity 0.15s, transform 0.15s, background 0.15s;
+}
+.hmark-btn[hidden] { display: none; }
+.hmark-btn[aria-pressed="true"] { background: #d6336c; }
+.card:hover .hmark-btn, .shelf-card:hover .hmark-btn, .hmark-btn:focus-visible, .hmark-btn[aria-pressed="true"] { opacity: 1; }
+.hmark-btn:hover { transform: scale(1.06); }
+.hmark-btn:not([aria-pressed="true"]):hover { background: rgb(0 0 0 / 70%); }
+.hmark-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (hover: none) {
+  .hmark-btn { opacity: 1; }
 }
 
 /* Artist link (ARTIST_LINKS in app.js): a small pill under the handle, beside the open button so it is not nested */
@@ -950,8 +986,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   .hero-meta { font-size: 14px; margin-top: 6px; }
   .toolbar { gap: 10px; padding: 12px 0; }
   .field-label { font-size: 13px; }
-  .field-search { flex-basis: 100%; max-width: none; }
-  #toolbar .search-box { max-width: none; }
+  .field-search, #toolbar .field-search { flex: 1 1 100%; max-width: none; }
   .field-search .field-label { display: none; }
   .field-search input, .select select { height: 42px; }
   .field-inline { flex: 1 1 calc(50% - 5px); flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; }

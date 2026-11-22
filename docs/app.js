@@ -63,6 +63,8 @@
     q: $("#q"),
     likes: $("#likes"),
     followers: $("#followers"),
+    rating: $("#rating"),
+    ratingField: $("#rating-field"),
     kind: $("#kind"),
     sort: $("#sort"),
     perPage: $("#per-page"),
@@ -103,7 +105,7 @@
   const VIEWS = ADULT_SITE ? ["gallery", "artists"] : ["home", "random", "gallery", "timeline", "artists"];
   const DEFAULT_VIEW = VIEWS[0]; // shown at the bare address; the second site then moves it to #gallery
   const MAIN_ONLY_KINDS = new Set(["pick"]);
-  const state = { q: "", artist: "", likes: "", followers: "", kind: "", sort: "shuffle", seed: 0, page: 1, view: DEFAULT_VIEW };
+  const state = { q: "", artist: "", likes: "", followers: "", rating: "", kind: "", sort: "shuffle", seed: 0, page: 1, view: DEFAULT_VIEW };
   const PER_PAGE_OPTIONS = [50, 100, 150, 200, 250, 300];
   const DEFAULT_PER_PAGE = 100;
   // Gallery "Likes" filter: at least the first number and fewer than the second. Works without a count match none.
@@ -126,6 +128,9 @@
     "50k": [50000, 100000],
     "100k": [100000, Infinity],
   };
+  // Danbooru ratings ("r", in the owner's full copy only), for the admin view's rating row and filter.
+  const RATING_NAMES = { g: "General", s: "Sensitive", q: "Questionable", e: "Explicit" };
+  const danbooruUrl = (it) => (Number.isInteger(it.b) && it.b > 0 ? `https://danbooru.donmai.us/posts/${it.b}` : "");
   let items = [];
   // The archive's totals. The published manifest leaves out hidden artists' works but carries the totals with them
   // ("totals"), so the site's numbers stay the whole archive's; without it they are counted from the works here.
@@ -143,9 +148,13 @@
     // Storage blocked: always the admin view.
   }
   const dataUrl = (path) => (visitorView ? path + "?view=visitor" : path);
+  let adminView = false; // the owner's full archive, with the admin-only Danbooru rating row and filter
 
   function setupAdminToggle(res) {
     const btn = document.getElementById("admin-toggle");
+    adminView = res.headers.get("X-Malfoid-Admin") === "1" && !visitorView;
+    el.ratingField.hidden = !adminView;
+    el.ratingField.parentElement.classList.toggle("has-rating", adminView);
     if (!btn || res.headers.get("X-Malfoid-Admin") !== "1") return;
     btn.setAttribute("aria-pressed", String(!visitorView));
     btn.setAttribute("aria-label", "Admin view");
@@ -270,6 +279,7 @@
     state.artist = p.get("artist") || "";
     state.likes = p.get("likes") || "";
     state.followers = p.get("followers") || "";
+    state.rating = p.get("rating") || "";
     state.kind = p.get("type") || "";
     if (ADULT_SITE && MAIN_ONLY_KINDS.has(state.kind)) state.kind = "";
     const legacyRandom = !ADULT_SITE && p.get("sort") === "random";
@@ -279,12 +289,13 @@
     if (state.likes === "30k") state.likes = "20k"; // 30K-50K folded into 20K-50K
     if (!Object.hasOwn(LIKE_RANGES, state.likes)) state.likes = "";
     if (!Object.hasOwn(FOLLOWER_RANGES, state.followers)) state.followers = "";
+    if (state.rating !== "none" && !Object.hasOwn(RATING_NAMES, state.rating)) state.rating = "";
     const seed = Number(p.get("seed"));
     state.seed = Number.isInteger(seed) && seed > 0 && seed < 2 ** 32 ? seed : 0;
     const page = Number(p.get("page"));
     state.page = Number.isInteger(page) && page >= 1 ? page : 1; // clamped to the last page once results are known
     const hash = location.hash.slice(1);
-    const hasFilters = ["q", "artist", "likes", "followers", "type", "sort", "page"].some((k) => p.has(k));
+    const hasFilters = ["q", "artist", "likes", "followers", "rating", "type", "sort", "page"].some((k) => p.has(k));
     state.view = legacyRandom ? "random" : VIEWS.includes(hash) ? hash : hasFilters ? "gallery" : DEFAULT_VIEW;
     if (state.view === "random" && !state.seed) state.seed = newSeed();
     return p.get("work");
@@ -298,6 +309,7 @@
       if (state.artist) p.set("artist", state.artist);
       if (state.likes) p.set("likes", state.likes);
       if (state.followers) p.set("followers", state.followers);
+      if (state.rating) p.set("rating", state.rating);
       if (state.kind) p.set("type", state.kind);
       if (state.sort !== "shuffle") p.set("sort", state.sort);
       if (state.page > 1) p.set("page", state.page);
@@ -321,6 +333,7 @@
     el.q.value = state.q;
     el.likes.value = state.likes;
     el.followers.value = state.followers;
+    el.rating.value = state.rating;
     el.sort.value = state.sort;
     el.perPage.value = String(perPage);
     for (const b of el.kind.querySelectorAll("button[role=radio]")) {
@@ -350,6 +363,7 @@
         const f = artistStats.get(it._al)?.followers;
         if (f == null || f < minFollowers || f >= maxFollowers) return false;
       }
+      if (state.rating && (state.rating === "none" ? !!it.r : it.r !== state.rating)) return false;
       const kindOk =
         state.kind === "lost" ? !!it.l
         : state.kind === "pick" ? pickSet.has(it.f)
@@ -385,7 +399,7 @@
     filtered = out;
 
     // Any change to what is shown, or its order, starts again from page 1.
-    const key = [state.q, state.artist, state.likes, state.followers, state.kind, state.sort, state.sort === "shuffle" ? gallerySeed : 0].join("\u0000");
+    const key = [state.q, state.artist, state.likes, state.followers, state.rating, state.kind, state.sort, state.sort === "shuffle" ? gallerySeed : 0].join("\u0000");
     if (lastFilterKey !== null && key !== lastFilterKey) state.page = 1;
     lastFilterKey = key;
 
@@ -551,7 +565,8 @@
       (it.v != null ? `, about ${fmtLikes(it.v)} likes` : "") +
       (it.k === "anim" ? ", " + kindLabel(it).toLowerCase() : "") +
       (it.l ? ", lost tweet" : "") +
-      (pickSet.has(it.f) ? ", in My Personal Favorite" : "")
+      (pickSet.has(it.f) ? ", in My Personal Favorite" : "") +
+      (hmarkSet.has(it.f) ? ", marked H" : "")
     );
   }
 
@@ -643,6 +658,82 @@
           setPicks(before);
         }
         refreshPicks();
+      });
+  }
+
+  // ---------- H marks ----------
+  // On the owner's local server (tools/serve.py), an H button under each heart marks main-site works that belong
+  // on the 18+ site. Marks go to data/private/h_marks.json through PUT /api/hmarks; tools/move_h_marked.py then
+  // moves the marked files to Malfoid H/ and rebuilds both sites. Visitors and the visitor view never see it.
+
+  let hmarkSet = new Set();
+  let hmarksEditable = false;
+  let hmarkSave = Promise.resolve();
+
+  async function loadHMarks() {
+    if (ADULT_SITE || visitorView || !onLocalhost) return;
+    try {
+      const res = await fetch("api/hmarks", { cache: "no-store" });
+      if (!res.ok || res.headers.get("X-Malfoid-Edit") !== "1") return;
+      setHMarks((await res.json()).marks);
+      hmarksEditable = true;
+    } catch {
+      // A plain static server: no marks.
+    }
+  }
+
+  function setHMarks(list) {
+    hmarkSet = new Set(Array.isArray(list) ? list.filter((f) => typeof f === "string") : []);
+  }
+
+  function makeHMark() {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "hmark-btn";
+    b.textContent = "H";
+    b.hidden = !hmarksEditable;
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (b._item) toggleHMark(b._item);
+    });
+    return b;
+  }
+
+  function setHMark(b, it) {
+    if (!b) return;
+    b._item = it;
+    b.hidden = !hmarksEditable;
+    const on = hmarkSet.has(it.f);
+    b.setAttribute("aria-pressed", String(on));
+    b.setAttribute("aria-label", on ? "Unmark H" : "Mark H, to move to the 18+ site");
+    b.title = on ? "Marked H" : "Mark H";
+  }
+
+  function refreshHMarks() {
+    for (const b of document.querySelectorAll(".hmark-btn")) if (b._item) setHMark(b, b._item);
+    for (const hit of document.querySelectorAll(".card-hit")) if (hit._item) hit.setAttribute("aria-label", cardLabel(hit._item));
+  }
+
+  function toggleHMark(it) {
+    const before = [...hmarkSet];
+    if (hmarkSet.has(it.f)) hmarkSet.delete(it.f);
+    else hmarkSet.add(it.f);
+    refreshHMarks();
+    const body = JSON.stringify({ marks: [...hmarkSet] });
+    hmarkSave = hmarkSave
+      .then(async () => {
+        const res = await fetch("api/hmarks", { method: "PUT", headers: { "Content-Type": "application/json" }, body });
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      })
+      .catch(async (err) => {
+        console.error("Couldn't save the H mark:", err);
+        try {
+          const res = await fetch("api/hmarks", { cache: "no-store" });
+          setHMarks(res.ok ? (await res.json()).marks : before);
+        } catch {
+          setHMarks(before);
+        }
+        refreshHMarks();
       });
   }
 
@@ -775,7 +866,7 @@
       meta.append(handle, likes);
       btn.append(img, badges, meta);
       btn.addEventListener("click", () => onOpen(Number(node.dataset.index), list, btn));
-      node.append(btn, makePick());
+      node.append(btn, makePick(), makeHMark());
       return node;
     }
 
@@ -791,7 +882,8 @@
       }
       hit._item = it;
       hit.setAttribute("aria-label", cardLabel(it));
-      setPick(node.lastChild, it);
+      setPick(node.querySelector(".pick-btn, .pick-badge"), it);
+      setHMark(node.querySelector(".hmark-btn"), it);
       setArtistLink(node, it);
       node.querySelector(".card-handle").textContent = "@" + it.a;
       node.querySelector(".card-likes").textContent = it.v != null ? "♥ " + fmtLikes(it.v) : "";
@@ -1188,6 +1280,7 @@
       ["Image", it.t ? `#${it.i} in tweet` : "Single file"],
       ["File", it._fn],
     ];
+    if (adminView && RATING_NAMES[it.r]) rows.push(["Danbooru rating", RATING_NAMES[it.r]]);
     for (const [k, v] of rows) {
       const dt = document.createElement("dt");
       dt.textContent = k;
@@ -1196,19 +1289,17 @@
       el.viewerMeta.append(dt, dd);
     }
 
-    // A lost tweet whose artist still has an account (a follower count was found) links to that profile instead.
+    // A lost tweet links to the artist's profile instead, and to nothing when that account is gone too.
     const tUrl = tweetUrl(it);
-    const artistAlive = artistStats.get(it._al)?.followers != null;
-    el.viewerTweet.hidden = !tUrl;
-    if (tUrl) {
-      el.viewerTweet.href = it.l && artistAlive ? profileUrl(it) : tUrl;
-      el.viewerTweet.textContent =
-        !it.l ? "View tweet on Twitter ↗"
-        : artistAlive ? "View Artist Profile on Twitter ↗"
-        : "Try the original tweet ↗";
+    const showTweet = it.l ? !artistStats.get(it._al)?.gone : !!tUrl;
+    el.viewerTweet.hidden = !showTweet;
+    if (showTweet) {
+      el.viewerTweet.href = it.l ? profileUrl(it) : tUrl;
+      el.viewerTweet.textContent = it.l ? "View Artist Profile on Twitter ↗" : "View tweet on Twitter ↗";
     }
-    el.viewerDanbooru.hidden = !(it.b && isSafeUrl(it.b));
-    if (!el.viewerDanbooru.hidden) el.viewerDanbooru.href = it.b;
+    const bUrl = danbooruUrl(it);
+    el.viewerDanbooru.hidden = !bUrl;
+    if (bUrl) el.viewerDanbooru.href = bUrl;
 
     const stats = artistStats.get(it._al);
     const n = stats ? stats.count : 1;
@@ -1471,8 +1562,10 @@
       btn.append(meta);
       btn.addEventListener("click", () => openViewer(i, list, btn));
       const pickEl = makePick();
-      card.append(btn, pickEl);
+      const hmark = makeHMark();
+      card.append(btn, pickEl, hmark);
       setPick(pickEl, it);
+      setHMark(hmark, it);
       setArtistLink(card, it);
       track.append(card);
     });
@@ -1936,8 +2029,10 @@
     meta.append(handle, likes);
     btn.append(badges, meta);
     const pick = makePick();
-    card.append(pick);
+    const hmark = makeHMark();
+    card.append(pick, hmark);
     setPick(pick, it);
+    setHMark(hmark, it);
     setArtistLink(card, it);
     return card;
   }
@@ -2285,6 +2380,11 @@
     applyFilters();
     writeUrl(undefined, true);
   });
+  el.rating.addEventListener("change", () => {
+    state.rating = el.rating.value;
+    applyFilters();
+    writeUrl(undefined, true);
+  });
   el.sort.addEventListener("change", () => {
     state.sort = el.sort.value;
     if (state.sort === "shuffle") gallerySeed = newSeed();
@@ -2380,8 +2480,12 @@
 
     let data;
     try {
-      const [res] = await Promise.all([fetch(dataUrl("data/manifest.json")), loadPicks(), loadEarly(), loadComicFixes()]);
+      const [res] = await Promise.all([fetch(dataUrl("data/manifest.json")), loadPicks(), loadEarly(), loadComicFixes(), loadHMarks()]);
       setupAdminToggle(res);
+      if (!adminView && state.rating) {
+        state.rating = ""; // the rating filter is the owner's only
+        syncControls();
+      }
       if (!res.ok) throw new Error(res.status + " " + res.statusText);
       data = await res.json();
     } catch (err) {
@@ -2397,6 +2501,7 @@
     applyComicFixes();
     if (data.releaseBase && isSafeUrl(data.releaseBase)) releaseBase = data.releaseBase;
     const followers = data.followers || {};
+    const gone = new Set(Array.isArray(data.gone) ? data.gone : []);
     for (const it of items) {
       it._al = it.a.toLowerCase();
       it._an = it._al.replace(/[_.]/g, ""); // lets "kuyou" find "__k_u_y_o_u__"
@@ -2408,7 +2513,7 @@
       const s = artistStats.get(it._al);
       if (!s) {
         const fo = followers[it._al] ?? null;
-        artistStats.set(it._al, { key: it._al, handle: it.a, count: 1, latest: it.d, cover: it, followers: fo, formers: [], likes: 0, likedTweets: new Set() });
+        artistStats.set(it._al, { key: it._al, handle: it.a, count: 1, latest: it.d, cover: it, followers: fo, gone: gone.has(it._al), formers: [], likes: 0, likedTweets: new Set() });
       }
       else {
         s.count++;

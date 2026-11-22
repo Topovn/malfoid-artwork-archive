@@ -24,7 +24,7 @@
   <link rel="stylesheet" href="styles.css?v=26">
   <script src="theme.js?v=2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=29" defer></script>
+  <script src="app.js?v=30" defer></script>
 </head>
 <body>
 
@@ -362,13 +362,28 @@
 
     <section id="view-gallery" class="view" hidden>
       <form class="toolbar" id="toolbar" role="search">
-        <label class="field field-search">
-          <span class="field-label">Search works or creators</span>
-          <span class="search-box">
-            <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <input id="q" type="search" placeholder="Artist handle or tweet ID" autocomplete="off" spellcheck="false">
-          </span>
-        </label>
+        <div class="search-row">
+          <label class="field field-search">
+            <span class="field-label">Search works or creators</span>
+            <span class="search-box">
+              <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="q" type="search" placeholder="Artist handle or tweet ID" autocomplete="off" spellcheck="false">
+            </span>
+          </label>
+          <label class="field field-inline" id="rating-field" hidden>
+            <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>Danbooru</span>
+            <span class="select">
+              <select id="rating">
+                <option value="">All ratings</option>
+                <option value="g">General</option>
+                <option value="s">Sensitive</option>
+                <option value="q">Questionable</option>
+                <option value="e">Explicit</option>
+                <option value="none">Not on Danbooru</option>
+              </select>
+            </span>
+          </label>
+        </div>
         <label class="field field-inline">
           <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg>Likes</span>
           <span class="select">
@@ -508,7 +523,7 @@
     <p>This site is an unofficial, non-commercial collection of fan art I found on Twitter, with the help of <a href="https://github.com/EltonChou/TwitterMediaHarvest" target="_blank" rel="noopener noreferrer">Twitter Media Harvest extension</a></p>
     <p>Harry Potter and related names are trademarks of Warner Bros. Entertainment Inc. This site is not affiliated with, endorsed or sponsored by Warner Bros., Wizarding World Digital or J.K. Rowling</p>
     <p>All works belong to their original creators. Icon art by <a href="https://x.com/redteneri" target="_blank" rel="noopener noreferrer">@redteneri</a></p>
-    <p>For more Malfoid fan works, see <a href="https://malfoid.com/" target="_blank" rel="noopener noreferrer">Malfoid.com</a> and the <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/" target="_blank" rel="noopener noreferrer">Malfoid Index</a> where <a href="https://x.com/rhedak1" target="_blank" rel="noopener noreferrer">@rhedak</a> archive all Malfoid media, and the <a href="https://www.reddit.com/r/Malfoid/" target="_blank" rel="noopener noreferrer">r/Malfoid</a> subreddit</p>
+    <p>For more Malfoid fan works, see <a href="https://malfoid.com/" target="_blank" rel="noopener noreferrer">Malfoid.com</a>, the <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/#" target="_blank" rel="noopener noreferrer">Malfoid Index</a>, <a href="https://malfoid.love/" target="_blank" rel="noopener noreferrer">Malfoid.love</a> and the <a href="https://www.reddit.com/r/Malfoid/" target="_blank" rel="noopener noreferrer">r/Malfoid</a> subreddit</p>
   </footer>
 
   <dialog id="viewer" class="viewer" aria-label="Work viewer">

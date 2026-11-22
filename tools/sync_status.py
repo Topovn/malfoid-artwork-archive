@@ -32,7 +32,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_malfoid_gallery import ADULT_SITE, ADULT_SRC, DATA, DEFAULT_SITE, MAIN_SRC, added_ms, source_files  # noqa: E402
-from prune_ai_originals import ai_assets  # noqa: E402
+from prune_originals import prunable_assets  # noqa: E402
 from site_paths import hidden_files, manifest_path  # noqa: E402
 from upload_originals import LOCK, MAX_ASSET_BYTES  # noqa: E402
 
@@ -87,8 +87,8 @@ def scan(src: Path, audience: str) -> dict:
         "gone_from_folder": sorted(on_site - set(files)),
         "not_uploaded": sorted(set(files) - uploaded - too_big),
         "too_big": sorted(too_big),
-        # Shared by both sites: originals of works moved to Malfoid AI/ (tools/prune_ai_originals.py).
-        "ai_on_releases": sorted(e["tag"] + "/" + e["name"] for e in ai_assets().values()),
+        # Shared by both sites: originals of works moved to Malfoid AI/ or by blocked artists (tools/prune_originals.py).
+        "prunable_on_releases": sorted(e["tag"] + "/" + e["name"] for e in prunable_assets().values()),
     }
 
 
@@ -117,7 +117,7 @@ def main() -> int:
 
     scan_time = now_iso()
     s = scan(src, args.audience)
-    pending = bool(s["missing_from_site"] or s["gone_from_folder"] or s["not_uploaded"] or s["ai_on_releases"])
+    pending = bool(s["missing_from_site"] or s["gone_from_folder"] or s["not_uploaded"] or s["prunable_on_releases"])
 
     if args.mark:
         if not args.at:
@@ -127,7 +127,7 @@ def main() -> int:
             listing("Not on the site yet", s["missing_from_site"])
             listing("On the site but gone from the folder", s["gone_from_folder"])
             listing("Originals not on GitHub Releases yet", s["not_uploaded"])
-            listing("AI works still on GitHub Releases", s["ai_on_releases"])
+            listing("AI or blocked works still on GitHub Releases", s["prunable_on_releases"])
             sys.exit("Sync is not finished, so the date was not recorded. Use --force to record it anyway.")
         tmp = site["last_sync"].with_suffix(".json.tmp")
         tmp.write_text(json.dumps({"synced_at": at.isoformat(timespec="seconds"), "works": len(s["files"])},
@@ -148,7 +148,7 @@ def main() -> int:
     listing("Not on the site yet", s["missing_from_site"])
     listing("On the site but gone from the folder", s["gone_from_folder"])
     listing("Originals not on GitHub Releases yet", s["not_uploaded"])
-    listing("AI works still on GitHub Releases", s["ai_on_releases"])
+    listing("AI or blocked works still on GitHub Releases", s["prunable_on_releases"])
     if s["too_big"]:
         listing("Over the 2 GiB release asset limit (stay local)", s["too_big"])
     print(f"Upload running: {'yes' if upload_running() else 'no'}")

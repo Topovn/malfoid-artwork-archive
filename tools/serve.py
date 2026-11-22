@@ -8,6 +8,8 @@ data/picks.json. This server serves the gallery folder like `python3 -m http.ser
     PUT /api/picks   replace the list, body {"picks": ["<filename>", ...]}
     GET /api/comics  the owner's Comic corrections, {"comic": [...], "art": [...]}
     PUT /api/comics  replace them (stored in data/comics.json, applied to the manifests by the next build)
+    GET /api/hmarks  main-site works the owner marked H, {"marks": [...]}
+    PUT /api/hmarks  replace them (stored in data/private/h_marks.json; tools/move_h_marked.py moves them to Malfoid H/)
 
 Responses for data/picks.json and /api/comics carry an X-Malfoid-Edit header, which tells the page
 to show the heart buttons and the Comic tag toggle.
@@ -51,9 +53,11 @@ FULL_FILES = {"/data/manifest.json", "/data/texts.json", "/h/data/manifest.json"
 FULL_FALLBACK = ("/thumbs/", "/h/thumbs/")
 PICKS = SITE / "data" / "picks.json"
 COMICS = ROOT / "data" / "comics.json"  # the owner's Comic corrections; private, applied by the next build
+HMARKS = ROOT / "data" / "private" / "h_marks.json"  # works marked for the 18+ site; never published
 MAX_PICKS = 20000
 MAX_BODY = 4 * 1024 * 1024
-EDIT_PATHS = {"/data/picks.json", "/api/picks", "/api/comics"}
+EDIT_PATHS = {"/data/picks.json", "/api/picks", "/api/comics", "/api/hmarks"}
+API_PATHS = ("/api/picks", "/api/comics", "/api/hmarks")
 
 
 def read_picks() -> list[str]:
@@ -100,6 +104,21 @@ def validate(body: object) -> list[str]:
     if not isinstance(body, dict):
         raise ValueError('expected {"picks": [...]}')
     return filenames(body.get("picks"), "picks")
+
+
+def read_hmarks() -> list[str]:
+    try:
+        data = json.loads(HMARKS.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return []
+    marks = data.get("marks", []) if isinstance(data, dict) else []
+    return [m for m in marks if isinstance(m, str)]
+
+
+def validate_hmarks(body: object) -> dict:
+    if not isinstance(body, dict):
+        raise ValueError('expected {"marks": [...]}')
+    return {"marks": sorted(filenames(body.get("marks"), "marks"))}
 
 
 def read_comics() -> dict:
@@ -258,11 +277,13 @@ class Handler(SimpleHTTPRequestHandler):
             self._json(HTTPStatus.OK, {"picks": read_picks()})
         elif self._path() == "/api/comics":
             self._json(HTTPStatus.OK, read_comics())
+        elif self._path() == "/api/hmarks":
+            self._json(HTTPStatus.OK, {"marks": read_hmarks()})
         else:
             super().do_GET()
 
     def do_PUT(self) -> None:
-        if self._path() not in ("/api/picks", "/api/comics"):
+        if self._path() not in API_PATHS:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
         if not self._host_ok():
@@ -279,14 +300,17 @@ class Handler(SimpleHTTPRequestHandler):
         if length > MAX_BODY:
             self.send_error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
             return
-        comics = self._path() == "/api/comics"
+        target, check = {
+            "/api/picks": (PICKS, lambda b: {"picks": validate(b)}),
+            "/api/comics": (COMICS, validate_comics),
+            "/api/hmarks": (HMARKS, validate_hmarks),
+        }[self._path()]
         try:
-            body = json.loads(self.rfile.read(length) or b"null")
-            data = validate_comics(body) if comics else {"picks": validate(body)}
+            data = check(json.loads(self.rfile.read(length) or b"null"))
         except (ValueError, json.JSONDecodeError) as exc:
             self._json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
             return
-        write_json(COMICS if comics else PICKS, data)
+        write_json(target, data)
         self._json(HTTPStatus.OK, data)
 
     def log_message(self, fmt: str, *args) -> None:

@@ -8,6 +8,7 @@ That site shares the main site's code, styles and icons and adds only its own da
 Malfoid AI/ is never scanned by either build.
 
 Writes data/manifest.json and one WebP thumbnail per work into the chosen site folder.
+Works by blocked artists are skipped as if they weren't in the folder.
 Works by hidden artists (see tools/site_paths.py) stay out of it: the build also writes a full copy of the site's
 manifest, post texts and the hidden works' thumbnails to data/private/site/, which only the owner's
 local server shows.
@@ -29,6 +30,7 @@ import re
 import subprocess
 import sys
 from collections import Counter
+from functools import cache
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -38,7 +40,7 @@ from PIL import Image, ImageOps
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import detect_comics  # noqa: E402
-from site_paths import FULL_SITES, hidden_handles  # noqa: E402
+from site_paths import FULL_SITES, blocked_handles, hidden_handles  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_SITE = REPO / "docs"  # the main site; GitHub Pages publishes this folder
@@ -76,6 +78,29 @@ def parse_name(stem: str) -> tuple[str, str, int]:
     m = NAME_RE.match(stem)
     handle, tweet, idx = m.group("handle"), m.group("tweet") or "", m.group("idx")
     return handle, tweet, int(idx) if idx else 1
+
+
+@cache
+def renames() -> dict[str, str]:
+    """Saved handle (lowercase) -> current handle, for every renamed artist.
+
+    From tools/trace_handles.py (data/handles.json), with the manual renames in data/aliases.json on top.
+    """
+    traced = json.loads((DATA / "handles.json").read_text()) if (DATA / "handles.json").exists() else {}
+    manual = json.loads((DATA / "aliases.json").read_text()).get("handles", {}) if (DATA / "aliases.json").exists() else {}
+    out = {k: v["current"] for k, v in traced.items() if v.get("current")}
+    out.update({k.lower(): v for k, v in manual.items()})
+    return out
+
+
+def work_handles(filename: str, saved: str | None = None) -> tuple[str, str | None]:
+    """(saved handle, current handle if the account was renamed) of one work."""
+    saved = saved or parse_name(Path(filename).stem)[0]
+    return saved, renames().get(saved.lower())
+
+
+def is_blocked(filename: str, blocked: set[str]) -> bool:
+    return any(h and h.lower() in blocked for h in work_handles(filename))
 
 
 def posted_ms(tweet_id: str) -> int:
@@ -148,8 +173,9 @@ def source_files(src: Path, audience: str = "main") -> list[tuple[Path, bool]]:
     """Every work the chosen site should show, as (path, is lost tweet), in a stable order.
 
     The main site reads the top level and _LostTweets; the second site reads only the top level of its folder.
-    The source files always stay where the owner put them.
+    Works by blocked artists are left out. The source files always stay where the owner put them.
     """
+    blocked = blocked_handles()
     folders = [(src, False)] if audience == "adult" else [(src, False), (src / LOST_DIR, True)]
     files: list[tuple[Path, bool]] = []
     for folder, lost in folders:
@@ -157,7 +183,7 @@ def source_files(src: Path, audience: str = "main") -> list[tuple[Path, bool]]:
             continue
         for p in sorted(folder.iterdir()):
             ext = p.suffix.lower().lstrip(".")
-            if p.is_file() and not p.name.startswith(".") and ext in IMAGE_EXTS | VIDEO_EXTS:
+            if p.is_file() and not p.name.startswith(".") and ext in IMAGE_EXTS | VIDEO_EXTS and not is_blocked(p.name, blocked):
                 files.append((p, lost))
     return files
 
@@ -235,6 +261,8 @@ def write_site_data(site_data: Path, items: list[dict], followers: dict, rel: di
         for k, v in sorted(followers.items())
         if k in artist_keys and v.get("followers") is not None
     }
+    # Accounts the follower fetch found missing, suspended or protected, so the viewer offers no profile link for them.
+    manifest["gone"] = sorted(k for k, v in followers.items() if k in artist_keys and v.get("status") == "gone")
     if rel.get("repo"):
         manifest["releaseBase"] = f"https://github.com/{rel['repo']}/releases/download/"
     site_data.mkdir(parents=True, exist_ok=True)
@@ -282,25 +310,12 @@ def main() -> int:
     # Lost tweets moved to the second site's folder keep their row in the main folder's log.
     lost_logs = [MAIN_SRC, src] if args.audience == "adult" else [src]
     lost_meta = {row["file"]: row for folder in lost_logs for row in read_csv(folder / LOST_DIR / f"{LOST_DIR}.csv")}
-    danbooru = {}
-    for row in read_csv(src / "Malfoid non-Twitter sources.csv"):
-        m = re.search(r"/status/(\d+)", row.get("Source", ""))
-        if m and row.get("Danbooru"):
-            danbooru[m.group(1)] = row["Danbooru"]
 
     files = source_files(src, args.audience)
 
-    # Current handles from tools/trace_handles.py, keyed by lowercased saved handle.
-    handles_path = DATA / "handles.json"
-    handles = json.loads(handles_path.read_text()) if handles_path.exists() else {}
-    # Manual renames for handles the tracer can't resolve.
-    aliases_path = DATA / "aliases.json"
-    aliases = {k.lower(): v for k, v in (json.loads(aliases_path.read_text()) if aliases_path.exists() else {}).get("handles", {}).items()}
-
     def artist(p: Path) -> tuple[str, str | None]:
         """(saved handle, current handle if the account was renamed) of one work."""
-        handle = lost_meta.get(p.name, {}).get("artist_handle") or parse_name(p.stem)[0]
-        return handle, aliases.get(handle.lower()) or handles.get(handle.lower(), {}).get("current")
+        return work_handles(p.name, lost_meta.get(p.name, {}).get("artist_handle"))
 
     hidden_files = {p.name for p, _ in files if any(h and h.lower() in hidden for h in artist(p))}
 
@@ -339,6 +354,9 @@ def main() -> int:
     rel_path = DATA / "releases.json"
     rel = json.loads(rel_path.read_text()) if rel_path.exists() else {}
     released = rel.get("assets", {})
+    # Each file's Danbooru post and rating from tools/fetch_danbooru.py.
+    danbooru_path = DATA / "danbooru.json"
+    danbooru = (json.loads(danbooru_path.read_text()) if danbooru_path.exists() else {}).get("files", {})
     # Approximate like counts from tools/fetch_likes.py.
     likes_path = DATA / "likes.json"
     likes = json.loads(likes_path.read_text()) if likes_path.exists() else {}
@@ -390,8 +408,10 @@ def main() -> int:
             item["a"] = current
             if current.lower() != handle.lower():
                 item["o"] = handle
-        if tweet in danbooru:
-            item["b"] = danbooru[tweet]
+        booru = danbooru.get(p.name, {})
+        if booru.get("post"):
+            item["b"] = booru["post"]
+            item["r"] = booru["rating"]  # the owner's full copy only; the public copy drops it
         if item["k"] == "art" and detect_comics.is_comic(p.name, comic_feats.get(p.name), comic_fixes):
             item["c"] = 1
         if tweet in likes and likes[tweet].get("likes") is not None:
@@ -421,7 +441,7 @@ def main() -> int:
 
     texts_path = DATA / "texts.json"
     text_cache = json.loads(texts_path.read_text()) if texts_path.exists() else {}
-    public = [it for it in items if "z" not in it]
+    public = [{k: v for k, v in it.items() if k != "r"} for it in items if "z" not in it]
     # Both copies show the whole archive's totals, so hiding artists never changes the site's numbers.
     totals = {"works": len(items), "posts": len({it["t"] or it["f"] for it in items}), "artists": len({it["a"].lower() for it in items}),
               **activity_totals(items)}

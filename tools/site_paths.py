@@ -9,6 +9,9 @@ reposting or using their art (see tools/fetch_bios.py). Their works are marked "
 thumbnails live only in the full copy, so visitors never see them. The site's numbers still count them (the manifests'
 "totals"). The public copy keeps the shared files (code, styles, icons, My Pick, early works); the full copy holds just
 the manifest, post texts and hidden thumbnails, and tools/serve.py fills in the rest from docs/.
+
+Blocked artists (data/private/blocklist.json, reviewed with tools/detect_blocked.py) go further: the build leaves
+their works out of both copies and out of the totals, as if the files weren't in the folders at all.
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 PRIVATE = DATA / "private"
 BIO_FLAGS = PRIVATE / "bio_flags.json"
+BLOCKLIST = PRIVATE / "blocklist.json"
 
 PUBLIC_SITES = {"main": ROOT / "docs", "adult": ROOT / "docs" / "h"}
 FULL_SITES = {"main": PRIVATE / "site", "adult": PRIVATE / "site" / "h"}
@@ -58,3 +62,25 @@ def hidden_handles() -> set[str]:
         sys.exit(f"{BIO_FLAGS.relative_to(ROOT)} is missing, so hidden artists can't be kept off the public sites. "
                  "Run tools/fetch_bios.py and review its bios first.")
     return {k.lower() for k, v in json.loads(BIO_FLAGS.read_text()).items() if v.get("flag")}
+
+
+def read_blocklist() -> dict:
+    """The block list: {"artists": [handles], "cleared": [filenames reviewed as fine]}.
+
+    Refuses to go on without it, so a build on a machine without the file can never publish blocked artists.
+    """
+    if not BLOCKLIST.exists():
+        sys.exit(f"{BLOCKLIST.relative_to(ROOT)} is missing, so blocked artists can't be left out of the sites.")
+    return json.loads(BLOCKLIST.read_text())
+
+
+def write_blocklist(record: dict) -> None:
+    record = {"artists": sorted(record["artists"], key=str.lower), "cleared": sorted(record.get("cleared", []))}
+    tmp = BLOCKLIST.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(record, indent=1) + "\n")
+    tmp.replace(BLOCKLIST)
+
+
+def blocked_handles() -> set[str]:
+    """Lowercased handles of the blocked artists."""
+    return {h.lower() for h in read_blocklist()["artists"]}

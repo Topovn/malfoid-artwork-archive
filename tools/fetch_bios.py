@@ -8,7 +8,8 @@ A bio is flagged when it forbids unauthorized reproduction, reposting or use of 
 included), in any language. Bios are first screened with keyword patterns, then each candidate is reviewed by hand
 and the decision recorded in data/private/bio_flags.json as {handle: {"flag": bool, "kind": str, "translation": str}}.
 Kinds: "forbids" (reposting, reproduction or use without permission is forbidden; flagged), "ai-only" (only AI
-training or AI use is forbidden), "credit" (reposting is allowed with credit or for non-commercial use), "none".
+training or AI use is forbidden), "credit" (reposting is allowed with credit or for non-commercial use), "none",
+"owner" (hidden by the owner's choice, whatever the bio says; flagged).
 Reviewed decisions win over the keyword screen; unreviewed candidates are listed at the end of a run.
 
 The CSV (data/private/artist_bios.csv) has one row per artist:
