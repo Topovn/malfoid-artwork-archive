@@ -362,10 +362,13 @@
       <form class="toolbar" id="toolbar" role="search">
         <label class="field field-search">
           <span class="field-label">Search works or creators</span>
-          <input id="q" type="search" placeholder="Artist handle or tweet ID" autocomplete="off" spellcheck="false">
+          <span class="search-box">
+            <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="q" type="search" placeholder="Artist handle or tweet ID" autocomplete="off" spellcheck="false">
+          </span>
         </label>
         <label class="field field-inline">
-          <span class="field-label">Likes</span>
+          <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg>Likes</span>
           <span class="select">
             <select id="likes">
               <option value="">All likes</option>
@@ -380,7 +383,7 @@
           </span>
         </label>
         <label class="field field-inline">
-          <span class="field-label">Followers</span>
+          <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Followers</span>
           <span class="select">
             <select id="followers">
               <option value="">All followers</option>
@@ -395,7 +398,7 @@
           </span>
         </label>
         <label class="field field-inline">
-          <span class="field-label">Order</span>
+          <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></svg>Order</span>
           <span class="select">
             <select id="sort">
               <option value="added">Recently added</option>
@@ -407,7 +410,7 @@
           </span>
         </label>
         <label class="field field-inline">
-          <span class="field-label">Per page</span>
+          <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Per page</span>
           <span class="select">
             <select id="per-page">
               <option value="50">50</option>
@@ -430,7 +433,7 @@
         </div>
         <!-- Shown only while the matching type is selected (see .kind-note in styles.css). -->
         <p class="kind-note" id="pick-note" data-kind="pick">My (Topovn) personal favorite collection of Malfoid, will grow over time as I look back at the library</p>
-        <p class="kind-note" id="video-note" data-kind="video" data-main-only>Some early compilation, some memes, some music, and mostly original compositions by Alessandro49472</p>
+        <p class="kind-note" id="video-note" data-kind="video" data-main-only>Some early compilation, some memes, some music, and mostly original compositions by Alessandro49472. Visit <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/" target="_blank" rel="noopener noreferrer">Malfoid Index</a> for more videos</p>
         <p class="kind-note" id="lost-note" data-kind="lost"></p>
       </form>
 
@@ -458,10 +461,13 @@
       <div class="toolbar">
         <label class="field field-search">
           <span class="field-label">Find an artist</span>
-          <input id="artist-q" type="search" placeholder="Artist handle" autocomplete="off" spellcheck="false">
+          <span class="search-box">
+            <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="artist-q" type="search" placeholder="Artist handle" autocomplete="off" spellcheck="false">
+          </span>
         </label>
         <label class="field field-inline">
-          <span class="field-label">Followers</span>
+          <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Followers</span>
           <span class="select">
             <select id="artist-followers">
               <option value="">All followers</option>
@@ -476,7 +482,7 @@
           </span>
         </label>
         <label class="field field-inline">
-          <span class="field-label">Order</span>
+          <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></svg>Order</span>
           <span class="select">
             <select id="artist-sort">
               <option value="count">Most works</option>

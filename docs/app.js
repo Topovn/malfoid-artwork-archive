@@ -34,6 +34,7 @@
   const RANDOM_SIZE = 50; // works shown in the Random tab, one per artist
   const LONG_VIDEO = 30; // videos this many seconds or longer count as Videos (see isVideo)
   const VIDEO_ARTISTS = new Set(["alessandro49472"]); // every work by these artists counts as Videos
+  const ANIMATION_ARTISTS = new Set(["asuzureincarnat"]); // every video by these artists counts as Animations, however long
   const VIDEO_WORKS = new Set([ // short works that still count as Videos
     "tenmeida-2108357386880606323-01.mp4",
     "Genshin_T1-2107730480061911364-01.mp4",
@@ -197,8 +198,9 @@
   const nameCollator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
   const plural = (n, one, many) => `${numberFmt.format(n)} ${n === 1 ? one : many}`;
   // Long videos, everything by VIDEO_ARTISTS (under a current or former handle) and the works listed in
-  // VIDEO_WORKS form the Videos filter, except the works listed in ANIMATION_WORKS.
+  // VIDEO_WORKS form the Videos filter, except the works listed in ANIMATION_WORKS and those by ANIMATION_ARTISTS.
   const isVideo = (it) => VIDEO_WORKS.has(it.f) || (!ANIMATION_WORKS.has(it.f) &&
+    !ANIMATION_ARTISTS.has(it._al) && !ANIMATION_ARTISTS.has(it._ao) &&
     (it.s >= LONG_VIDEO || VIDEO_ARTISTS.has(it._al) || VIDEO_ARTISTS.has(it._ao)));
   const kindLabel = (it) => (isVideo(it) ? "Video" : it.k === "anim" ? "Animation" : "Artwork");
 

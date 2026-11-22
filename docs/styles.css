@@ -367,9 +367,38 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 .field-inline { flex-direction: row; align-items: center; gap: 12px; }
 .field-label { color: var(--muted); font-size: 15px; white-space: nowrap; }
 .field-search { flex: 1 1 280px; max-width: 420px; }
+.field-inline .field-label { display: inline-flex; align-items: center; gap: 7px; }
+.label-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* The magnifier sits inside the search box, on the left. */
+.field-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translateY(-50%);
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+  transition: stroke 0.15s;
+}
+.search-box { position: relative; display: block; }
+.search-box:focus-within .field-icon { stroke: var(--accent); }
 .field-search input {
   height: 46px;
-  padding: 0 16px;
+  padding: 0 16px 0 44px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface-2);
@@ -377,7 +406,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 }
 /* The Gallery search has a row to itself; the filters sit on the row below. */
 #toolbar .field-search { flex-basis: 100%; max-width: none; }
-#toolbar .field-search input { max-width: 420px; }
+#toolbar .search-box { max-width: 420px; }
 #toolbar #kind { flex-basis: 100%; } /* the type buttons always get their own line, however few there are */
 .field-search input::placeholder { color: var(--muted); opacity: 0.8; }
 .field-search input:focus { background: var(--surface); border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
@@ -921,11 +950,14 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   .toolbar { gap: 10px; padding: 12px 0; }
   .field-label { font-size: 13px; }
   .field-search { flex-basis: 100%; max-width: none; }
-  #toolbar .field-search input { max-width: none; }
+  #toolbar .search-box { max-width: none; }
   .field-search .field-label { display: none; }
   .field-search input, .select select { height: 42px; }
   .field-inline { flex: 1 1 calc(50% - 5px); flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; }
   .select select { min-width: 0; width: 100%; padding-left: 12px; padding-right: 36px; }
+  .field-icon { left: 12px; width: 16px; height: 16px; }
+  .label-icon { width: 14px; height: 14px; }
+  .field-search input { padding-left: 38px; }
   .select::after { right: 14px; }
   /* The type buttons shrink to icons on one row; the names stay for screen readers. */
   .segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; width: 100%; }
