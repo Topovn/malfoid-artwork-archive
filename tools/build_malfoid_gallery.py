@@ -94,8 +94,18 @@ def renames() -> dict[str, str]:
     return out
 
 
+@cache
+def manual_works() -> dict[str, dict]:
+    """The owner's details for works whose filename names no tweet, from data/manual_works.json:
+    {"files": {"<filename>": {"artist": "<X handle>", "title": "<shown as the post text>"}}}."""
+    path = DATA / "manual_works.json"
+    return json.loads(path.read_text()).get("files", {}) if path.exists() else {}
+
+
 def work_handles(filename: str, saved: str | None = None) -> tuple[str, str | None]:
-    """(saved handle, current handle if the account was renamed) of one work."""
+    """(saved handle, current handle if the account was renamed) of one work.
+    An "artist" set in data/manual_works.json wins over the filename."""
+    saved = saved or manual_works().get(filename, {}).get("artist")
     saved = saved or parse_name(Path(filename).stem)[0]
     return saved, renames().get(saved.lower())
 
@@ -426,6 +436,9 @@ def main() -> int:
         }
         if seconds is not None:
             item["s"] = round(seconds)  # video length, used to keep long videos off the home shelves
+        title = manual_works().get(p.name, {}).get("title")
+        if title:
+            item["n"] = title  # the owner's title, shown where a tweet's text would be
         if lost:
             item["l"] = meta.get("reason") or "Tweet no longer available"
             # Moving a file into _LostTweets resets its timestamps, so prefer the logged download time.
@@ -478,11 +491,14 @@ def main() -> int:
     texts_path = DATA / "texts.json"
     text_cache = json.loads(texts_path.read_text()) if texts_path.exists() else {}
     public = [it for it in items if "z" not in it]
-    # Both copies show the whole archive's totals, so hiding artists never changes the site's numbers.
-    totals = {"works": len(items), "posts": len({it["t"] or it["f"] for it in items}), "artists": len({it["a"].lower() for it in items}),
-              **activity_totals(items)}
-    write_site_data(site_data, public, followers, rel, text_cache, totals)
-    write_site_data(full_site / "data", items, followers, rel, text_cache, totals)
+
+    def copy_totals(works: list[dict]) -> dict:
+        return {"works": len(works), "posts": len({it["t"] or it["f"] for it in works}),
+                "artists": len({it["a"].lower() for it in works}), **activity_totals(works)}
+
+    # Each copy counts only its own works: visitors' numbers leave out hidden artists, the owner's full copy has all.
+    write_site_data(site_data, public, followers, rel, text_cache, copy_totals(public))
+    write_site_data(full_site / "data", items, followers, rel, text_cache, copy_totals(items))
     # The second site copies the main index.html, so either build refreshes it once it exists.
     if args.audience == "adult" or ADULT_SITE.is_dir():
         write_adult_page()

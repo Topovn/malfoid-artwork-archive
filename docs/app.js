@@ -137,8 +137,8 @@
   const RATING_NAMES = { g: "General", s: "Sensitive", q: "Questionable", e: "Explicit" };
   const danbooruUrl = (it) => (Number.isInteger(it.b) && it.b > 0 ? `https://danbooru.donmai.us/posts/${it.b}` : "");
   let items = [];
-  // The archive's totals. The published manifest leaves out hidden artists' works but carries the totals with them
-  // ("totals"), so the site's numbers stay the whole archive's; without it they are counted from the works here.
+  // The copy's totals ("totals"): the published manifest counts only the works visitors see, the owner's full copy
+  // (tools/serve.py) counts every work, hidden artists included; without it they are counted from the works here.
   let manifestTotals = null;
 
   // ---------- Admin toggle ----------
@@ -392,7 +392,8 @@
           it._al.includes(q) ||
           it._ao.includes(q) ||
           (qLoose && (it._an.includes(qLoose) || it._aon.includes(qLoose))) ||
-          (it.t && it.t.includes(q))
+          (it.t && it.t.includes(q)) ||
+          (it.n && it.n.toLowerCase().includes(q))
         );
       }
       return true;
@@ -1071,7 +1072,7 @@
 
   // Long posts start clamped to a few lines; "Show more" appears only when the text overflows.
   function renderPostText(it) {
-    const text = !it._early && !it.l && it.t ? postTexts[it.t] : "";
+    const text = it.n || (!it._early && !it.l && it.t ? postTexts[it.t] : "");
     el.viewerPost.hidden = !text;
     el.viewerText.replaceChildren(text ? linkedText(text) : "");
     setPostExpanded(false);
@@ -1284,15 +1285,16 @@
 
     el.viewerMeta.replaceChildren();
     const followers = artistStats.get(it._al)?.followers;
+    // A work with no tweet skips the rows it has nothing to show for.
     const rows = [
-      ["Likes", it.v != null ? `About ${fmtLikes(it.v)}` : "Unknown"],
+      (it.t || it.v != null) && ["Likes", it.v != null ? `About ${fmtLikes(it.v)}` : "Unknown"],
       ["Artist followers", followers != null ? `About ${fmtLikes(followers)}` : "Unknown"],
-      ["Posted", fmtPosted(it)],
+      (it.t || it.y) && ["Posted", fmtPosted(it)],
       ["Added", fmtDate(it.d)],
-      ["Tweet ID", it.t || "Unknown"],
-      ["Image", it.t ? `#${it.i} in tweet` : "Single file"],
+      it.t && ["Tweet ID", it.t],
+      it.t && ["Image", `#${it.i} in tweet`],
       ["File", it._fn],
-    ];
+    ].filter(Boolean);
     if (RATING_NAMES[it.r]) rows.push(["Danbooru rating", RATING_NAMES[it.r]]);
     for (const [k, v] of rows) {
       const dt = document.createElement("dt");
@@ -1781,7 +1783,7 @@
     const weekFrom = keyIso(keyMs(lastPosted.date) - 6 * DAY);
     const newLast7 = timeline.daily.filter((d) => d.date >= weekFrom && d.date <= lastPosted.date).reduce((n, d) => n + d.new_artists, 0);
     timeline.summary = {
-      // The archive's totals, the same as the site header's.
+      // This copy's totals, the same as the site header's.
       works: totalWorks(),
       posts: manifestTotals?.posts ?? new Set(works.map((work) => work.post)).size,
       artists: totalArtists(),
@@ -2380,6 +2382,8 @@
   for (const a of document.querySelectorAll(".nav a[data-view], .brand")) {
     a.addEventListener("click", (e) => {
       e.preventDefault();
+      // On the second site the icon leads nowhere new (its home is the gallery), so it keeps the gallery as it is.
+      if (ADULT_SITE && a.classList.contains("brand")) return;
       enterView(a.dataset.view || DEFAULT_VIEW);
       writeUrl(undefined, true);
       window.scrollTo({ top: 0 });
