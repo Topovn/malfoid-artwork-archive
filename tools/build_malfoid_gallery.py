@@ -411,7 +411,7 @@ def main() -> int:
         booru = danbooru.get(p.name, {})
         if booru.get("post"):
             item["b"] = booru["post"]
-            item["r"] = booru["rating"]  # the owner's full copy only; the public copy drops it
+            item["r"] = booru["rating"]
         if item["k"] == "art" and detect_comics.is_comic(p.name, comic_feats.get(p.name), comic_fixes):
             item["c"] = 1
         if tweet in likes and likes[tweet].get("likes") is not None:
@@ -441,7 +441,7 @@ def main() -> int:
 
     texts_path = DATA / "texts.json"
     text_cache = json.loads(texts_path.read_text()) if texts_path.exists() else {}
-    public = [{k: v for k, v in it.items() if k != "r"} for it in items if "z" not in it]
+    public = [it for it in items if "z" not in it]
     # Both copies show the whole archive's totals, so hiding artists never changes the site's numbers.
     totals = {"works": len(items), "posts": len({it["t"] or it["f"] for it in items}), "artists": len({it["a"].lower() for it in items}),
               **activity_totals(items)}

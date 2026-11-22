@@ -64,7 +64,6 @@
     likes: $("#likes"),
     followers: $("#followers"),
     rating: $("#rating"),
-    ratingField: $("#rating-field"),
     kind: $("#kind"),
     sort: $("#sort"),
     perPage: $("#per-page"),
@@ -128,7 +127,7 @@
     "50k": [50000, 100000],
     "100k": [100000, Infinity],
   };
-  // Danbooru ratings ("r", in the owner's full copy only), for the admin view's rating row and filter.
+  // Danbooru ratings ("r"), for the viewer's rating row and the gallery's rating filter.
   const RATING_NAMES = { g: "General", s: "Sensitive", q: "Questionable", e: "Explicit" };
   const danbooruUrl = (it) => (Number.isInteger(it.b) && it.b > 0 ? `https://danbooru.donmai.us/posts/${it.b}` : "");
   let items = [];
@@ -148,13 +147,9 @@
     // Storage blocked: always the admin view.
   }
   const dataUrl = (path) => (visitorView ? path + "?view=visitor" : path);
-  let adminView = false; // the owner's full archive, with the admin-only Danbooru rating row and filter
 
   function setupAdminToggle(res) {
     const btn = document.getElementById("admin-toggle");
-    adminView = res.headers.get("X-Malfoid-Admin") === "1" && !visitorView;
-    el.ratingField.hidden = !adminView;
-    el.ratingField.parentElement.classList.toggle("has-rating", adminView);
     if (!btn || res.headers.get("X-Malfoid-Admin") !== "1") return;
     btn.setAttribute("aria-pressed", String(!visitorView));
     btn.setAttribute("aria-label", "Admin view");
@@ -1280,7 +1275,7 @@
       ["Image", it.t ? `#${it.i} in tweet` : "Single file"],
       ["File", it._fn],
     ];
-    if (adminView && RATING_NAMES[it.r]) rows.push(["Danbooru rating", RATING_NAMES[it.r]]);
+    if (RATING_NAMES[it.r]) rows.push(["Danbooru rating", RATING_NAMES[it.r]]);
     for (const [k, v] of rows) {
       const dt = document.createElement("dt");
       dt.textContent = k;
@@ -2482,10 +2477,6 @@
     try {
       const [res] = await Promise.all([fetch(dataUrl("data/manifest.json")), loadPicks(), loadEarly(), loadComicFixes(), loadHMarks()]);
       setupAdminToggle(res);
-      if (!adminView && state.rating) {
-        state.rating = ""; // the rating filter is the owner's only
-        syncControls();
-      }
       if (!res.ok) throw new Error(res.status + " " + res.statusText);
       data = await res.json();
     } catch (err) {

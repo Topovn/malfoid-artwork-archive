@@ -13,8 +13,8 @@ Matching is per file, so every image of a multi-image tweet links to its own pos
 3. By the owner's list: "Malfoid non-Twitter sources.csv" in the Malfoid folder names posts for tweets that are gone.
 
 Results are cached in data/danbooru.json, keyed by filename. Run tools/build_malfoid_gallery.py (and with
---audience adult) afterwards: the build links each work to its post ("b") and gives the owner's full copy the
-rating ("r"), which only the admin view shows.
+--audience adult) afterwards: the build links each work to its post ("b") and gives it the post's rating ("r"),
+which the viewer shows and the gallery filters by.
 
 Usage:
     python3 tools/fetch_danbooru.py                # checksums for everything, tweets not searched in about a month
