@@ -1371,13 +1371,14 @@
     for (const name of Object.keys(RANDOM_SHELVES)) shuffleShelf(name, shelfSeeds[name]);
     shuffleShelf("small");
     // The gallery's first works when ordered by Recently added and by Newest posted, videos included.
+    // Newest Posted Works is switched off for now, with its section in index.html: it mostly repeated Recently Added.
     shelves.added = items.slice().sort(byAdded).slice(0, LATEST_SHELF_SIZE);
-    shelves.newest = items.slice().sort(byNewest).slice(0, LATEST_SHELF_SIZE);
+    // shelves.newest = items.slice().sort(byNewest).slice(0, LATEST_SHELF_SIZE);
 
     renderShelf("fame");
     // renderShelf("overlooked");
     renderShelf("added");
-    renderShelf("newest");
+    // renderShelf("newest");
   }
 
   // One artist max: pick artists with the seed, then one of that artist's works in the pool, in shuffled order.
@@ -1492,7 +1493,7 @@
   });
   for (const [id, sort] of [
     ["#added-link", "added"],
-    ["#newest-link", "newest"],
+    // ["#newest-link", "newest"],
   ]) {
     $(id).addEventListener("click", (e) => {
       e.preventDefault();
