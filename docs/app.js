@@ -799,7 +799,7 @@
       badges.replaceChildren();
       if (it.k === "anim") badges.append(badge(it.x === "gif" ? "GIF" : "Video", true));
       if (it.l) badges.append(badge("Lost tweet", false, "badge-lost"));
-      if (it.z) badges.append(badge("Hidden", false, "badge-hidden")); // owner's local view only (tools/serve.py)
+      if (it.z) badges.append(badge("X", false, "badge-hidden")); // owner's local view only (tools/serve.py)
       node.style.width = cellW + "px";
       node.style.height = cellH + "px";
       node.style.transform = `translate(${x}px, ${y}px)`;
@@ -1171,7 +1171,7 @@
     else if (it.c) el.viewerTags.append(badge("Comic", false));
     el.viewerTags.append(badge(it.x.toUpperCase(), false));
     if (it.l) el.viewerTags.append(badge("Lost tweet", false, "badge-lost"));
-    if (it.z) el.viewerTags.append(badge("Hidden", false, "badge-hidden"));
+    if (it.z) el.viewerTags.append(badge("X", false, "badge-hidden"));
 
     el.viewerLost.hidden = !it.l;
     if (it.l) el.viewerLost.textContent = it.l;

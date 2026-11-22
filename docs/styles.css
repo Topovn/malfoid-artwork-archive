@@ -339,8 +339,8 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 /* Description under the type buttons, for the selected Videos, My Personal Pick or Lost tweets filter */
 .kind-note {
   display: none;
-  flex-basis: 100%;
-  max-width: 760px;
+  width: 0;
+  min-width: 100%; /* exactly as wide as the type buttons above, without widening their row */
   margin: 0;
   padding: 10px 14px;
   border: 1px solid var(--border);
@@ -407,7 +407,8 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 /* The Gallery search has a row to itself; the filters sit on the row below. */
 #toolbar .field-search { flex-basis: 100%; max-width: none; }
 #toolbar .search-box { max-width: 420px; }
-#toolbar #kind { flex-basis: 100%; } /* the type buttons always get their own line, however few there are */
+/* The type buttons always get their own line, however few there are; their note matches the row's width. */
+.kind-group { flex-basis: 100%; display: grid; grid-template-columns: fit-content(100%); gap: 12px; }
 .field-search input::placeholder { color: var(--muted); opacity: 0.8; }
 .field-search input:focus { background: var(--surface); border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 
@@ -961,6 +962,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   .select::after { right: 14px; }
   /* The type buttons shrink to icons on one row; the names stay for screen readers. */
   .segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; width: 100%; }
+  .kind-group { grid-template-columns: 100%; gap: 10px; }
   .segmented button[role="radio"] { height: 40px; padding: 0; }
   .kind-icon { width: 20px; height: 20px; }
   .kind-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
