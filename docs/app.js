@@ -131,9 +131,8 @@
     "50k": [50000, 100000],
     "100k": [100000, Infinity],
   };
-  // Gallery "Posted" filter: the past 7 days (today included), last calendar week (Monday to Sunday),
-  // and this and last calendar month, on the site's clock.
-  const DATE_RANGES = ["7d", "lastweek", "month", "lastmonth"];
+  // Gallery "Posted" filter: the past 7 days (today included), and this and last calendar month, on the site's clock.
+  const DATE_RANGES = ["7d", "month", "lastmonth"];
   // Danbooru ratings ("r"), for the viewer's rating row and the gallery's rating filter.
   const RATING_NAMES = { g: "General", s: "Sensitive", q: "Questionable", e: "Explicit" };
   const danbooruUrl = (it) => (Number.isInteger(it.b) && it.b > 0 ? `https://danbooru.donmai.us/posts/${it.b}` : "");
@@ -1333,7 +1332,7 @@
     if (b.hidden) return;
     const on = pickSet.has(it.f);
     b.setAttribute("aria-pressed", String(on));
-    b.querySelector("span").textContent = on ? "Remove from My Personal Favorite" : "Add to My Personal Favorite";
+    b.querySelector("span").textContent = on ? "Remove from Favorite" : "Add to Favorite";
   }
 
   function preloadNeighbours(index) {
@@ -1685,12 +1684,10 @@
   function dateRange(name) {
     if (!name) return null;
     const today = keyMs(dayKey(Date.now()));
-    const monday = today - ((new Date(today).getUTCDay() + 6) % 7) * DAY;
     const d = new Date(today);
     const month = (offset) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + offset, 1);
     const [from, to] = {
       "7d": [today - 6 * DAY, today + DAY],
-      lastweek: [monday - 7 * DAY, monday],
       month: [month(0), month(1)],
       lastmonth: [month(-1), month(0)],
     }[name];

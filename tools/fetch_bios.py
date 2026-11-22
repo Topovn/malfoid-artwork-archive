@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Fetch every gallery artist's X bio and export a private CSV marking bios that forbid reproduction or use.
+"""Fetch every gallery artist's X bio and export a private CSV marking bios that forbid reproduction or use, and bios
+that disclose the artist uses AI.
 
 Bios come from the same FxTwitter profile endpoint as tools/fetch_followers.py and are cached in
 data/private/bios.json. Everything under data/private/ is gitignored and never published.
@@ -12,8 +13,13 @@ training or AI use is forbidden), "credit" (reposting is allowed with credit or 
 "owner" (hidden by the owner's choice, whatever the bio says; flagged).
 Reviewed decisions win over the keyword screen; unreviewed candidates are listed at the end of a run.
 
+AI use is screened the same way with its own patterns, and reviewed decisions are recorded in
+data/private/ai_use_flags.json as {handle: {"ai": bool, "note": str}}. "ai" is true when the bio says the artist uses
+AI for any of their work, including tool names such as NAI, PixAI, SD or Anima. Notices that forbid AI use or training
+of their art are "ai": false, and so are vague mentions, whose note starts with "vague:".
+
 The CSV (data/private/artist_bios.csv) has one row per artist:
-    handle, raw bio, English translation (flagged bios only), "X" when flagged.
+    handle, raw bio, English translation (flagged bios only), "X" when flagged, "X" when the bio discloses AI use.
 
 Usage:
     python3 tools/fetch_bios.py                   # fetch artists never fetched or older than 30 days, then export
@@ -40,6 +46,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PRIVATE = ROOT / "data" / "private"
 BIOS = PRIVATE / "bios.json"
 FLAGS = PRIVATE / "bio_flags.json"
+AI_FLAGS = PRIVATE / "ai_use_flags.json"
 CSV_OUT = PRIVATE / "artist_bios.csv"
 
 # Screening patterns, matched against the NFKC-normalised, casefolded bio. Broad on purpose: false positives are
@@ -65,6 +72,14 @@ SCREEN = re.compile("|".join([
     r"без разрешени", r"запрещ", r"заборон",
     # Thai / Vietnamese / Indonesian / Malay / Tagalog
     r"ห้าม", r"không được", r"\bcấm\b", r"dilarang", r"tanpa izin", r"\bbawal\b",
+]))
+
+# AI-use screening patterns, matched the same way. Most matches are "No AI" notices, which review marks false.
+AI_SCREEN = re.compile("|".join([
+    r"(?<![a-z])a\.?i(?![a-z])", r"(?<![a-z])ia(?![a-z])", r"(?<![a-z])nai(?![a-z])", r"novel ?ai", r"pix ?ai",
+    r"tensor ?art", r"seaart", r"niji", r"midjourney", r"stable ?diffusion", r"(?<![a-z])sd(?:xl|1\.5)?(?![a-z])",
+    r"comfy", r"diffusion", r"(?<![a-z])lora", r"gen ?ai", r"生成", r"人工知能", r"인공지능", r"illustrious",
+    r"(?<![a-z])noob", r"pony", r"anima(?![a-z])",
 ]))
 
 
@@ -102,25 +117,36 @@ def fetch_all(handles: dict[str, str], cache: dict[str, dict], max_age_days: flo
 
 def export(handles: dict[str, str], cache: dict[str, dict]) -> None:
     flags = load(FLAGS)
+    ai_flags = load(AI_FLAGS)
     unreviewed = []
-    flagged = 0
+    ai_unreviewed = []
+    flagged = ai_marked = 0
     with CSV_OUT.open("w", newline="", encoding="utf-8-sig") as f:  # BOM so spreadsheet apps read it as UTF-8
         w = csv.writer(f)
-        w.writerow(["Artist handle", "Bio (raw)", "Bio (translated)", "No unauthorized use"])
+        w.writerow(["Artist handle", "Bio (raw)", "Bio (translated)", "No unauthorized use", "Discloses AI use"])
         for key in sorted(handles):
             entry = cache.get(key, {})
             bio = entry.get("bio", "")
             review = flags.get(key)
             if review is None and bio and SCREEN.search(normalise(bio)):
                 unreviewed.append(key)
+            ai_review = ai_flags.get(key)
+            if ai_review is None and bio and AI_SCREEN.search(normalise(bio)):
+                ai_unreviewed.append(key)
             flag = bool(review and review["flag"])
+            ai = bool(ai_review and ai_review["ai"])
             flagged += flag
+            ai_marked += ai
             w.writerow([entry.get("handle", handles[key]), bio, review["translation"] if flag else "",
-                        "X" if flag else ""])
-    print(f"Wrote {CSV_OUT.relative_to(ROOT)}: {len(handles)} artists, {flagged} flagged.")
+                        "X" if flag else "", "X" if ai else ""])
+    print(f"Wrote {CSV_OUT.relative_to(ROOT)}: {len(handles)} artists, {flagged} flagged, {ai_marked} disclose AI use.")
     if unreviewed:
         print(f"{len(unreviewed)} screened bios still need review in {FLAGS.relative_to(ROOT)}:")
         for key in unreviewed:
+            print(f"  @{key}: {cache[key]['bio']!r}")
+    if ai_unreviewed:
+        print(f"{len(ai_unreviewed)} AI-screened bios still need review in {AI_FLAGS.relative_to(ROOT)}:")
+        for key in ai_unreviewed:
             print(f"  @{key}: {cache[key]['bio']!r}")
 
 
