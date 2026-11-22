@@ -336,7 +336,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 }
 .hero-coverage a { color: inherit; }
 .hero-coverage a:hover { color: var(--accent); }
-/* Description under the type buttons, for the selected Videos, My Personal Pick or Lost tweets filter */
+/* Description under the type buttons, for the selected Comics, Animations, Videos, My Favorite or Lost tweets filter */
 .kind-note {
   display: none;
   width: 0;
@@ -351,6 +351,8 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   line-height: 1.45;
 }
 .kind-note strong { color: var(--lost); }
+#toolbar:has(#kind [data-kind="comic"][aria-checked="true"]) .kind-note[data-kind="comic"],
+#toolbar:has(#kind [data-kind="anim"][aria-checked="true"]) .kind-note[data-kind="anim"],
 #toolbar:has(#kind [data-kind="pick"][aria-checked="true"]) .kind-note[data-kind="pick"],
 #toolbar:has(#kind [data-kind="video"][aria-checked="true"]) .kind-note[data-kind="video"],
 #toolbar:has(#kind [data-kind="lost"][aria-checked="true"]) .kind-note[data-kind="lost"]:not(:empty) { display: block; }

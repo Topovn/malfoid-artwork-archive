@@ -187,6 +187,9 @@
   let viewerReturnFocus = null;
   let viewerPushed = false; // the open viewer owns a history entry that closing should leave
   let restoring = false; // history restoration must not write more history entries
+  // Whether the last filtering showed one artist's comics; null takes the next state as it is (see applyFilters).
+  let comicArtistBefore = null;
+  let sortBeforeComicArtist = null; // the order the switch to file-name order replaced, put back when it ends
 
   const numberFmt = new Intl.NumberFormat("en-US", { useGrouping: false }); // plain digits: 6165
   const compactFmt = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1, roundingMode: "trunc" }); // 1950 reads 1.9K, never "2K" for an under-2000 work
@@ -289,6 +292,8 @@
     if (ADULT_SITE && MAIN_ONLY_KINDS.has(state.kind)) state.kind = "";
     const legacyRandom = !ADULT_SITE && p.get("sort") === "random";
     state.sort = p.get("sort") || "shuffle";
+    comicArtistBefore = p.has("sort") ? null : false; // a link that names its order keeps it
+    sortBeforeComicArtist = null;
     // Old links may name an order or range that no longer exists.
     if (![...el.sort.options].some((o) => o.value === state.sort)) state.sort = "shuffle";
     if (state.likes === "30k") state.likes = "20k"; // 30K-50K folded into 20K-50K
@@ -398,6 +403,20 @@
       }
       return true;
     });
+
+    // One artist's comics switch to file-name order when they come up, so the pages read in sequence,
+    // and the previous order comes back when they go. An order the visitor picks in between stays.
+    const comicArtist = state.kind === "comic" && (!!artist || exactHandle);
+    if (comicArtist && comicArtistBefore === false && state.sort !== "name") {
+      sortBeforeComicArtist = state.sort;
+      state.sort = el.sort.value = "name";
+    } else if (!comicArtist && comicArtistBefore && sortBeforeComicArtist) {
+      if (state.sort === "name") state.sort = el.sort.value = sortBeforeComicArtist;
+      sortBeforeComicArtist = null;
+    } else if (comicArtist && state.sort !== "name") {
+      sortBeforeComicArtist = null;
+    }
+    comicArtistBefore = comicArtist;
 
     const sorters = {
       added: byAdded,
@@ -2087,9 +2106,16 @@
     const when = (it) => postedMs(it) || it.d;
     const name = (it) => (it._early ? it.e.id : it.f);
     // Early works with an exact date join the dated works on their day.
+    // Days run oldest first; within a day, Twitter works go by file name and early works by posting time.
+    const days = new Map();
+    const day = (it) => days.get(it) ?? days.set(it, dayKey(when(it))).get(it);
     const recent = [...items, ...earlyItems.filter((it) => it.p)]
-      .filter((it) => dayKey(when(it)) < TIMELINE_VIEW_END)
-      .sort((a, b) => when(a) - when(b) || (name(a) < name(b) ? -1 : 1));
+      .filter((it) => day(it) < TIMELINE_VIEW_END)
+      .sort((a, b) => {
+        if (day(a) !== day(b)) return day(a) < day(b) ? -1 : 1;
+        if (!a._early && !b._early) return byFile(a, b);
+        return when(a) - when(b) || (name(a) < name(b) ? -1 : 1);
+      });
     tlView.list = [...earlyItems.filter((it) => !it.p), ...recent];
 
     // Entries: one per early year label, a "2026"-style year marker, then one per day.
@@ -2321,6 +2347,7 @@
     lastUrl = url;
 
     const work = readUrl();
+    comicArtistBefore = null; // a history entry keeps its order
     const page = state.page;
     syncControls();
     applyFilters(); // may reset the page when the filter key changed
