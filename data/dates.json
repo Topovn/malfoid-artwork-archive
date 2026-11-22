@@ -1,4 +1,0 @@
-{
- "_note": "Posting year for works with no tweet ID, when only the year is known. Becomes 'y' in the manifest; 'p' stays 0 rather than inventing a date.",
- "files": {}
-}

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Build a Malfoid Artwork Archive site and thumbnails.
 
-The main build scans the top level of the Malfoid folder plus its _LostTweets subfolder,
-skipping the works listed in data/audience.json. It writes the site in docs/.
+The main build scans the top level of the Malfoid folder plus its _LostTweets subfolder. It writes the site in docs/.
 The second build (--audience adult) scans only the top level of its own source folder; its subfolders are ignored.
 A work there counts as a lost tweet when the lost-tweet log (_LostTweets.csv) lists it.
 That site shares the main site's code, styles and icons and adds only its own data and thumbnails.
@@ -148,20 +147,9 @@ def make_thumb(job: tuple[str, str, str]) -> tuple[str, int, int, float | None, 
 def source_files(src: Path, audience: str = "main") -> list[tuple[Path, bool]]:
     """Every work the chosen site should show, as (path, is lost tweet), in a stable order.
 
-    The main site reads the top level and _LostTweets, skipping excluded works and those listed for the second site.
-    The second site reads only the top level of its folder, skipping excluded works.
+    The main site reads the top level and _LostTweets; the second site reads only the top level of its folder.
     The source files always stay where the owner put them.
     """
-    exclude_path = DATA / "exclude.json"
-    exclude = json.loads(exclude_path.read_text()) if exclude_path.exists() else {}
-    excluded_handles = {h.lower() for h in exclude.get("handles", [])}
-    excluded_files = set(exclude.get("files", []))
-
-    audience_path = DATA / "audience.json"
-    audience_data = json.loads(audience_path.read_text()) if audience_path.exists() else {}
-    adult_handles = {h.lower() for h in audience_data.get("handles", [])}
-    adult_files = set(audience_data.get("files", []))
-
     folders = [(src, False)] if audience == "adult" else [(src, False), (src / LOST_DIR, True)]
     files: list[tuple[Path, bool]] = []
     for folder, lost in folders:
@@ -169,11 +157,6 @@ def source_files(src: Path, audience: str = "main") -> list[tuple[Path, bool]]:
             continue
         for p in sorted(folder.iterdir()):
             ext = p.suffix.lower().lstrip(".")
-            handle = parse_name(p.stem)[0].lower()
-            if p.name in excluded_files or handle in excluded_handles:
-                continue
-            if audience == "main" and (p.name in adult_files or handle in adult_handles):
-                continue
             if p.is_file() and not p.name.startswith(".") and ext in IMAGE_EXTS | VIDEO_EXTS:
                 files.append((p, lost))
     return files
@@ -362,9 +345,6 @@ def main() -> int:
     # Comics: tools/detect_comics.py measures each still image; the owner's corrections in data/comics.json win.
     comic_feats = detect_comics.load_json(detect_comics.FEATURES, {})
     comic_fixes = detect_comics.load_json(detect_comics.DECISIONS, {})
-    # Known posting years for undated works.
-    dates_path = DATA / "dates.json"
-    years = (json.loads(dates_path.read_text()) if dates_path.exists() else {}).get("files", {})
     estimates_path = DATA / "like_estimates.json"
     estimates = (json.loads(estimates_path.read_text()) if estimates_path.exists() else {}).get("tweets", {})
 
@@ -410,8 +390,6 @@ def main() -> int:
             item["a"] = current
             if current.lower() != handle.lower():
                 item["o"] = handle
-        if not item["p"] and p.name in years:
-            item["y"] = int(years[p.name])  # posting year only; no exact date is known
         if tweet in danbooru:
             item["b"] = danbooru[tweet]
         if item["k"] == "art" and detect_comics.is_comic(p.name, comic_feats.get(p.name), comic_fixes):
