@@ -1327,13 +1327,6 @@
   }
 
   // The first idea's artwork opens in the viewer like any card; that pair hides if the work leaves the archive.
-  function setupMyIdeas() {
-    const btn = $("#ideas-art-open");
-    const it = itemByFile.get(btn.dataset.file);
-    $("#idea-request-pair").hidden = !it;
-    if (it) btn.addEventListener("click", () => openViewer(0, [it], btn));
-  }
-
   function renderViewerPick(it) {
     const b = $("#viewer-pick");
     b.hidden = !picksEditable || !it;
@@ -2606,7 +2599,6 @@
     applyFilters();
     renderRandom();
     renderPickShelf();
-    setupMyIdeas();
     buildShelves();
     buildTimeline();
     buildTimelineView();

@@ -1085,18 +1085,16 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 }
 .idea-arrow { flex: none; color: var(--accent); font-size: 26px; font-weight: 600; line-height: 1; }
 .idea-art { flex: 4 1 0; min-width: 0; max-width: 240px; }
-.idea-art-open, .idea-art-link {
+.idea-art-link {
   display: block;
   width: 100%;
   border-radius: var(--radius);
   overflow: hidden;
   background: var(--surface-2);
 }
-.idea-art-open { padding: 0; border: 0; cursor: pointer; }
 .idea-art-link { border: 1px solid var(--border); }
-.idea-art-open img, .idea-art-link img { display: block; width: 100%; height: auto; transition: transform 0.2s; }
-.idea-art-open img { aspect-ratio: 1; object-fit: cover; }
-.idea-art-open:hover img, .idea-art-link:hover img { transform: scale(1.03); }
+.idea-art-link img { display: block; width: 100%; height: auto; transition: transform 0.2s; }
+.idea-art-link:hover img { transform: scale(1.03); }
 @media (max-width: 1200px) { /* tablets: both pairs still share a row, with tighter spacing and text */
   .idea-pair { gap: 10px; }
   .idea-tweet blockquote { padding: 12px 14px; }
