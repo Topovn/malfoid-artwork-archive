@@ -209,8 +209,23 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_error(HTTPStatus.FORBIDDEN, "unexpected Host")
         return False
 
+    def _slashes_ok(self) -> bool:
+        """Send an address with repeated slashes (such as http://127.0.0.1:8770//) to its clean form.
+        Python folds them when serving, so the page would load, but the page's relative URLs would then
+        resolve to //data/..., //api/... and so on, all through the session."""
+        target = self.requestline.split(" ")[1] if self.requestline.count(" ") >= 2 else self.path
+        path, sep, query = target.partition("?")
+        if "//" not in path:
+            return True
+        self.send_response(HTTPStatus.MOVED_PERMANENTLY)
+        # One leading slash only: a Location starting with // would point at another host.
+        self.send_header("Location", re.sub(r"/{2,}", "/", path) + sep + query)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+        return False
+
     def do_HEAD(self) -> None:
-        if self._host_ok():
+        if self._host_ok() and self._slashes_ok():
             super().do_HEAD()
 
     def end_headers(self) -> None:
@@ -237,7 +252,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self) -> None:
-        if not self._host_ok():
+        if not (self._host_ok() and self._slashes_ok()):
             return
         if self._path() == "/api/picks":
             self._json(HTTPStatus.OK, {"picks": read_picks()})
