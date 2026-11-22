@@ -1048,6 +1048,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   margin-top: 16px;
 }
 .ideas-note { margin: 28px 0 0; color: var(--muted); font-size: 15px; text-align: center; }
+.ideas-note a:hover { color: var(--accent); }
 .idea-pair { display: flex; align-items: center; justify-content: center; gap: 16px; min-width: 0; }
 .idea-pair figure { margin: 0; }
 .idea-pair figcaption { margin-top: 10px; color: var(--muted); font-size: 14px; }
