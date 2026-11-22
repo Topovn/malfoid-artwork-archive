@@ -2359,27 +2359,14 @@
       date,
     );
 
-    // Explain lost tweets, with the reasons as recorded when each one was found missing.
-    const reasons = new Map();
-    for (const it of lostItems) {
-      const r = /suspended/i.test(it.l)
-        ? "from a suspended account"
-        : /no longer exists/i.test(it.l)
-        ? "from an account that no longer exists"
-        : /deleted/i.test(it.l)
-        ? "deleted by the artist"
-        : "unavailable for another reason";
-      reasons.set(r, (reasons.get(r) || 0) + 1);
-    }
+    // Explain lost tweets; the note stays empty (and hidden) when the site has none.
     el.lostNote.replaceChildren();
     if (lostItems.length) {
       const strong = document.createElement("strong");
       strong.textContent = "Lost tweets";
-      const parts = [...reasons].sort((a, b) => b[1] - a[1]).map(([r, n]) => `${numberFmt.format(n)} ${r}`);
-      const list = parts.length > 1 ? parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1] : parts[0];
       el.lostNote.append(
         strong,
-        ` are works whose original post on Twitter is gone: ${list}. ` +
+        " are works whose original post on Twitter is gone: either deleted by the artist, account no longer exists or suspended. " +
           "The art was saved before it disappeared, so it stays here with an orange tag, but its link to Twitter no longer opens"
       );
     }
