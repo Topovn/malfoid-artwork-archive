@@ -21,10 +21,10 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=26">
+  <link rel="stylesheet" href="styles.css?v=28">
   <script src="theme.js?v=2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=30" defer></script>
+  <script src="app.js?v=32" defer></script>
 </head>
 <body>
 
@@ -116,6 +116,32 @@
           </div>
         </div>
         <div class="shelf-track" id="popular-track"></div>
+      </section>
+
+      <section class="shelf" id="popular-month" aria-labelledby="month-title" hidden>
+        <div class="shelf-head">
+          <div>
+            <h2 id="month-title"><a href="?date=month&amp;sort=liked#gallery" id="month-link">Popular This Month</a></h2>
+          </div>
+          <div class="shelf-controls">
+            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll Popular This Month left">‹</button>
+            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll Popular This Month right">›</button>
+          </div>
+        </div>
+        <div class="shelf-track" id="month-track"></div>
+      </section>
+
+      <section class="shelf" id="popular-week" aria-labelledby="week-title" hidden>
+        <div class="shelf-head">
+          <div>
+            <h2 id="week-title"><a href="?date=7d&amp;sort=liked#gallery" id="week-link">Popular in the Past 7 Days</a></h2>
+          </div>
+          <div class="shelf-controls">
+            <button type="button" class="shelf-btn" data-scroll="-1" aria-label="Scroll Popular in the Past 7 Days left">‹</button>
+            <button type="button" class="shelf-btn" data-scroll="1" aria-label="Scroll Popular in the Past 7 Days right">›</button>
+          </div>
+        </div>
+        <div class="shelf-track" id="week-track"></div>
       </section>
 
       <section class="shelf" id="big-gems" aria-labelledby="big-title">
@@ -427,6 +453,18 @@
           </span>
         </label>
         <label class="field field-inline">
+          <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Posted</span>
+          <span class="select">
+            <select id="date">
+              <option value="">All time</option>
+              <option value="7d">Past 7 days</option>
+              <option value="lastweek">Last week</option>
+              <option value="month">This month</option>
+              <option value="lastmonth">Last month</option>
+            </select>
+          </span>
+        </label>
+        <label class="field field-inline">
           <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Per page</span>
           <span class="select">
             <select id="per-page">
@@ -485,6 +523,7 @@
             <input id="artist-q" type="search" placeholder="Artist handle" autocomplete="off" spellcheck="false">
           </span>
         </label>
+        <button type="button" class="toggle-btn toggle-icon" id="artist-comics" aria-pressed="false" aria-label="Comics" title="Comics"><svg class="kind-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 11h18M12 3v8M9 11v10"/></svg></button>
         <label class="field field-inline">
           <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Followers</span>
           <span class="select">

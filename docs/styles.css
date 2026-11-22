@@ -443,7 +443,8 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 .select select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 
 .segmented { display: flex; flex-wrap: wrap; gap: 10px; }
-.segmented button[role="radio"] {
+.segmented button[role="radio"],
+.toggle-btn {
   height: 46px;
   padding: 0 20px;
   border: 1px solid var(--border);
@@ -469,12 +470,16 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.segmented button[role="radio"]:hover { border-color: var(--accent); }
-.segmented button[role="radio"][aria-checked="true"] {
+.segmented button[role="radio"]:hover,
+.toggle-btn:hover { border-color: var(--accent); }
+.segmented button[role="radio"][aria-checked="true"],
+.toggle-btn[aria-pressed="true"] {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-ink);
 }
+/* An icon-only toggle is a square the height of the fields beside it. */
+.toggle-icon { width: 46px; padding: 0; }
 
 /* Status */
 .status {
@@ -999,6 +1004,9 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   .segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; width: 100%; }
   .kind-group { grid-template-columns: 100%; gap: 10px; }
   .segmented button[role="radio"] { height: 40px; padding: 0; }
+  .toggle-icon { flex: none; width: 42px; height: 42px; }
+  /* The Artists search shares its row with the Comics toggle. */
+  #view-artists .field-search { flex: 1 1 calc(100% - 52px); min-width: 0; }
   .kind-icon { width: 20px; height: 20px; }
   .kind-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .card-meta { opacity: 1; font-size: 12px; padding: 22px 8px 7px; }

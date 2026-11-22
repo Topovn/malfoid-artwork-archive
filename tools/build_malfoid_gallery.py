@@ -40,6 +40,7 @@ from PIL import Image, ImageOps
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import detect_comics  # noqa: E402
+from fetch_likes import SETTLE_DAYS  # noqa: E402
 from site_paths import FULL_SITES, blocked_handles, hidden_handles  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
@@ -105,6 +106,35 @@ def is_blocked(filename: str, blocked: set[str]) -> bool:
 
 def posted_ms(tweet_id: str) -> int:
     return (int(tweet_id) >> 22) + TWITTER_EPOCH_MS if tweet_id else 0
+
+
+def add_young_ranks(items: list[dict], young_tweets: set[str]) -> None:
+    """Give tweets whose like count was taken during their first week a hidden ranking value ("g").
+
+    Such a count is still climbing, so it ranks below older tweets of the same pull. The value is the artist's
+    average likes per settled tweet. A young tweet that already beats that average ranks by its own count and
+    joins the average, lifting the artist's other young tweets. Artists with no settled tweet yet rank by their
+    current counts. Lost tweets are left out. The site sorts by it but never shows it.
+    """
+    by_artist: dict[str, dict[str, int]] = {}
+    for it in items:
+        if "v" in it and "l" not in it and it["t"]:
+            by_artist.setdefault(it["a"].lower(), {})[it["t"]] = it["v"]
+    rank: dict[str, int] = {}
+    for counts in by_artist.values():
+        settled = [v for t, v in counts.items() if t not in young_tweets]
+        if not settled:
+            continue
+        floor = sum(settled) / len(settled)
+        exploding = [v for t, v in counts.items() if t in young_tweets and v > floor]
+        average = round((sum(settled) + sum(exploding)) / (len(settled) + len(exploding)))
+        for t, v in counts.items():
+            if t in young_tweets and v <= floor and average > v:
+                rank[t] = average
+    for it in items:
+        it.pop("g", None)
+        if it["t"] in rank and "v" in it and "l" not in it:
+            it["g"] = rank[it["t"]]
 
 
 def added_ms(path: Path) -> int:
@@ -371,6 +401,7 @@ def main() -> int:
     followers = json.loads(followers_path.read_text()) if followers_path.exists() else {}
 
     items = []
+    young_tweets: set[str] = set()  # like count taken during the tweet's first week
     for p, lost in files:
         if args.audience == "adult":
             lost = p.name in lost_meta  # the second site has no _LostTweets folder
@@ -416,6 +447,9 @@ def main() -> int:
             item["c"] = 1
         if tweet in likes and likes[tweet].get("likes") is not None:
             item["v"] = likes[tweet]["likes"]
+            fetched = likes[tweet].get("at")
+            if fetched and fetched * 1000 - posted_ms(tweet) < SETTLE_DAYS * 86400 * 1000:
+                young_tweets.add(tweet)
         if p.name in released:
             item["u"] = f"{released[p.name]['tag']}/{released[p.name]['name']}"
         if p.name in hidden_files:
@@ -438,6 +472,8 @@ def main() -> int:
             it["e"] = int(estimates[it["t"]])
         elif "l" in it and counts:
             it["e"] = round(sum(counts.values()) / len(counts))
+
+    add_young_ranks(items, young_tweets)
 
     texts_path = DATA / "texts.json"
     text_cache = json.loads(texts_path.read_text()) if texts_path.exists() else {}

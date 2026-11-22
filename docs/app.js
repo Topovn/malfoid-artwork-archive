@@ -31,6 +31,8 @@
   const SHELF_SIZE = 30; // works shown at once in the shuffled shelves
   const RANDOM_SHELF_SIZE = 20; // works shown at once in the like-range shelves and Buried Malfoid
   const LATEST_SHELF_SIZE = 20; // works shown in Recently Added Works and Newest Posted Works
+  const MIN_ARTIST_COMICS = 2; // comic works an artist needs to show in the Artists view with Comics on
+  const POPULAR_SHELF_SIZE = 20; // works shown in Popular This Month and Popular in the Past 7 Days
   const RANDOM_SIZE = 50; // works shown in the Random tab, one per artist
   const LONG_VIDEO = 30; // videos this many seconds or longer count as Videos (see isVideo)
   const VIDEO_ARTISTS = new Set(["alessandro49472"]); // every work by these artists counts as Videos
@@ -66,6 +68,7 @@
     rating: $("#rating"),
     kind: $("#kind"),
     sort: $("#sort"),
+    date: $("#date"),
     perPage: $("#per-page"),
     randomGrid: $("#random-grid"),
     pager: $("#pager"),
@@ -76,6 +79,7 @@
     artistQ: $("#artist-q"),
     artistSort: $("#artist-sort"),
     artistFollowers: $("#artist-followers"),
+    artistComics: $("#artist-comics"),
     artistCount: $("#artist-count"),
     artists: $("#artists"),
     viewer: $("#viewer"),
@@ -104,7 +108,7 @@
   const VIEWS = ADULT_SITE ? ["gallery", "artists"] : ["home", "random", "gallery", "timeline", "artists"];
   const DEFAULT_VIEW = VIEWS[0]; // shown at the bare address; the second site then moves it to #gallery
   const MAIN_ONLY_KINDS = new Set(["pick"]);
-  const state = { q: "", artist: "", likes: "", followers: "", rating: "", kind: "", sort: "shuffle", seed: 0, page: 1, view: DEFAULT_VIEW };
+  const state = { q: "", artist: "", likes: "", date: "", followers: "", rating: "", kind: "", sort: "shuffle", seed: 0, page: 1, view: DEFAULT_VIEW };
   const PER_PAGE_OPTIONS = [50, 100, 150, 200, 250, 300];
   const DEFAULT_PER_PAGE = 100;
   // Gallery "Likes" filter: at least the first number and fewer than the second. Works without a count match none.
@@ -127,6 +131,9 @@
     "50k": [50000, 100000],
     "100k": [100000, Infinity],
   };
+  // Gallery "Posted" filter: the past 7 days (today included), last calendar week (Monday to Sunday),
+  // and this and last calendar month, on the site's clock.
+  const DATE_RANGES = ["7d", "lastweek", "month", "lastmonth"];
   // Danbooru ratings ("r"), for the viewer's rating row and the gallery's rating filter.
   const RATING_NAMES = { g: "General", s: "Sensitive", q: "Questionable", e: "Explicit" };
   const danbooruUrl = (it) => (Number.isInteger(it.b) && it.b > 0 ? `https://danbooru.donmai.us/posts/${it.b}` : "");
@@ -197,6 +204,9 @@
   const byNewest = (a, b) => postedMs(b) - postedMs(a) || byFile(a, b);
   // Likes for sorting and filtering: the real count, else a lost tweet's hidden estimate (the artist's average).
   const rankLikes = (it) => it.v ?? it.e;
+  // Most liked order: a young tweet's hidden ranking value ("g", see add_young_ranks in tools/build_malfoid_gallery.py)
+  // stands in for a count still climbing in its first week.
+  const sortLikes = (it) => it.g ?? rankLikes(it);
   const fmtPosted = (it) => (it.p ? fmtDate(it.p) : it.y ? String(it.y) : "Unknown");
   // File-name order as macOS Finder shows it: case-insensitive, numbers by value, "_" before digits and letters.
   const nameCollator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
@@ -273,6 +283,7 @@
     state.q = p.get("q") || "";
     state.artist = p.get("artist") || "";
     state.likes = p.get("likes") || "";
+    state.date = p.get("date") || "";
     state.followers = p.get("followers") || "";
     state.rating = p.get("rating") || "";
     state.kind = p.get("type") || "";
@@ -283,6 +294,7 @@
     if (![...el.sort.options].some((o) => o.value === state.sort)) state.sort = "shuffle";
     if (state.likes === "30k") state.likes = "20k"; // 30K-50K folded into 20K-50K
     if (!Object.hasOwn(LIKE_RANGES, state.likes)) state.likes = "";
+    if (!DATE_RANGES.includes(state.date)) state.date = "";
     if (!Object.hasOwn(FOLLOWER_RANGES, state.followers)) state.followers = "";
     if (state.rating !== "none" && !Object.hasOwn(RATING_NAMES, state.rating)) state.rating = "";
     const seed = Number(p.get("seed"));
@@ -290,7 +302,7 @@
     const page = Number(p.get("page"));
     state.page = Number.isInteger(page) && page >= 1 ? page : 1; // clamped to the last page once results are known
     const hash = location.hash.slice(1);
-    const hasFilters = ["q", "artist", "likes", "followers", "rating", "type", "sort", "page"].some((k) => p.has(k));
+    const hasFilters = ["q", "artist", "likes", "date", "followers", "rating", "type", "sort", "page"].some((k) => p.has(k));
     state.view = legacyRandom ? "random" : VIEWS.includes(hash) ? hash : hasFilters ? "gallery" : DEFAULT_VIEW;
     if (state.view === "random" && !state.seed) state.seed = newSeed();
     return p.get("work");
@@ -303,6 +315,7 @@
       if (state.q) p.set("q", state.q);
       if (state.artist) p.set("artist", state.artist);
       if (state.likes) p.set("likes", state.likes);
+      if (state.date) p.set("date", state.date);
       if (state.followers) p.set("followers", state.followers);
       if (state.rating) p.set("rating", state.rating);
       if (state.kind) p.set("type", state.kind);
@@ -330,6 +343,7 @@
     el.followers.value = state.followers;
     el.rating.value = state.rating;
     el.sort.value = state.sort;
+    el.date.value = state.date;
     el.perPage.value = String(perPage);
     for (const b of el.kind.querySelectorAll("button[role=radio]")) {
       b.setAttribute("aria-checked", String(b.dataset.kind === state.kind));
@@ -349,11 +363,16 @@
     const artist = resolveHandle(state.artist.toLowerCase());
     const [minLikes, maxLikes] = LIKE_RANGES[state.likes] || [];
     const [minFollowers, maxFollowers] = FOLLOWER_RANGES[state.followers] || [];
+    const [fromDay, toDay] = dateRange(state.date) || [];
 
     const out = items.filter((it) => {
       if (artist && it._al !== artist) return false;
       const likes = rankLikes(it);
       if (state.likes && (likes == null || likes < minLikes || likes >= maxLikes)) return false;
+      if (fromDay) {
+        const day = postedDay(it);
+        if (!day || day < fromDay || day >= toDay) return false;
+      }
       if (state.followers) {
         const f = artistStats.get(it._al)?.followers;
         if (f == null || f < minFollowers || f >= maxFollowers) return false;
@@ -384,7 +403,7 @@
       added: byAdded,
       newest: byNewest,
       // Images from one tweet share its count, so they stay together.
-      liked: (a, b) => (rankLikes(b) ?? -1) - (rankLikes(a) ?? -1) || (a.t < b.t ? -1 : a.t > b.t ? 1 : 0) || a.i - b.i || byFile(a, b),
+      liked: (a, b) => (sortLikes(b) ?? -1) - (sortLikes(a) ?? -1) || (a.t < b.t ? -1 : a.t > b.t ? 1 : 0) || a.i - b.i || byFile(a, b),
       oldest: (a, b) => (postedMs(a) || Infinity) - (postedMs(b) || Infinity) || byFile(a, b),
       artist: (a, b) => (a._al < b._al ? -1 : a._al > b._al ? 1 : postedMs(b) - postedMs(a) || byFile(a, b)),
       name: (a, b) => nameCollator.compare(a._fn, b._fn) || byFile(a, b),
@@ -394,7 +413,7 @@
     filtered = out;
 
     // Any change to what is shown, or its order, starts again from page 1.
-    const key = [state.q, state.artist, state.likes, state.followers, state.rating, state.kind, state.sort, state.sort === "shuffle" ? gallerySeed : 0].join("\u0000");
+    const key = [state.q, state.artist, state.likes, state.date, state.followers, state.rating, state.kind, state.sort, state.sort === "shuffle" ? gallerySeed : 0].join("\u0000");
     if (lastFilterKey !== null && key !== lastFilterKey) state.page = 1;
     lastFilterKey = key;
 
@@ -1343,7 +1362,7 @@
     const it = viewerList[viewerIndex];
     viewerReturnFocus = null;
     // "All N works" means all of them: drop every filter that would hide some, keeping only the sort order.
-    const all = { artist: it.a, q: "", likes: "", followers: "", rating: "", kind: "" };
+    const all = { artist: it.a, q: "", likes: "", date: "", followers: "", rating: "", kind: "" };
     if (state.view === "gallery") {
       Object.assign(state, all);
       setArtist(it.a);
@@ -1430,6 +1449,17 @@
       .filter((it) => it.v != null)
       .sort((a, b) => b.v - a.v)
       .slice(0, FAME_SIZE);
+
+    // The most liked works posted this calendar month and in the past 7 days, in the gallery's Most liked order.
+    for (const [name, range] of [["month", "month"], ["week", "7d"]]) {
+      const [from, to] = dateRange(range);
+      shelves[name] = tweets
+        .filter((it) => postedDay(it) >= from && postedDay(it) < to)
+        .sort((a, b) => sortLikes(b) - sortLikes(a) || byFile(a, b))
+        .slice(0, POPULAR_SHELF_SIZE);
+      $(`#popular-${name}`).hidden = !shelves[name].length;
+      renderShelf(name);
+    }
 
     const bestByArtist = new Map(); // artist -> most-liked tweet
     for (const it of tweets) {
@@ -1537,7 +1567,7 @@
       img.decoding = "async";
       img.src = thumbUrl(it);
       btn.append(img);
-      if (name === "fame") {
+      if (name === "fame" || name === "month" || name === "week") {
         const rank = document.createElement("span");
         rank.className = "rank";
         rank.textContent = "#" + (i + 1);
@@ -1580,7 +1610,7 @@
 
   $("#fame-link").addEventListener("click", (e) => {
     e.preventDefault();
-    showGallery({ sort: "liked", q: "", artist: "", likes: "", followers: "", kind: "" });
+    showGallery({ sort: "liked", q: "", artist: "", likes: "", date: "", followers: "", kind: "" });
   });
   for (const [id, sort] of [
     ["#added-link", "added"],
@@ -1588,12 +1618,21 @@
   ]) {
     $(id).addEventListener("click", (e) => {
       e.preventDefault();
-      showGallery({ sort, q: "", artist: "", likes: "", followers: "", kind: "", page: 1 });
+      showGallery({ sort, q: "", artist: "", likes: "", date: "", followers: "", kind: "", page: 1 });
+    });
+  }
+  for (const [id, date] of [
+    ["#month-link", "month"],
+    ["#week-link", "7d"],
+  ]) {
+    $(id).addEventListener("click", (e) => {
+      e.preventDefault();
+      showGallery({ date, sort: "liked", q: "", artist: "", likes: "", followers: "", kind: "", page: 1 });
     });
   }
   $("#pick-link").addEventListener("click", (e) => {
     e.preventDefault();
-    showGallery({ kind: "pick", q: "", artist: "", likes: "", followers: "" });
+    showGallery({ kind: "pick", q: "", artist: "", likes: "", date: "", followers: "" });
   });
   for (const [id, likes] of [
     ["#famous-link", "20k"],
@@ -1606,13 +1645,13 @@
     $(id).addEventListener("click", (e) => {
       e.preventDefault();
       gallerySeed = newSeed();
-      showGallery({ likes, q: "", artist: "", followers: "", kind: "", sort: "shuffle", page: 1 });
+      showGallery({ likes, date: "", q: "", artist: "", followers: "", kind: "", sort: "shuffle", page: 1 });
     });
   }
   // Every work by the Small Artists shelf's artists (under 2K followers), strongest first.
   $("#small-link").addEventListener("click", (e) => {
     e.preventDefault();
-    showGallery({ followers: "0", likes: "", sort: "liked", q: "", artist: "", kind: "", page: 1 });
+    showGallery({ followers: "0", likes: "", date: "", sort: "liked", q: "", artist: "", kind: "", page: 1 });
   });
 
   for (const shelf of document.querySelectorAll(".shelf")) {
@@ -1647,6 +1686,23 @@
   const fmtKey = (k) => shortDay.format(new Date(keyMs(k)));
   const fmtKeyLong = (k) => longDay.format(new Date(keyMs(k)));
   const round1 = (n) => Math.round(n * 10) / 10;
+  // The day a work was posted, on the site's clock; "" when unknown.
+  const postedDay = (it) => (it._pd ??= it.p ? dayKey(it.p) : "");
+  // A "Posted" range (DATE_RANGES) as [first day, day after], counted from today.
+  function dateRange(name) {
+    if (!name) return null;
+    const today = keyMs(dayKey(Date.now()));
+    const monday = today - ((new Date(today).getUTCDay() + 6) % 7) * DAY;
+    const d = new Date(today);
+    const month = (offset) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + offset, 1);
+    const [from, to] = {
+      "7d": [today - 6 * DAY, today + DAY],
+      lastweek: [monday - 7 * DAY, monday],
+      month: [month(0), month(1)],
+      lastmonth: [month(-1), month(0)],
+    }[name];
+    return [keyIso(from), keyIso(to)];
+  }
 
   function buildTimeline() {
     // Every work counts, videos included, so the totals match the site header.
@@ -2131,12 +2187,19 @@
   // ---------- Artists view ----------
 
   let artistFrame = 0;
+  const artistComics = () => el.artistComics.getAttribute("aria-pressed") === "true";
   function renderArtists() {
     const q = el.artistQ.value.trim().toLowerCase().replace(/^@/, "");
     let list = [...artistStats.values()];
     if (q) list = list.filter((a) => a.key.includes(q) || a.formers.some((old) => old.includes(q)));
     const range = FOLLOWER_RANGES[el.artistFollowers.value];
     if (range) list = list.filter((a) => a.followers != null && a.followers >= range[0] && a.followers < range[1]);
+    // Comics lists artists with at least two comic works; a lone comic page isn't much of a comic to read.
+    if (artistComics()) {
+      const comicCounts = new Map();
+      for (const it of items) if (it.c) comicCounts.set(it._al, (comicCounts.get(it._al) || 0) + 1);
+      list = list.filter((a) => comicCounts.get(a.key) >= MIN_ARTIST_COMICS);
+    }
     const by = el.artistSort.value;
     list.sort((a, b) =>
       by === "name"
@@ -2195,9 +2258,13 @@
     count.className = "artist-count";
     count.textContent = plural(a.count, "work", "works");
     btn.append(img, text, count);
-    // Keeps the Artists view's follower range, so its chip carries over; the likes range is cleared.
+    // Keeps the Artists view's follower range, so its chip carries over; the likes and date ranges are cleared.
+    // With Comics on, the artist's comics open in file-name order, so their pages read in sequence.
     btn.addEventListener("click", () =>
-      showGallery({ artist: a.handle, q: "", likes: "", followers: el.artistFollowers.value })
+      showGallery({
+        artist: a.handle, q: "", likes: "", date: "", followers: el.artistFollowers.value,
+        ...(artistComics() && { kind: "comic", sort: "name", page: 1 }),
+      })
     );
     li.append(btn);
     return li;
@@ -2383,6 +2450,11 @@
     applyFilters();
     writeUrl(undefined, true);
   });
+  el.date.addEventListener("change", () => {
+    state.date = el.date.value;
+    applyFilters();
+    writeUrl(undefined, true);
+  });
   el.sort.addEventListener("change", () => {
     state.sort = el.sort.value;
     if (state.sort === "shuffle") gallerySeed = newSeed();
@@ -2437,6 +2509,10 @@
     renderArtists();
   });
   el.artistFollowers.addEventListener("change", renderArtists);
+  el.artistComics.addEventListener("click", () => {
+    el.artistComics.setAttribute("aria-pressed", String(!artistComics()));
+    renderArtists();
+  });
 
   window.addEventListener("keydown", (e) => {
     if (e.key === "/" && !el.viewer.open && document.activeElement.tagName !== "INPUT" && (state.view === "gallery" || state.view === "artists")) {
