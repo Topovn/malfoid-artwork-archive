@@ -1342,10 +1342,13 @@
   el.viewerMore.addEventListener("click", () => {
     const it = viewerList[viewerIndex];
     viewerReturnFocus = null;
+    // "All N works" means all of them: drop every filter that would hide some, keeping only the sort order.
+    const all = { artist: it.a, q: "", likes: "", followers: "", rating: "", kind: "" };
     if (state.view === "gallery") {
+      Object.assign(state, all);
       setArtist(it.a);
     } else {
-      showGallery({ artist: it.a, q: "", likes: "", followers: "", kind: "" });
+      showGallery(all);
     }
     // The close handler scrolls back to this work in the new list.
     viewerList = filtered;
