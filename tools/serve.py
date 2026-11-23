@@ -19,12 +19,20 @@ data/private/site/, and thumbnails missing from docs/ are looked up there, so th
 here, marked Hidden, while the published site never has them. Those responses carry an X-Malfoid-Admin header,
 which shows the page's admin toggle; with ?view=visitor they come from docs/ instead, so the owner can see the
 site exactly as visitors do.
-It listens on 127.0.0.1 only, refuses requests addressed to any other host name (DNS rebinding),
+It listens on 127.0.0.1, refuses requests addressed to any other host name (DNS rebinding),
 and rejects cross-site writes, so only the owner's own browser can edit.
+
+To open it from the owner's other devices over Tailscale, data/private/serve_allow.json (gitignored) adds a
+second listener on this machine's Tailscale address that answers only the listed device addresses:
+
+    {"listen": "100.x.y.z", "names": ["<machine>", "<machine>.<tailnet>.ts.net"],
+     "clients": {"100.a.b.c": "<device>", ...}}
+
+"names" are the extra host names the page may be opened under, besides the "listen" address itself.
 
 Usage:
     python3 tools/serve.py [--port 8770]
-    then open http://127.0.0.1:8770/ and tap the heart on any work.
+    then open http://127.0.0.1:8770/ (or http://<machine>:8770/ from a listed device) and tap the heart on any work.
 
 Publishing: commit and push data/picks.json; rebuild for Comic corrections. On the live site both are read-only.
 """
@@ -38,6 +46,7 @@ import re
 import sys
 import tempfile
 import urllib.parse
+import threading
 from functools import partial
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -58,6 +67,25 @@ MAX_PICKS = 20000
 MAX_BODY = 4 * 1024 * 1024
 EDIT_PATHS = {"/data/picks.json", "/api/picks", "/api/comics", "/api/hmarks"}
 API_PATHS = ("/api/picks", "/api/comics", "/api/hmarks")
+ALLOW = ROOT / "data" / "private" / "serve_allow.json"  # the owner's Tailscale devices; never published
+LOOPBACK = "127.0.0.1"
+
+
+def read_allow() -> tuple[str | None, set[str], set[str]]:
+    """(Tailscale address to listen on, extra host names, client addresses) from ALLOW, or (None, empty, empty)."""
+    try:
+        data = json.loads(ALLOW.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None, set(), set()
+    listen = data.get("listen")
+    if not isinstance(listen, str) or not listen:
+        raise SystemExit(f"{ALLOW}: \"listen\" must be this machine's Tailscale address")
+    names = {n for n in data.get("names", []) if isinstance(n, str) and n}
+    clients = data.get("clients", {})
+    clients = set(clients) if isinstance(clients, (dict, list)) else set()
+    if not clients:
+        raise SystemExit(f"{ALLOW}: \"clients\" lists no device addresses")
+    return listen, {listen, *names}, clients
 
 
 def read_picks() -> list[str]:
@@ -145,6 +173,7 @@ RANGE_RE = re.compile(r"^bytes=(\d*)-(\d*)$")
 class Handler(SimpleHTTPRequestHandler):
     _range: tuple[int, int] | None = None  # (start, length) of the part being sent
     _ranges_ok = False  # the response is a plain file, so Accept-Ranges is advertised
+    names: set[str] = set()  # host names the page may be opened under, besides 127.0.0.1 and localhost
 
     def _path(self) -> str:
         return self.path.split("?", 1)[0].split("#", 1)[0]
@@ -164,7 +193,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _allowed_hosts(self) -> set[str]:
         port = self.server.server_address[1]
-        return {f"127.0.0.1:{port}", f"localhost:{port}"}
+        return {f"{name}:{port}" for name in ("127.0.0.1", "localhost", *self.names)}
 
     def send_head(self):
         # Never serve hidden paths such as /.git, even to the owner.
@@ -319,14 +348,37 @@ class Handler(SimpleHTTPRequestHandler):
             super().log_message(fmt, *args)
 
 
+class TailnetServer(ThreadingHTTPServer):
+    """Listens on the Tailscale address and drops connections from any device not in ALLOW."""
+
+    def __init__(self, address: tuple[str, int], handler, clients: set[str]) -> None:
+        self.clients = clients
+        super().__init__(address, handler)
+
+    def verify_request(self, request, client_address) -> bool:
+        if client_address[0] in self.clients:
+            return True
+        print(f"refused {client_address[0]}: not in {ALLOW.relative_to(ROOT)}", file=sys.stderr, flush=True)
+        return False
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--port", type=int, default=8770)
     args = ap.parse_args()
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), partial(Handler, directory=str(SITE)))
-    print(f"Editing My Pick at http://127.0.0.1:{args.port}/  (Ctrl+C to stop)", flush=True)
+    listen, names, clients = read_allow()
+    Handler.names = names
+    servers = [ThreadingHTTPServer((LOOPBACK, args.port), partial(Handler, directory=str(SITE)))]
+    if listen:
+        servers.append(TailnetServer((listen, args.port), partial(Handler, directory=str(SITE)), clients))
+    print(f"Editing My Pick at http://{LOOPBACK}:{args.port}/  (Ctrl+C to stop)", flush=True)
+    if listen:
+        for name in sorted(names - {listen}) + [listen]:
+            print(f"  and at http://{name}:{args.port}/ from {len(clients)} allowed devices", flush=True)
+    for extra in servers[1:]:
+        threading.Thread(target=extra.serve_forever, daemon=True).start()
     try:
-        server.serve_forever()
+        servers[0].serve_forever()
     except KeyboardInterrupt:
         pass
 

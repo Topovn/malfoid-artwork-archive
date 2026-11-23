@@ -221,7 +221,10 @@
   const kindLabel = (it) => (isVideo(it) ? "Video" : it.k === "anim" ? "Animation" : "Artwork");
 
   const thumbUrl = (it) => "thumbs/" + encodeURIComponent(it.f) + ".webp";
-  const onLocalhost = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  // The owner's own server (tools/serve.py): loopback, or this machine over Tailscale by its bare name,
+  // its MagicDNS name or its 100.64.0.0/10 address. GitHub Pages is never any of these.
+  const onLocalhost = /^(localhost|127\.0\.0\.1|\[::1\]|[^.]+|.+\.ts\.net|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d+\.\d+)$/
+    .test(location.hostname);
   let releaseBase = "";
   const mediaUrl = (it) => {
     const local = CONFIG.preferLocalMedia && onLocalhost;
