@@ -54,6 +54,7 @@
   ]);
   const TIMEZONE = "Australia/Sydney"; // days on the timeline, as in the original dashboard
   const TIMELINE_START = "2026-09-01";
+  const RANDOM_WEEKS_FROM = "2026-09-28"; // Random's week picker starts here; earlier weeks hold too few works
   const TIMELINE_VIEW_END = "2026-10-01"; // the Timeline tab covers the early days, before the October wave
   const TIMELINE_GROUPED_YEARS = new Set(["2022", "2023"]); // years shown as one group on their year marker, without days
   const VIDEO_EXTS = new Set(["mp4", "mov", "webm"]);
@@ -71,6 +72,7 @@
     date: $("#date"),
     perPage: $("#per-page"),
     randomGrid: $("#random-grid"),
+    randomWeek: $("#random-week"),
     pager: $("#pager"),
     count: $("#count"),
     activeArtist: $("#active-artist"),
@@ -98,6 +100,7 @@
     viewerExtra: $("#viewer-extra"),
     viewerMore: $("#viewer-more"),
     viewerNote: $("#viewer-note"),
+    viewerMetaToggle: $("#viewer-meta-toggle"),
     prev: $("#prev"),
     next: $("#next"),
   };
@@ -108,7 +111,7 @@
   const VIEWS = ADULT_SITE ? ["gallery", "artists"] : ["home", "random", "gallery", "timeline", "artists"];
   const DEFAULT_VIEW = VIEWS[0]; // shown at the bare address; the second site then moves it to #gallery
   const MAIN_ONLY_KINDS = new Set(["pick"]);
-  const state = { q: "", artist: "", likes: "", date: "", followers: "", rating: "", kind: "", sort: "shuffle", seed: 0, page: 1, view: DEFAULT_VIEW };
+  const state = { q: "", artist: "", likes: "", date: "", followers: "", rating: "", kind: "", sort: "shuffle", seed: 0, week: "", page: 1, view: DEFAULT_VIEW };
   const PER_PAGE_OPTIONS = [50, 100, 150, 200, 250, 300];
   const DEFAULT_PER_PAGE = 100;
   // Gallery "Likes" filter: at least the first number and fewer than the second. Works without a count match none.
@@ -131,8 +134,6 @@
     "50k": [50000, 100000],
     "100k": [100000, Infinity],
   };
-  // Gallery "Posted" filter: the past 7 days (today included), and this and last calendar month, on the site's clock.
-  const DATE_RANGES = ["7d", "month", "lastmonth"];
   // Danbooru ratings ("r"), for the viewer's rating row and the gallery's rating filter.
   const RATING_NAMES = { g: "General", s: "Sensitive", q: "Questionable", e: "Explicit" };
   const danbooruUrl = (it) => (Number.isInteger(it.b) && it.b > 0 ? `https://danbooru.donmai.us/posts/${it.b}` : "");
@@ -301,11 +302,15 @@
     if (![...el.sort.options].some((o) => o.value === state.sort)) state.sort = "shuffle";
     if (state.likes === "30k") state.likes = "20k"; // 30K-50K folded into 20K-50K
     if (!Object.hasOwn(LIKE_RANGES, state.likes)) state.likes = "";
-    if (!DATE_RANGES.includes(state.date)) state.date = "";
+    // Old links named a month relative to the day they were opened.
+    if (state.date === "month") state.date = thisMonth();
+    if (state.date === "lastmonth") state.date = shiftMonth(thisMonth(), -1);
+    if (state.date !== "7d" && !postedMonths().includes(state.date)) state.date = "";
     if (!Object.hasOwn(FOLLOWER_RANGES, state.followers)) state.followers = "";
     if (state.rating !== "none" && !Object.hasOwn(RATING_NAMES, state.rating)) state.rating = "";
     const seed = Number(p.get("seed"));
     state.seed = Number.isInteger(seed) && seed > 0 && seed < 2 ** 32 ? seed : 0;
+    state.week = p.get("week") || ""; // checked against the picker's weeks in renderRandom
     const page = Number(p.get("page"));
     state.page = Number.isInteger(page) && page >= 1 ? page : 1; // clamped to the last page once results are known
     const hash = location.hash.slice(1);
@@ -329,7 +334,10 @@
       if (state.sort !== "shuffle") p.set("sort", state.sort);
       if (state.page > 1) p.set("page", state.page);
     }
-    if (state.view === "random") p.set("seed", state.seed);
+    if (state.view === "random") {
+      if (state.week) p.set("week", state.week);
+      p.set("seed", state.seed);
+    }
     if (work) p.set("work", work);
     const qs = p.toString();
     const hash = state.view === "home" ? "" : "#" + state.view;
@@ -609,7 +617,7 @@
   // ---------- My Personal Favorite ----------
   // The list lives in data/picks.json. It can only be changed through tools/serve.py, the owner's
   // local server, which marks data/picks.json with an X-Malfoid-Edit header and accepts PUT /api/picks.
-  // Everywhere else (GitHub Pages, a plain static server) picks are read-only.
+  // Everywhere else (GitHub Pages, a plain static server) and in the visitor view, picks are read-only.
 
   const HEART_SVG =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.6-4.6-9.5-9.3C1.1 7.8 3.2 4 6.9 4c2.1 0 3.5 1.1 5.1 3.1C13.6 5.1 15 4 17.1 4c3.7 0 5.8 3.8 4.4 7.2-1.9 4.7-9.5 9.3-9.5 9.3z"/></svg>';
@@ -622,7 +630,7 @@
     try {
       const res = await fetch("data/picks.json", { cache: "no-store" });
       if (!res.ok) return;
-      picksEditable = res.headers.get("X-Malfoid-Edit") === "1";
+      picksEditable = !visitorView && res.headers.get("X-Malfoid-Edit") === "1"; // the visitor view looks read-only
       const data = await res.json();
       setPicks(data.picks);
     } catch (err) {
@@ -784,7 +792,7 @@
   let comicSave = Promise.resolve();
 
   async function loadComicFixes() {
-    if (!["127.0.0.1", "localhost"].includes(location.hostname)) return; // the API only exists locally
+    if (visitorView || !onLocalhost) return; // the API only exists on the owner's server; the visitor view shows the published tags
     try {
       const res = await fetch(COMICS_API, { cache: "no-store" });
       if (!res.ok || res.headers.get("X-Malfoid-Edit") !== "1") return;
@@ -1026,11 +1034,24 @@
     onOpen: (i, list, btn) => openViewer(i, list, btn),
   });
 
+  // The week picker: Monday-to-Sunday weeks of the date posted on Twitter, newest first.
+  function buildRandomWeeks() {
+    const options = [...new Set(items.map(postedWeek))]
+      .filter((w) => w >= RANDOM_WEEKS_FROM)
+      .sort()
+      .reverse()
+      .map((w) => new Option(weekLabel(w), w));
+    el.randomWeek.replaceChildren(el.randomWeek.options[0], ...options);
+  }
+
   // Pick artists first so every work in the set has a different creator.
   function renderRandom() {
     const seed = state.seed;
+    if (![...el.randomWeek.options].some((o) => o.value === state.week)) state.week = "";
+    el.randomWeek.value = state.week;
     const byArtist = new Map();
     for (const it of items) {
+      if (state.week && postedWeek(it) !== state.week) continue;
       let group = byArtist.get(it._al);
       if (!group) byArtist.set(it._al, (group = []));
       group.push(it);
@@ -1124,9 +1145,11 @@
     viewerIndex = index;
     if (from) viewerReturnFocus = from;
     const it = list[index];
+    resetGestures();
     renderViewer(it);
     if (!el.viewer.open) {
       el.viewer.showModal();
+      el.viewer.focus(); // rather than the first arrow, which would open with a focus ring
       document.documentElement.style.overflow = "hidden";
     }
     if (push) viewerPushed = true;
@@ -1143,6 +1166,9 @@
 
   el.viewer.addEventListener("close", () => {
     el.viewerMedia.replaceChildren(); // stops any playing video
+    resetGestures();
+    clearTimeout(tapTimer);
+    el.viewer.classList.remove("immersive");
     document.documentElement.style.overflow = "";
     const pushClose = viewerPushed && !restoring;
     viewerPushed = false;
@@ -1183,28 +1209,77 @@
     [/(^|\.)novelpia\.com$/, "Novelpia"],
     [/(^|\.)(x|twitter)\.com$/, "Twitter"],
   ];
+  // The source link's label, in full and in the short form the phone layout's single row of buttons uses.
   function sourceLabel(url) {
     let host = "";
     try {
       host = new URL(url).hostname.toLowerCase();
     } catch {}
     const site = SOURCE_SITES.find(([re]) => re.test(host));
-    return site ? `View on ${site[1]} ↗` : "View source ↗";
+    return site ? [`View on ${site[1]} ↗`, `${site[1]} ↗`] : ["View source ↗", "Source ↗"];
+  }
+
+  // Viewer buttons carry a full label and a short one; the stylesheet shows the one that fits the layout.
+  function setLabel(btn, full, short = full) {
+    const long = document.createElement("span");
+    long.className = "lbl-full";
+    long.textContent = full;
+    const brief = document.createElement("span");
+    brief.className = "lbl-short";
+    brief.textContent = short;
+    btn.replaceChildren(long, brief);
+  }
+
+  // On narrow screens the details list shows only the rows most visitors look for; the rest wait
+  // behind a toggle, which stays as set while stepping through works.
+  let metaExpanded = false;
+  function renderMeta(rows) {
+    el.viewerMeta.replaceChildren();
+    for (const [k, v, extra] of rows) {
+      const dt = document.createElement("dt");
+      dt.textContent = k;
+      const dd = document.createElement("dd");
+      dd.textContent = v;
+      if (extra) dt.className = dd.className = "meta-extra";
+      el.viewerMeta.append(dt, dd);
+    }
+    el.viewerMetaToggle.hidden = !rows.some((r) => r[2]);
+    setMetaExpanded(metaExpanded);
+  }
+  function setMetaExpanded(on) {
+    metaExpanded = on;
+    el.viewerMeta.classList.toggle("expanded", on);
+    el.viewerMetaToggle.setAttribute("aria-expanded", String(on));
+    el.viewerMetaToggle.textContent = on ? "Fewer details" : "More details";
+  }
+  el.viewerMetaToggle.addEventListener("click", () => setMetaExpanded(!metaExpanded));
+
+  // The viewer's <img> points at the full file from the start, so right-click > Save Image As always saves
+  // the original in its own format. The preview is painted behind it until the full file has loaded,
+  // and takes its place if the full file is missing. w and h (the preview's size) give the picture's shape
+  // before the full file has any, for telling the picture from the bars beside it.
+  function viewerImage(alt, previewUrl, fullUrl, w, h, onMissing) {
+    const img = document.createElement("img");
+    img.alt = alt;
+    img.decoding = "async";
+    img.dataset.w = w || "";
+    img.dataset.h = h || "";
+    img.style.backgroundImage = `url("${previewUrl}")`;
+    img.addEventListener("load", () => img.style.removeProperty("background-image"), { once: true });
+    img.addEventListener("error", () => {
+      img.style.removeProperty("background-image");
+      img.src = previewUrl;
+      onMissing?.();
+    }, { once: true });
+    img.src = fullUrl;
+    return img;
   }
 
   // Early art carries no tweet or file details: only the image, its year or posting date, and any credit or source.
   function renderEarlyViewer(it) {
     el.viewerNote.hidden = true;
-    const media = document.createElement("img");
-    media.alt = it.credit ? `Work by ${it.credit.name}, ${it.label}` : `Early Malfoid art, ${it.label}`;
-    media.src = it.e.thumb;
-    const full = new Image();
-    full.decoding = "async";
-    full.onload = () => {
-      if (viewerList[viewerIndex] === it) media.src = full.src;
-    };
-    full.src = it.e.full;
-    el.viewerMedia.replaceChildren(media);
+    const alt = it.credit ? `Work by ${it.credit.name}, ${it.label}` : `Early Malfoid art, ${it.label}`;
+    el.viewerMedia.replaceChildren(viewerImage(alt, it.e.thumb, it.e.full, it.e.w, it.e.h));
     el.viewerPos.textContent = `${numberFmt.format(viewerIndex + 1)} of ${numberFmt.format(viewerList.length)}`;
     // The heading names the artist, or else the work's title (linked to its source).
     const heading = it.credit ? { text: it.credit.name, url: it.credit.url } : it.title && it.source ? { text: it.title, url: it.source } : null;
@@ -1217,23 +1292,18 @@
     el.viewerTags.replaceChildren(badge("Early art", false));
     el.viewerLost.hidden = true;
     renderPostText(it);
-    el.viewerMeta.replaceChildren();
-    const dt = document.createElement("dt");
-    dt.textContent = it.p ? "Posted" : "Year";
-    const dd = document.createElement("dd");
-    dd.textContent = it.p ? fmtDate(it.p) : it.label;
-    el.viewerMeta.append(dt, dd);
+    renderMeta([it.p ? ["Posted", fmtDate(it.p)] : ["Year", it.label]]);
     el.viewerTweet.hidden = !it.source;
     if (it.source) {
       el.viewerTweet.href = it.source;
-      el.viewerTweet.textContent = sourceLabel(it.source);
+      setLabel(el.viewerTweet, ...sourceLabel(it.source));
     }
     el.viewerDanbooru.hidden = true;
     const extra = it.links[0];
     el.viewerExtra.hidden = !extra;
     if (extra) {
       el.viewerExtra.href = extra.url;
-      el.viewerExtra.textContent = extra.label + " ↗";
+      setLabel(el.viewerExtra, extra.label + " ↗");
     }
     el.viewerMore.hidden = true;
     el.prev.disabled = viewerIndex <= 0;
@@ -1266,19 +1336,9 @@
       media.addEventListener("error", showMissing, { once: true });
       media.src = mediaUrl(it);
     } else {
-      // Show the thumbnail at once, then swap in the full file once it has loaded.
-      media = document.createElement("img");
-      media.alt = `Work by @${it.a}`;
-      media.src = thumbUrl(it);
-      const full = new Image();
-      full.decoding = "async";
-      full.onload = () => {
-        if (current()) media.src = full.src;
-      };
-      full.onerror = () => {
+      media = viewerImage(`Work by @${it.a}`, thumbUrl(it), mediaUrl(it), it.w, it.h, () => {
         if (current()) showMissing();
-      };
-      full.src = mediaUrl(it);
+      });
     }
     el.viewerMedia.replaceChildren(media);
 
@@ -1305,26 +1365,18 @@
     if (it.l) el.viewerLost.textContent = it.l;
     renderPostText(it);
 
-    el.viewerMeta.replaceChildren();
     const followers = artistStats.get(it._al)?.followers;
-    // A work with no tweet skips the rows it has nothing to show for.
-    const rows = [
+    // A work with no tweet skips the rows it has nothing to show for; rows marked true fold away on phones.
+    renderMeta([
       (it.t || it.v != null) && ["Likes", it.v != null ? `About ${fmtLikes(it.v)}` : "Unknown"],
-      ["Artist followers", followers != null ? `About ${fmtLikes(followers)}` : "Unknown"],
+      ["Artist followers", followers != null ? `About ${fmtLikes(followers)}` : "Unknown", true],
       (it.t || it.y) && ["Posted", fmtPosted(it)],
-      ["Added", fmtDate(it.d)],
-      it.t && ["Tweet ID", it.t],
-      it.t && ["Image", `#${it.i} in tweet`],
-      ["File", it._fn],
-    ].filter(Boolean);
-    if (RATING_NAMES[it.r]) rows.push(["Danbooru rating", RATING_NAMES[it.r]]);
-    for (const [k, v] of rows) {
-      const dt = document.createElement("dt");
-      dt.textContent = k;
-      const dd = document.createElement("dd");
-      dd.textContent = v;
-      el.viewerMeta.append(dt, dd);
-    }
+      ["Added", fmtDate(it.d), true],
+      it.t && ["Tweet ID", it.t, true],
+      it.t && ["Image", `#${it.i} in tweet`, true],
+      ["File", it._fn, true],
+      RATING_NAMES[it.r] && ["Danbooru rating", RATING_NAMES[it.r]],
+    ].filter(Boolean));
 
     // A lost tweet links to the artist's profile instead, and to nothing when that account is gone too.
     const tUrl = tweetUrl(it);
@@ -1332,7 +1384,8 @@
     el.viewerTweet.hidden = !showTweet;
     if (showTweet) {
       el.viewerTweet.href = it.l ? profileUrl(it) : tUrl;
-      el.viewerTweet.textContent = it.l ? "View Artist Profile on Twitter ↗" : "View tweet on Twitter ↗";
+      if (it.l) setLabel(el.viewerTweet, "View Artist Profile on Twitter ↗", "Profile ↗");
+      else setLabel(el.viewerTweet, "View tweet on Twitter ↗", "Tweet ↗");
     }
     const bUrl = danbooruUrl(it);
     el.viewerDanbooru.hidden = !bUrl;
@@ -1342,7 +1395,7 @@
     const n = stats ? stats.count : 1;
     // Inside this artist's own view the shortcut would lead nowhere new, so it hides.
     el.viewerMore.hidden = state.view === "gallery" && state.artist.toLowerCase() === it._al;
-    el.viewerMore.textContent = `All ${plural(n, "work", "works")} by @${it.a}`;
+    setLabel(el.viewerMore, `All ${plural(n, "work", "works")} by @${it.a}`, `All ${plural(n, "work", "works")}`);
 
     el.prev.disabled = viewerIndex <= 0;
     el.next.disabled = viewerIndex >= viewerList.length - 1;
@@ -1397,9 +1450,13 @@
   });
   // Whether a point falls on the picture itself. Images fill the stage with object-fit: contain,
   // so the bars beside a tall image (or above a wide one) belong to the <img> without being picture.
+  // The picture's pixel size, or its shape from the manifest while the full file is still loading.
+  function pictureSize(img) {
+    if (img.naturalWidth && img.naturalHeight) return [img.naturalWidth, img.naturalHeight];
+    return [Number(img.dataset.w) || 0, Number(img.dataset.h) || 0];
+  }
   function onPicture(img, x, y) {
-    const nw = img.naturalWidth;
-    const nh = img.naturalHeight;
+    const [nw, nh] = pictureSize(img);
     if (!nw || !nh) return true;
     const r = img.getBoundingClientRect();
     const scale = Math.min(r.width / nw, r.height / nh);
@@ -1409,21 +1466,235 @@
     const top = r.top + (r.height - h) / 2;
     return x >= left && x <= left + w && y >= top && y <= top + h;
   }
-  // Clicking the dark area around the media closes the viewer.
+  // Clicking the dark area around the media closes the viewer. A touch gesture that moved, and any tap
+  // in the full-screen view, is handled by the gestures below instead.
+  let suppressClick = false;
   el.viewerMedia.addEventListener("click", (e) => {
+    if (suppressClick || el.viewer.classList.contains("immersive")) {
+      suppressClick = false;
+      return;
+    }
     const t = e.target;
     if (t === el.viewerMedia || (t instanceof HTMLImageElement && !onPicture(t, e.clientX, e.clientY))) closeViewer();
   });
 
-  // Swipe left and right on touch screens.
-  let touchX = null;
-  el.viewerMedia.addEventListener("touchstart", (e) => (touchX = e.touches[0].clientX), { passive: true });
-  el.viewerMedia.addEventListener("touchend", (e) => {
-    if (touchX === null) return;
-    const dx = e.changedTouches[0].clientX - touchX;
-    touchX = null;
-    if (Math.abs(dx) > 50) openViewer(viewerIndex + (dx < 0 ? 1 : -1));
+  // ---------- Viewer touch gestures ----------
+  // Touch only; the mouse keeps the arrows and clicks. One finger swipes sideways to step through works
+  // and drags down to close. A tap on the picture opens the full-screen view (the picture alone, on black),
+  // where a tap brings the details back and a double tap zooms in on that spot, or back out.
+  // Two fingers pinch to zoom, which opens the full-screen view too; zoomed in, one finger pans.
+  const ZOOM_MAX = 5;
+  const DOUBLE_TAP_ZOOM = 2.5;
+  const TAP_MS = 300;
+  const TAP_SLOP = 10; // px a finger may wander and still tap
+  const DOUBLE_TAP_MS = 260;
+  const SWIPE_STEP = 60; // px sideways that step to the next work
+  const DISMISS_DIST = 110; // px down that close the viewer
+  const DISMISS_SPEED = 0.6; // px/ms: a quick flick closes it sooner
+  const touches = new Map(); // pointerId -> { x, y }
+  let zoom = { s: 1, x: 0, y: 0 };
+  let gesture = null;
+  let lastTap = null;
+  let tapTimer = 0;
+
+  const viewerImg = () => el.viewerMedia.querySelector("img");
+  const viewerClip = () => el.viewerMedia.querySelector("img, video");
+  const isImmersive = () => el.viewer.classList.contains("immersive");
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+  function setImmersive(on) {
+    clearTimeout(tapTimer);
+    lastTap = null;
+    el.viewer.classList.toggle("immersive", on);
+    resetZoom(false);
+  }
+
+  // The picture at normal size: the centre of its box (the whole stage, as images use object-fit: contain),
+  // the box size and the fitted picture size. Offsets ignore the zoom transform, unlike getBoundingClientRect.
+  function fit(img) {
+    const r = el.viewerMedia.getBoundingClientRect();
+    const W = img.offsetWidth;
+    const H = img.offsetHeight;
+    const [nw, nh] = img instanceof HTMLImageElement ? pictureSize(img) : [img.videoWidth, img.videoHeight];
+    const k = nw && nh ? Math.min(W / nw, H / nh) : 1;
+    return { cx: r.left + img.offsetLeft + W / 2, cy: r.top + img.offsetTop + H / 2, W, H, w: (nw || W) * k, h: (nh || H) * k };
+  }
+
+  function applyZoom(media, animate) {
+    media.classList.toggle("settle", !!animate);
+    media.style.transform = zoom.s === 1 ? "" : `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.s})`;
+  }
+
+  // Zoom to scale s keeping the point of the picture that sits under (px, py) at the given zoom under it,
+  // without letting the picture's edges come away from the stage's.
+  function zoomAt(f, s, px, py, from) {
+    s = clamp(s, 1, ZOOM_MAX);
+    const qx = (px - f.cx - from.x) / from.s;
+    const qy = (py - f.cy - from.y) / from.s;
+    const mx = Math.max(0, (s * f.w - f.W) / 2);
+    const my = Math.max(0, (s * f.h - f.H) / 2);
+    zoom = { s, x: clamp(px - f.cx - s * qx, -mx, mx), y: clamp(py - f.cy - s * qy, -my, my) };
+  }
+
+  function resetZoom(animate) {
+    zoom = { s: 1, x: 0, y: 0 };
+    const media = viewerClip();
+    if (media) applyZoom(media, animate);
+  }
+
+  // Back to rest after a drag that didn't step or close.
+  function settle() {
+    const media = viewerClip();
+    if (media) applyZoom(media, true);
+    el.viewer.style.removeProperty("--dismiss");
+  }
+
+  function pinchStart() {
+    const [a, b] = [...touches.values()];
+    return { kind: "pinch", d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, from: null };
+  }
+
+  el.viewerMedia.addEventListener("pointerdown", (e) => {
+    if (touches.size === 0) suppressClick = false; // a moved gesture leaves no click behind to clear it
+    if (e.pointerType === "mouse") return;
+    el.viewerMedia.setPointerCapture(e.pointerId);
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size === 1) {
+      // The target is kept from here: once captured, later events name the stage instead.
+      gesture = { kind: "pending", target: e.target, x0: e.clientX, y0: e.clientY, t0: e.timeStamp, from: { ...zoom }, vy: 0, ty: e.timeStamp, y: e.clientY };
+    } else if (touches.size === 2 && viewerImg()) {
+      suppressClick = true;
+      el.viewer.style.removeProperty("--dismiss");
+      if (!isImmersive()) setImmersive(true);
+      else applyZoom(viewerImg()); // drop any half-done swipe offset
+      gesture = pinchStart();
+    }
   });
+
+  el.viewerMedia.addEventListener("pointermove", (e) => {
+    if (!touches.has(e.pointerId) || !gesture) return;
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const media = viewerClip();
+    if (!media) return;
+    if (gesture.kind === "pinch") {
+      if (touches.size < 2) return;
+      const [a, b] = [...touches.values()];
+      const f = fit(media);
+      // The layout may just have changed to the full-screen view, so the starting zoom is taken on the first move.
+      gesture.from ||= { ...zoom };
+      const s = gesture.from.s * (Math.hypot(a.x - b.x, a.y - b.y) / gesture.d0);
+      // Anchor the point that was under the fingers' midpoint at the start, wherever the midpoint has moved.
+      zoomAt(f, s, gesture.mx, gesture.my, gesture.from);
+      const mx = (a.x + b.x) / 2 - gesture.mx;
+      const my = (a.y + b.y) / 2 - gesture.my;
+      const lx = Math.max(0, (zoom.s * f.w - f.W) / 2);
+      const ly = Math.max(0, (zoom.s * f.h - f.H) / 2);
+      zoom.x = clamp(zoom.x + mx, -lx, lx);
+      zoom.y = clamp(zoom.y + my, -ly, ly);
+      applyZoom(media);
+      return;
+    }
+    const dx = e.clientX - gesture.x0;
+    const dy = e.clientY - gesture.y0;
+    if (e.timeStamp > gesture.ty) {
+      gesture.vy = (e.clientY - gesture.y) / (e.timeStamp - gesture.ty);
+      gesture.y = e.clientY;
+      gesture.ty = e.timeStamp;
+    }
+    if (gesture.kind === "pending") {
+      if (Math.hypot(dx, dy) < TAP_SLOP) return;
+      suppressClick = true;
+      gesture.kind =
+        zoom.s > 1 ? "pan"
+        : Math.abs(dx) > Math.abs(dy) ? "swipe"
+        : dy > 0 ? "dismiss"
+        : "none";
+    }
+    if (gesture.kind === "pan") {
+      const f = fit(media);
+      const lx = Math.max(0, (zoom.s * f.w - f.W) / 2);
+      const ly = Math.max(0, (zoom.s * f.h - f.H) / 2);
+      zoom = { s: zoom.s, x: clamp(gesture.from.x + dx, -lx, lx), y: clamp(gesture.from.y + dy, -ly, ly) };
+      applyZoom(media);
+    } else if (gesture.kind === "swipe") {
+      const end = dx > 0 ? viewerIndex <= 0 : viewerIndex >= viewerList.length - 1;
+      media.classList.remove("settle");
+      media.style.transform = `translateX(${end ? dx / 4 : dx}px)`; // the first and last works resist
+    } else if (gesture.kind === "dismiss") {
+      const y = Math.max(0, dy);
+      const p = Math.min(1, y / (window.innerHeight * 0.5));
+      media.classList.remove("settle");
+      media.style.transform = `translateY(${y}px) scale(${1 - p * 0.2})`;
+      el.viewer.style.setProperty("--dismiss", String(p));
+    }
+  });
+
+  function endTouch(e) {
+    if (!touches.delete(e.pointerId) || !gesture) return;
+    if (gesture.kind === "pinch") {
+      if (touches.size === 1) {
+        // One finger stays down: carry on as a pan from where it is.
+        const [p] = [...touches.values()];
+        gesture = { kind: zoom.s > 1 ? "pan" : "none", x0: p.x, y0: p.y, t0: e.timeStamp, from: { ...zoom }, vy: 0, ty: e.timeStamp, y: p.y };
+      } else if (touches.size === 0) {
+        gesture = null;
+        if (zoom.s < 1.05) resetZoom(true);
+      }
+      return;
+    }
+    if (touches.size) return;
+    const g = gesture;
+    gesture = null;
+    const dx = e.clientX - g.x0;
+    const dy = e.clientY - g.y0;
+    if (e.type === "pointercancel") return settle();
+    if (g.kind === "pending") {
+      if (e.timeStamp - g.t0 < TAP_MS) onTap(e, g.target);
+    } else if (g.kind === "swipe") {
+      const step = dx < 0 ? 1 : -1;
+      const target = viewerIndex + step;
+      if (Math.abs(dx) > SWIPE_STEP && target >= 0 && target < viewerList.length) openViewer(target);
+      else settle();
+    } else if (g.kind === "dismiss") {
+      if (dy > DISMISS_DIST || (g.vy > DISMISS_SPEED && dy > 30)) closeViewer();
+      else settle();
+    }
+  }
+  el.viewerMedia.addEventListener("pointerup", endTouch);
+  el.viewerMedia.addEventListener("pointercancel", endTouch);
+
+  function onTap(e, target) {
+    const img = viewerImg();
+    if (!img) return; // videos keep their own controls
+    if (!isImmersive()) {
+      // On the picture: full screen. Beside it: the click handler closes the viewer, as with the mouse.
+      if (target === img && onPicture(img, e.clientX, e.clientY)) {
+        suppressClick = true;
+        setImmersive(true);
+      }
+      return;
+    }
+    if (lastTap && e.timeStamp - lastTap.t < DOUBLE_TAP_MS && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 40) {
+      clearTimeout(tapTimer);
+      lastTap = null;
+      if (zoom.s > 1) resetZoom(true);
+      else {
+        zoomAt(fit(img), DOUBLE_TAP_ZOOM, e.clientX, e.clientY, zoom);
+        applyZoom(img, true);
+      }
+      return;
+    }
+    lastTap = { t: e.timeStamp, x: e.clientX, y: e.clientY };
+    tapTimer = setTimeout(() => setImmersive(false), DOUBLE_TAP_MS);
+  }
+
+  // Each work starts at normal size; the close resets the rest.
+  function resetGestures() {
+    touches.clear();
+    gesture = null;
+    zoom = { s: 1, x: 0, y: 0 };
+    el.viewer.style.removeProperty("--dismiss");
+  }
 
   // ---------- Home: shelves ----------
 
@@ -1467,7 +1738,7 @@
       .slice(0, FAME_SIZE);
 
     // The most liked works posted this calendar month and in the past 7 days, in the gallery's Most liked order.
-    for (const [name, range] of [["month", "month"], ["week", "7d"]]) {
+    for (const [name, range] of [["month", thisMonth()], ["week", "7d"]]) {
       const [from, to] = dateRange(range);
       shelves[name] = tweets
         .filter((it) => postedDay(it) >= from && postedDay(it) < to)
@@ -1638,12 +1909,12 @@
     });
   }
   for (const [id, date] of [
-    ["#month-link", "month"],
-    ["#week-link", "7d"],
+    ["#month-link", () => thisMonth()],
+    ["#week-link", () => "7d"],
   ]) {
     $(id).addEventListener("click", (e) => {
       e.preventDefault();
-      showGallery({ date, sort: "liked", q: "", artist: "", likes: "", followers: "", kind: "", page: 1 });
+      showGallery({ date: date(), sort: "liked", q: "", artist: "", likes: "", followers: "", kind: "", page: 1 });
     });
   }
   $("#pick-link").addEventListener("click", (e) => {
@@ -1704,18 +1975,39 @@
   const round1 = (n) => Math.round(n * 10) / 10;
   // The day a work was posted, on the site's clock; "" when unknown.
   const postedDay = (it) => (it._pd ??= it.p ? dayKey(it.p) : "");
-  // A "Posted" range (DATE_RANGES) as [first day, day after], counted from today.
+  // The Monday that starts a day's Monday-to-Sunday week.
+  const mondayOf = (k) => keyIso(keyMs(k) - ((new Date(keyMs(k)).getUTCDay() + 6) % 7) * DAY);
+  // The week a work was posted, by its Monday; "" when unknown.
+  const postedWeek = (it) => (it._pw ??= postedDay(it) ? mondayOf(postedDay(it)) : "");
+  // "Nov 16 – 22", or "Oct 26 – Nov 1" across a month.
+  const weekLabel = (start) => {
+    const end = keyIso(keyMs(start) + 6 * DAY);
+    return `${fmtKey(start)} – ${start.slice(0, 7) === end.slice(0, 7) ? end.slice(8).replace(/^0/, "") : fmtKey(end)}`;
+  };
+  // Calendar months as "YYYY-MM", on the site's clock.
+  const thisMonth = () => dayKey(Date.now()).slice(0, 7);
+  const shiftMonth = (m, n) => keyIso(Date.UTC(+m.slice(0, 4), +m.slice(5, 7) - 1 + n, 1)).slice(0, 7);
+  const monthName = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+  // The Gallery "Posted" filter's months: each one from the timeline's start to this one, oldest first.
+  function postedMonths() {
+    const out = [];
+    for (let m = TIMELINE_START.slice(0, 7); m <= thisMonth(); m = shiftMonth(m, 1)) out.push(m);
+    return out;
+  }
+  // A "Posted" range as [first day, day after]: "7d" is the past 7 days with today, "YYYY-MM" a calendar month.
   function dateRange(name) {
-    if (!name) return null;
-    const today = keyMs(dayKey(Date.now()));
-    const d = new Date(today);
-    const month = (offset) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + offset, 1);
-    const [from, to] = {
-      "7d": [today - 6 * DAY, today + DAY],
-      month: [month(0), month(1)],
-      lastmonth: [month(-1), month(0)],
-    }[name];
-    return [keyIso(from), keyIso(to)];
+    if (name === "7d") {
+      const today = keyMs(dayKey(Date.now()));
+      return [keyIso(today - 6 * DAY), keyIso(today + DAY)];
+    }
+    if (/^\d{4}-\d{2}$/.test(name)) return [`${name}-01`, `${shiftMonth(name, 1)}-01`];
+    return null;
+  }
+  // The months go ahead of "Last 7 days" and "All time"; Popular This Month links to this one.
+  function buildDateOptions() {
+    // After All time and Last 7 days, the months newest first.
+    el.date.append(...postedMonths().reverse().map((m) => new Option(monthName.format(new Date(keyMs(`${m}-01`))), m)));
+    $("#month-link").href = `?date=${thisMonth()}&sort=liked#gallery`;
   }
 
   function buildTimeline() {
@@ -1766,7 +2058,6 @@
       }));
 
     // Monday-to-Sunday weeks, newest first.
-    const monday = (k) => keyIso(keyMs(k) - ((new Date(keyMs(k)).getUTCDay() + 6) % 7) * DAY);
     const weeks = new Map();
     const week = (k) => {
       if (!weeks.has(k)) weeks.set(k, { start: k, posted: 0, saved: 0, posts: new Set(), artists: new Set(), fresh: new Set() });
@@ -1774,13 +2065,13 @@
     };
     for (const work of works) {
       if (work.posted >= TIMELINE_START) {
-        const w = week(monday(work.posted));
+        const w = week(mondayOf(work.posted));
         w.posted++;
         w.posts.add(work.post);
         w.artists.add(work.artist);
         if (firstSeen.get(work.artist) === work.posted) w.fresh.add(work.artist);
       }
-      if (work.saved >= TIMELINE_START) week(monday(work.saved)).saved++;
+      if (work.saved >= TIMELINE_START) week(mondayOf(work.saved)).saved++;
     }
     timeline.weekly = [...weeks.values()]
       .sort((a, b) => (a.start < b.start ? 1 : -1))
@@ -1835,11 +2126,10 @@
   function renderWeekly() {
     const tbody = $("#weekly tbody");
     tbody.replaceChildren();
-    const sameYear = (a, b) => a.slice(0, 4) === b.slice(0, 4);
     for (const w of timeline.weekly) {
       const tr = document.createElement("tr");
       const cells = [
-        `${fmtKey(w.start)} – ${sameYear(w.start, w.end) && w.start.slice(5, 7) === w.end.slice(5, 7) ? w.end.slice(8).replace(/^0/, "") : fmtKey(w.end)}`,
+        weekLabel(w.start),
         numberFmt.format(w.posted),
         String(w.perDay),
         numberFmt.format(w.posts),
@@ -2487,6 +2777,11 @@
     writeUrl(undefined, true);
   });
   $("#random-shuffle").addEventListener("click", shuffleRandom);
+  el.randomWeek.addEventListener("change", () => {
+    state.week = el.randomWeek.value;
+    renderRandom();
+    writeUrl(undefined, true);
+  });
   el.perPage.addEventListener("change", () => {
     // Keep the first work of the current page in view under the new page size.
     const first = pageStart;
@@ -2572,6 +2867,7 @@
   }
 
   async function boot() {
+    buildDateOptions();
     const workParam = readUrl();
     syncControls();
     showView();
@@ -2628,6 +2924,7 @@
 
 
     applyFilters();
+    buildRandomWeeks();
     renderRandom();
     renderPickShelf();
     buildShelves();

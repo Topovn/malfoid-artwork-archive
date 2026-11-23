@@ -21,10 +21,10 @@
   <link rel="icon" type="image/png" sizes="32x32" href="../icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="../icons/icon-192.png">
   <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="../styles.css?v=30">
+  <link rel="stylesheet" href="../styles.css?v=35">
   <script src="../theme.js?v=2"></script>
   <script src="../config.js"></script>
-  <script src="../app.js?v=35" defer></script>
+  <script src="../app.js?v=39" defer></script>
 </head>
 <body>
 
@@ -379,10 +379,19 @@
     <section id="view-random" class="view" hidden>
       <div class="shelf-head">
         <div>
-          <h2>Random</h2>
           <p class="shelf-sub">50 random artworks from 50 random artists, shuffle for a new set</p>
         </div>
-        <button type="button" class="shelf-shuffle" id="random-shuffle">Shuffle</button>
+        <div class="shelf-controls">
+          <label class="field field-inline">
+            <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Upload Range</span>
+            <span class="select">
+              <select id="random-week">
+                <option value="">All weeks</option>
+              </select>
+            </span>
+          </label>
+          <button type="button" class="shelf-shuffle" id="random-shuffle">Shuffle</button>
+        </div>
       </div>
       <div id="random-grid" class="grid" aria-label="Random works"></div>
     </section>
@@ -458,9 +467,7 @@
           <span class="select">
             <select id="date">
               <option value="">All time</option>
-              <option value="7d">Past 7 days</option>
-              <option value="month">This month</option>
-              <option value="lastmonth">Last month</option>
+              <option value="7d">Last 7 days</option>
             </select>
           </span>
         </label>
@@ -567,7 +574,7 @@
     <p>For more Malfoid fan-made websites, see <a href="https://malfoid.com/" target="_blank" rel="noopener noreferrer">Malfoid.com</a>, the <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/#" target="_blank" rel="noopener noreferrer">Malfoid Index</a>, <a href="https://malfoid.love/" target="_blank" rel="noopener noreferrer">Malfoid.love</a> and the <a href="https://www.reddit.com/r/Malfoid/" target="_blank" rel="noopener noreferrer">r/Malfoid</a> subreddit</p>
   </footer>
 
-  <dialog id="viewer" class="viewer" aria-label="Work viewer">
+  <dialog id="viewer" class="viewer" aria-label="Work viewer" tabindex="-1">
     <div class="viewer-stage">
       <div class="viewer-media" id="viewer-media"></div>
       <button class="viewer-nav prev" id="prev" type="button" aria-label="Previous work">‹</button>
@@ -585,10 +592,11 @@
         <button class="viewer-text-more" id="viewer-text-more" type="button" aria-expanded="false" hidden>Show more</button>
       </div>
       <dl class="viewer-meta" id="viewer-meta"></dl>
+      <button class="viewer-meta-toggle" id="viewer-meta-toggle" type="button" aria-expanded="false" aria-controls="viewer-meta">More details</button>
       <div class="viewer-actions">
-        <button class="btn btn-pick" id="viewer-pick" type="button" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.6-4.6-9.5-9.3C1.1 7.8 3.2 4 6.9 4c2.1 0 3.5 1.1 5.1 3.1C13.6 5.1 15 4 17.1 4c3.7 0 5.8 3.8 4.4 7.2-1.9 4.7-9.5 9.3-9.5 9.3z"/></svg><span>Add to Favorite</span></button>
+        <button class="btn btn-pick" id="viewer-pick" type="button" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.6-4.6-9.5-9.3C1.1 7.8 3.2 4 6.9 4c2.1 0 3.5 1.1 5.1 3.1C13.6 5.1 15 4 17.1 4c3.7 0 5.8 3.8 4.4 7.2-1.9 4.7-9.5 9.3-9.5 9.3z"/></svg><span class="lbl-icon-only">Add to Favorite</span></button>
         <a class="btn btn-primary" id="viewer-tweet" target="_blank" rel="noopener noreferrer">View tweet on Twitter ↗</a>
-        <a class="btn" id="viewer-danbooru" target="_blank" rel="noopener noreferrer" hidden>View on Danbooru ↗</a>
+        <a class="btn" id="viewer-danbooru" target="_blank" rel="noopener noreferrer" hidden><span class="lbl-full">View on Danbooru ↗</span><span class="lbl-short">Danbooru ↗</span></a>
         <a class="btn" id="viewer-extra" target="_blank" rel="noopener noreferrer" hidden></a>
         <button class="btn" id="viewer-more" type="button"></button>
       </div>

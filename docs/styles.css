@@ -819,12 +819,17 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   margin: 0;
   padding: 0;
   border: 0;
-  background: #0b0d0c;
+  background: rgb(11 13 12 / calc(1 - var(--dismiss, 0))); /* --dismiss: how far a swipe down has gone towards closing */
   color: #e8ece9;
   overflow: hidden;
 }
 .viewer[open] { display: grid; grid-template-columns: minmax(0, 1fr) 340px; }
+/* The full-screen view: the picture alone, edge to edge. */
+.viewer.immersive[open] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); background: rgb(0 0 0 / calc(1 - var(--dismiss, 0))); }
+.viewer.immersive .viewer-info, .viewer.immersive .viewer-nav { display: none; }
+.viewer.immersive .viewer-media { padding: 0; }
 .viewer::backdrop { background: rgb(0 0 0 / 85%); }
+.viewer:focus { outline: none; } /* it takes focus itself on opening, so no control starts out ringed */
 .viewer-stage { position: relative; min-height: 0; }
 .viewer-media {
   position: absolute;
@@ -833,7 +838,10 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   align-items: center;
   justify-content: center;
   padding: 24px 72px;
+  touch-action: none; /* the viewer handles swipes and pinches itself */
 }
+.viewer-media .settle { transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.viewer-info { opacity: calc(1 - var(--dismiss, 0) * 5); } /* gone early in a swipe down, so its text never sits over the page */
 .viewer-media img, .viewer-media video {
   width: 100%;
   height: 100%;
@@ -841,6 +849,8 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   min-height: 0;
   object-fit: contain;
 }
+.viewer-media img { background: center / contain no-repeat; } /* the preview, sized like the full file over it */
+.viewer-media img[style*="background-image"] { color: transparent; } /* no alt text over the preview while loading */
 .viewer-nav {
   position: absolute;
   top: 50%;
@@ -943,6 +953,8 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 }
 .viewer-meta dt { color: #8e9893; }
 .viewer-meta dd { margin: 0; overflow-wrap: anywhere; }
+.viewer-meta-toggle { display: none; } /* phones only, see below */
+.lbl-short { display: none; }
 .viewer-actions { display: flex; flex-direction: column; gap: 8px; }
 .btn {
   display: flex;
@@ -974,13 +986,42 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   .viewer-nav::before { content: none; } /* the arrows sit over the picture here, where swipes need the room */
   .viewer-nav.prev { left: 6px; }
   .viewer-nav.next { right: 6px; }
-  .viewer-info { max-height: 42dvh; padding: 18px 16px 16px; border-left: 0; border-top: 1px solid #262c29; }
-  .viewer-close { position: fixed; top: 10px; right: 10px; background: rgb(0 0 0 / 55%); z-index: 2; }
-  .viewer-actions { flex-direction: row; flex-wrap: wrap; }
-  .viewer-actions .btn { flex: 1 1 auto; }
-  .viewer-meta { margin: 14px 0; }
+  .viewer-info { display: flex; flex-direction: column; max-height: 42dvh; padding: 14px 16px 16px; border-left: 0; border-top: 1px solid #262c29; }
+  .viewer-link { align-self: flex-start; } /* a pill, not a full-width bar, in the column */
+  .viewer-close {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgb(0 0 0 / 40%);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    color: #fff;
+    font-size: 14px;
+  }
+  /* The actions come first, in one row of short labels, right under the picture. */
+  .viewer-actions { order: -1; flex-direction: row; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; } /* a second row only on the smallest phones */
+  .viewer-actions .btn { flex: 1 0 auto; height: 40px; padding: 0 8px; font-size: 14px; white-space: nowrap; }
+  .viewer-actions .btn-pick { flex: 0 0 40px; padding: 0; }
+  .viewer-actions:not(:has(> :not([hidden]))) { display: none; } /* early art without links: no empty row */
+  .lbl-full { display: none; }
+  .lbl-short { display: inline; overflow: hidden; text-overflow: ellipsis; }
+  .lbl-icon-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .viewer-meta { margin: 14px 0 0; }
+  .viewer-meta:not(.expanded) .meta-extra { display: none; }
+  .viewer-meta-toggle { display: block; align-self: flex-start; margin: 8px 0 0; padding: 0; border: 0; background: none; color: #8e9893; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .viewer-meta-toggle[hidden] { display: none; }
+  .viewer-meta-toggle:hover { color: #e8ece9; }
+  .viewer-meta-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
   .viewer-post { margin-top: 14px; }
   .viewer-text.clamped { -webkit-line-clamp: 4; line-clamp: 4; }
+}
+
+@media (max-width: 900px) and (hover: none) and (pointer: coarse) {
+  .viewer-nav { width: 1px; height: 1px; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%); }
 }
 
 @media (max-width: 640px) {
@@ -1130,6 +1171,8 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 .shelf-btn { width: 40px; font-size: 22px; line-height: 1; }
 .shelf-shuffle { padding: 0 14px; color: var(--accent); font-weight: 600; font-size: 14px; }
 .shelf-btn:hover, .shelf-shuffle:hover { border-color: var(--accent); }
+.shelf-controls .select select { height: 40px; min-width: 0; border-radius: 8px; }
+#view-random .shelf-head { align-items: center; }
 .shelf-btn:disabled { opacity: 0.35; cursor: default; border-color: var(--border); }
 .shelf-link { color: var(--accent); font-weight: 600; font-size: 15px; text-decoration: none; white-space: nowrap; }
 .shelf-link:hover { text-decoration: underline; }
@@ -1274,6 +1317,10 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   .panel { padding: 14px; }
   .chart { height: 220px; }
   .timeline .shelf-head { flex-direction: column; align-items: flex-start; }
+  #view-random .shelf-head { flex-direction: column; align-items: stretch; }
+  #view-random .shelf-controls { align-items: flex-end; }
+  #view-random .shelf-controls .field-inline { flex: 1; }
+  #view-random .shelf-controls .select select { width: 100%; }
 }
 
 /* Timeline view: a rail down the left with a red line that follows the scroll */
