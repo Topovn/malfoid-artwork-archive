@@ -21,10 +21,10 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=35">
+  <link rel="stylesheet" href="styles.css?v=36">
   <script src="theme.js?v=2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=40" defer></script>
+  <script src="app.js?v=41" defer></script>
 </head>
 <body>
 
@@ -450,40 +450,42 @@
             </select>
           </span>
         </label>
-        <label class="field field-inline">
-          <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></svg>Order</span>
-          <span class="select">
-            <select id="sort">
-              <option value="added">Recently added</option>
-              <option value="newest">Newest posted</option>
-              <option value="liked">Most liked</option>
-              <option value="name">File name</option>
-              <option value="shuffle">Random</option>
-            </select>
-          </span>
-        </label>
-        <label class="field field-inline">
-          <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Posted</span>
-          <span class="select">
-            <select id="date">
-              <option value="">All time</option>
-              <option value="7d">Last 7 days</option>
-            </select>
-          </span>
-        </label>
-        <label class="field field-inline">
-          <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Per page</span>
-          <span class="select">
-            <select id="per-page">
-              <option value="50">50</option>
-              <option value="100">100</option>
-              <option value="150">150</option>
-              <option value="200">200</option>
-              <option value="250">250</option>
-              <option value="300">300</option>
-            </select>
-          </span>
-        </label>
+        <div class="field-trio">
+          <label class="field field-inline">
+            <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></svg>Order</span>
+            <span class="select">
+              <select id="sort">
+                <option value="added">Recently added</option>
+                <option value="newest">Newest posted</option>
+                <option value="liked">Most liked</option>
+                <option value="name">File name</option>
+                <option value="shuffle">Random</option>
+              </select>
+            </span>
+          </label>
+          <label class="field field-inline">
+            <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Posted</span>
+            <span class="select">
+              <select id="date">
+                <option value="">All time</option>
+                <option value="7d">Last 7 days</option>
+              </select>
+            </span>
+          </label>
+          <label class="field field-inline">
+            <span class="field-label"><svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Per page</span>
+            <span class="select">
+              <select id="per-page">
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="150">150</option>
+                <option value="200">200</option>
+                <option value="250">250</option>
+                <option value="300">300</option>
+              </select>
+            </span>
+          </label>
+        </div>
         <div class="kind-group">
           <div class="segmented" role="radiogroup" aria-label="Type of work" id="kind">
             <button type="button" role="radio" data-kind="" aria-checked="true"><svg class="kind-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="kind-label">All works</span></button>

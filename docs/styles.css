@@ -411,6 +411,8 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 #toolbar .field-search { flex: 0 1 420px; max-width: 420px; }
 /* The type buttons always get their own line, however few there are; their note matches the row's width. */
 .kind-group { flex-basis: 100%; display: grid; grid-template-columns: fit-content(100%); gap: 12px; }
+/* Order, Posted and Per page sit in the toolbar like the other filters, and share one row on phones. */
+.field-trio { display: contents; }
 .field-search input::placeholder { color: var(--muted); opacity: 0.8; }
 .field-search input:focus { background: var(--surface); border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 
@@ -1055,6 +1057,10 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
   .card-meta { opacity: 1; font-size: 12px; padding: 22px 8px 7px; }
   .card-link { opacity: 1; visibility: visible; left: 8px; bottom: 7px; }
   #per-page { min-width: 0; }
+  /* Columns are sized to each filter's longest choice ("Recently added", "Last 7 days", the Per page label). */
+  .field-trio { flex-basis: 100%; display: grid; grid-template-columns: minmax(0, 145fr) minmax(0, 114fr) minmax(0, 76fr); gap: 8px; }
+  .field-trio .select select { padding-left: 10px; padding-right: 22px; }
+  .field-trio .select::after { right: 9px; width: 7px; height: 7px; }
   .pager { gap: 8px 6px; margin-top: 24px; }
   .pager-pages { order: -1; width: 100%; }
   .pager .pager-step { flex: 1 1 0; }
@@ -1062,6 +1068,14 @@ main { max-width: 1600px; margin: 0 auto; padding: 0 var(--gutter); }
 
 @media (max-width: 440px) {
   .brand-text { display: none; }
+}
+
+/* Under 390px the three one-row filters need every pixel: the label icons go and the selects tighten. */
+@media (max-width: 389px) {
+  .field-label .label-icon { display: none; }
+  .field-trio { grid-template-columns: minmax(0, 138fr) minmax(0, 108fr) minmax(0, 60fr); gap: 6px; }
+  .field-trio .select select { padding-left: 8px; padding-right: 20px; }
+  .field-trio .select::after { right: 7px; }
 }
 
 @media (hover: none) {

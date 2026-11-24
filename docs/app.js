@@ -2005,6 +2005,9 @@
   const thisMonth = () => dayKey(Date.now()).slice(0, 7);
   const shiftMonth = (m, n) => keyIso(Date.UTC(+m.slice(0, 4), +m.slice(5, 7) - 1 + n, 1)).slice(0, 7);
   const monthName = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+  // Phones show "Nov 2026", so a picked month fits the Posted select in its one-row filters (the 640px breakpoint in styles.css).
+  const monthShort = new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+  const phoneFilters = window.matchMedia("(max-width: 640px)");
   // The Gallery "Posted" filter's months: each one from the timeline's start to this one, oldest first.
   function postedMonths() {
     const out = [];
@@ -2023,8 +2026,16 @@
   // The months go ahead of "Last 7 days" and "All time"; Popular This Month links to this one.
   function buildDateOptions() {
     // After All time and Last 7 days, the months newest first.
-    el.date.append(...postedMonths().reverse().map((m) => new Option(monthName.format(new Date(keyMs(`${m}-01`))), m)));
+    el.date.append(...postedMonths().reverse().map((m) => new Option("", m)));
+    nameDateMonths();
+    phoneFilters.addEventListener("change", nameDateMonths);
     $("#month-link").href = `?date=${thisMonth()}&sort=liked#gallery`;
+  }
+  function nameDateMonths() {
+    const format = phoneFilters.matches ? monthShort : monthName;
+    for (const o of el.date.options) {
+      if (/^\d{4}-\d{2}$/.test(o.value)) o.text = format.format(new Date(keyMs(`${o.value}-01`)));
+    }
   }
 
   function buildTimeline() {
