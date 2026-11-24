@@ -367,11 +367,22 @@
 
   // ---------- Filtering ----------
 
+  // Full-width letters and digits fold to plain ones and case is ignored, so "ＭＡＬＦＯＹ" finds "Malfoy".
+  function foldSearch(s) {
+    return s.normalize("NFKC").toLowerCase();
+  }
+
+  function textHasWords(text, words) {
+    return !!text && words.length > 0 && words.every((w) => text.includes(w));
+  }
+
   function applyFilters() {
-    const raw = state.q.trim().toLowerCase();
+    const raw = foldSearch(state.q.trim());
     const exact = raw.startsWith("@");
     const q = raw.replace(/^@/, "");
     const qLoose = q.replace(/[_.\s]/g, "");
+    // Post text matches when it holds every word of the search, in any order.
+    const words = q.split(/\s+/).filter(Boolean);
     // "@handle" matches that artist exactly when it exists, otherwise any handle starting with it.
     const exactHandle = exact && (artistStats.has(q) || formerHandles.has(q));
     // Old links may name an artist by a handle they have since changed.
@@ -409,7 +420,8 @@
           it._ao.includes(q) ||
           (qLoose && (it._an.includes(qLoose) || it._aon.includes(qLoose))) ||
           (it.t && it.t.includes(q)) ||
-          (it.n && it.n.toLowerCase().includes(q))
+          (it.n && it.n.toLowerCase().includes(q)) ||
+          textHasWords(searchTexts.get(it.t), words)
         );
       }
       return true;
@@ -1076,6 +1088,8 @@
   // It loads after the page is up so the archive index stays small; an open viewer fills in once it arrives.
 
   let postTexts = {};
+  // The same texts folded for search (see foldSearch), keyed by tweet ID.
+  let searchTexts = new Map();
 
   async function loadTexts() {
     try {
@@ -1085,7 +1099,10 @@
     } catch {
       return;
     }
+    searchTexts = new Map(Object.entries(postTexts).map(([id, text]) => [id, foldSearch(text)]));
     if (el.viewer.open && viewerList[viewerIndex]) renderPostText(viewerList[viewerIndex]);
+    // A search typed or linked before the texts arrived now also finds works by their post text.
+    if (state.q.trim()) applyFilters();
   }
 
   // Links, @mentions and #hashtags, linked the way the tweet links them. A hashtag needs a letter, so "#1" stays text.
@@ -2921,7 +2938,6 @@
 
     renderHero(data);
     loadTexts();
-
 
     applyFilters();
     buildRandomWeeks();
