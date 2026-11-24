@@ -370,7 +370,12 @@ def main() -> None:
     Handler.names = names
     servers = [ThreadingHTTPServer((LOOPBACK, args.port), partial(Handler, directory=str(SITE)))]
     if listen:
-        servers.append(TailnetServer((listen, args.port), partial(Handler, directory=str(SITE)), clients))
+        try:
+            servers.append(TailnetServer((listen, args.port), partial(Handler, directory=str(SITE)), clients))
+        except OSError as err:
+            # Tailscale is off or its address changed: serve this machine alone rather than not at all.
+            print(f"Not listening on {listen} ({err.strerror}); is Tailscale connected?", file=sys.stderr, flush=True)
+            listen = None
     print(f"Editing My Pick at http://{LOOPBACK}:{args.port}/  (Ctrl+C to stop)", flush=True)
     if listen:
         for name in sorted(names - {listen}) + [listen]:
