@@ -1,4 +1,10 @@
 {
+ "000_mnt": {
+  "at": 1795514797,
+  "current": "000_mnt",
+  "id": "1950934772126994434",
+  "status": "ok"
+ },
  "000rune000": {
   "at": 1795170577,
   "current": "000Rune000",
@@ -773,6 +779,12 @@
   "id": "1717145379127635968",
   "status": "ok"
  },
+ "aetherniex": {
+  "at": 1795514798,
+  "current": "AethernieX",
+  "id": "1514177986236653568",
+  "status": "ok"
+ },
  "aeusarts": {
   "at": 1795170597,
   "current": "AeusArts",
@@ -1455,10 +1467,22 @@
   "id": "1309934186569101317",
   "status": "ok"
  },
+ "arkticw": {
+  "at": 1795514798,
+  "current": "ArkticW",
+  "id": "1426871775028076548",
+  "status": "ok"
+ },
  "arndompersonx": {
   "at": 1795170616,
   "current": "aRndomPersonx",
   "id": "1906700909490667520",
+  "status": "ok"
+ },
+ "arnolddoodlee": {
+  "at": 1795514798,
+  "current": "arnolddoodlee",
+  "id": "1608837875776520193",
   "status": "ok"
  },
  "arsiellevictus": {
@@ -1845,6 +1869,12 @@
   "at": 1795170626,
   "current": "Baerseek",
   "id": "1615421499900559360",
+  "status": "ok"
+ },
+ "bagnung32536": {
+  "at": 1795514799,
+  "current": "bagnung32536",
+  "id": "1974305006397607936",
   "status": "ok"
  },
  "bai_nesan": {
@@ -2775,6 +2805,12 @@
   "at": 1795170650,
   "current": "comnam716",
   "id": "2101365479348797440",
+  "status": "ok"
+ },
+ "connexionwerror": {
+  "at": 1795514799,
+  "current": "connexionwerror",
+  "id": "1549673191039086592",
   "status": "ok"
  },
  "conpeco__": {
@@ -3811,6 +3847,12 @@
   "id": "1310073341110292482",
   "status": "ok"
  },
+ "eoph114017": {
+  "at": 1795514799,
+  "current": "eoph114017",
+  "id": "2014481092078927872",
+  "status": "ok"
+ },
  "epko19": {
   "at": 1795170678,
   "current": "Epko19",
@@ -4469,6 +4511,12 @@
   "at": 1795170697,
   "status": "gone"
  },
+ "ganniloshi1": {
+  "at": 1795514799,
+  "current": "GanNiLoShi1",
+  "id": "1386335481898496005",
+  "status": "ok"
+ },
  "ganspira": {
   "at": 1795170696,
   "current": "Ganspira",
@@ -4643,6 +4691,12 @@
   "id": "1235896311762661376",
   "status": "ok"
  },
+ "gladiolusart": {
+  "at": 1795514800,
+  "current": "gladiolusart",
+  "id": "1512011384300650498",
+  "status": "ok"
+ },
  "glat_u": {
   "at": 1795170701,
   "current": "Glat_U",
@@ -4653,6 +4707,12 @@
   "at": 1795170701,
   "current": "glazedsonata",
   "id": "2052334364432961537",
+  "status": "ok"
+ },
+ "glow_human": {
+  "at": 1795514800,
+  "current": "GlOW_HUMAN",
+  "id": "1872529131973586944",
   "status": "ok"
  },
  "goddessofcchaos": {
@@ -4705,6 +4765,12 @@
   "id": "1366379656295763974",
   "status": "ok"
  },
+ "goukikabuto": {
+  "at": 1795514800,
+  "current": "GoukiKabuto",
+  "id": "1166731269608226817",
+  "status": "ok"
+ },
  "goyohu27": {
   "at": 1795170703,
   "current": "goyohu27",
@@ -4718,7 +4784,7 @@
   "status": "ok"
  },
  "gremlinfoid": {
-  "at": 1795480783,
+  "at": 1795540755,
   "status": "gone"
  },
  "grimoire_eis": {
@@ -4821,6 +4887,12 @@
   "at": 1795170706,
   "current": "h_hoshigashi",
   "id": "1880772358874816512",
+  "status": "ok"
+ },
+ "ha220f": {
+  "at": 1795514801,
+  "current": "HA220F",
+  "id": "1406075589425913856",
   "status": "ok"
  },
  "haaakashi": {
@@ -5101,6 +5173,12 @@
   "at": 1795170714,
   "current": "heiro687",
   "id": "2071901427681636352",
+  "status": "ok"
+ },
+ "heiyohei": {
+  "at": 1795514802,
+  "current": "heiyohei",
+  "id": "136142912",
   "status": "ok"
  },
  "hekaton6960": {
@@ -5445,6 +5523,10 @@
   "id": "1158925441",
   "status": "ok"
  },
+ "hotaisan": {
+  "at": 1795514802,
+  "status": "gone"
+ },
  "houkago17": {
   "at": 1795170725,
   "status": "gone"
@@ -5576,7 +5658,7 @@
   "status": "ok"
  },
  "iam2bshusband": {
-  "at": 1795480782,
+  "at": 1795540755,
   "status": "gone"
  },
  "iamosix2": {
@@ -5601,6 +5683,12 @@
   "at": 1795170729,
   "current": "icesticker",
   "id": "837775087612932096",
+  "status": "ok"
+ },
+ "ichigohu19847": {
+  "at": 1795514803,
+  "current": "IchigoHu19847",
+  "id": "1981914576863334400",
   "status": "ok"
  },
  "id_azul": {
@@ -5939,6 +6027,10 @@
   "id": "1751965616322621440",
   "status": "ok"
  },
+ "isimi_bari": {
+  "at": 1795540755,
+  "status": "gone"
+ },
  "iskhaaan": {
   "at": 1795170738,
   "current": "Iskhaaan",
@@ -6159,6 +6251,12 @@
   "id": "1928293786825936899",
   "status": "ok"
  },
+ "jichuan_hong": {
+  "at": 1795514803,
+  "current": "JiChuan_Hong",
+  "id": "1160450832719966210",
+  "status": "ok"
+ },
  "jiendzi_": {
   "at": 1795170744,
   "current": "jiendzi_",
@@ -6215,6 +6313,12 @@
   "at": 1795170745,
   "current": "jjkkmmxD",
   "id": "1460673150904147982",
+  "status": "ok"
+ },
+ "jmx641": {
+  "at": 1795514804,
+  "current": "JMX641",
+  "id": "1055352832684023809",
   "status": "ok"
  },
  "joadv_": {
@@ -6385,6 +6489,12 @@
   "id": "1228320261859971072",
   "status": "ok"
  },
+ "julylion21": {
+  "at": 1795514804,
+  "current": "Julylion21",
+  "id": "1441345608929841160",
+  "status": "ok"
+ },
  "jurijurijuuu": {
   "at": 1795170751,
   "current": "Jurijurijuuu",
@@ -6438,6 +6548,10 @@
   "current": "k315h1",
   "id": "1031761870573584385",
   "status": "ok"
+ },
+ "k_22_kyo": {
+  "at": 1795514804,
+  "status": "gone"
  },
  "k_appucino": {
   "at": 1795170752,
@@ -6619,6 +6733,18 @@
   "at": 1795170757,
   "current": "kamikazeeai_art",
   "id": "1737274027431895040",
+  "status": "ok"
+ },
+ "kamisgostwriter": {
+  "at": 1795514805,
+  "current": "kamisgostwriter",
+  "id": "1845236852090933254",
+  "status": "ok"
+ },
+ "kamitsu_kun": {
+  "at": 1795514805,
+  "current": "kamitsu_kun",
+  "id": "2970333958",
   "status": "ok"
  },
  "kampfwagen_i": {
@@ -7043,6 +7169,10 @@
   "id": "1959410600863498240",
   "status": "ok"
  },
+ "kinmokusei967": {
+  "at": 1795514805,
+  "status": "gone"
+ },
  "kinnaiart1": {
   "at": 1795170768,
   "current": "kinnaiart1",
@@ -7142,6 +7272,10 @@
   "current": "kivonotbabu",
   "id": "1379287567141498881",
   "status": "ok"
+ },
+ "kiwicoke1": {
+  "at": 1795514805,
+  "status": "gone"
  },
  "kizessuu": {
   "at": 1795170771,
@@ -7957,6 +8091,12 @@
   "id": "1927945416475086848",
   "status": "ok"
  },
+ "lignum_ignis": {
+  "at": 1795514806,
+  "current": "Lignum_Ignis",
+  "id": "833234547768688640",
+  "status": "ok"
+ },
  "liiveesama": {
   "at": 1795170793,
   "current": "Liiveesama",
@@ -8030,7 +8170,7 @@
   "status": "gone"
  },
  "littleevillily": {
-  "at": 1795480783,
+  "at": 1795540756,
   "status": "gone"
  },
  "lizhiyan360": {
@@ -8157,6 +8297,12 @@
   "at": 1795170799,
   "current": "yuyu_166",
   "id": "2028086062632058880",
+  "status": "ok"
+ },
+ "lsgiryfkwmbjgi5": {
+  "at": 1795514806,
+  "current": "lsGIRYFKWMbJGi5",
+  "id": "1547794477690998784",
   "status": "ok"
  },
  "lu_lu_s2_xx": {
@@ -8309,6 +8455,12 @@
   "at": 1795170803,
   "current": "luvelyblu",
   "id": "1024462765933711360",
+  "status": "ok"
+ },
+ "luwdd": {
+  "at": 1795514807,
+  "current": "Luwdd",
+  "id": "1802419439331065856",
   "status": "ok"
  },
  "luxuriass": {
@@ -8483,6 +8635,12 @@
   "id": "2032335306800971778",
   "status": "ok"
  },
+ "malekundraws": {
+  "at": 1795514807,
+  "current": "MalekunDraws",
+  "id": "2061722234427998208",
+  "status": "ok"
+ },
  "malfoid_cto": {
   "at": 1795170808,
   "current": "Malfoid",
@@ -8561,6 +8719,12 @@
   "id": "2106126299114913792",
   "status": "ok"
  },
+ "manuh985": {
+  "at": 1795514807,
+  "current": "Manuh985",
+  "id": "1495997210047225858",
+  "status": "ok"
+ },
  "manulregular": {
   "at": 1795170810,
   "current": "ManulRegular",
@@ -8587,6 +8751,12 @@
   "at": 1795170810,
   "current": "maple_kae520",
   "id": "1274592877952172032",
+  "status": "ok"
+ },
+ "mariapesin25152": {
+  "at": 1795514808,
+  "current": "MariaPesin25152",
+  "id": "2033065099452440576",
   "status": "ok"
  },
  "marichama_ai": {
@@ -8713,6 +8883,12 @@
   "id": "1442786113915998210",
   "status": "ok"
  },
+ "matsforei": {
+  "at": 1795514808,
+  "current": "MatsForei",
+  "id": "1461536656339529732",
+  "status": "ok"
+ },
  "matsuryun": {
   "at": 1795170814,
   "current": "matsuryun",
@@ -8818,7 +8994,7 @@
   "status": "ok"
  },
  "megaowch": {
-  "at": 1795480784,
+  "at": 1795540757,
   "status": "gone"
  },
  "megaseafood087": {
@@ -9111,6 +9287,12 @@
   "id": "2108261722339659776",
   "status": "ok"
  },
+ "ming_goog": {
+  "at": 1795514808,
+  "current": "ming_goog",
+  "id": "1576150242336321542",
+  "status": "ok"
+ },
  "minhminhla": {
   "at": 1795170825,
   "current": "minhminhla",
@@ -9236,12 +9418,18 @@
   "status": "gone"
  },
  "mizuki2san": {
-  "at": 1795480784,
+  "at": 1795540756,
   "status": "gone"
  },
  "mizurane": {
   "at": 1795170829,
   "status": "gone"
+ },
+ "mizzterbii": {
+  "at": 1795514809,
+  "current": "MiZZterBii",
+  "id": "940868376368467968",
+  "status": "ok"
  },
  "mk24740": {
   "at": 1795170828,
@@ -9345,6 +9533,10 @@
   "id": "1748408509811642368",
   "status": "ok"
  },
+ "moe_code58": {
+  "at": 1795514810,
+  "status": "gone"
+ },
  "moedredd": {
   "at": 1795170831,
   "current": "moedredd",
@@ -9416,6 +9608,10 @@
   "current": "momo_nosukeee",
   "id": "1119597581812654080",
   "status": "ok"
+ },
+ "momomimi233": {
+  "at": 1795514810,
+  "status": "gone"
  },
  "momopoke14106": {
   "at": 1795170833,
@@ -9535,6 +9731,12 @@
   "id": "1727540991530524672",
   "status": "ok"
  },
+ "morudori0102": {
+  "at": 1795514810,
+  "current": "morudori0102",
+  "id": "1222139023637901313",
+  "status": "ok"
+ },
  "mossesarts": {
   "at": 1795170836,
   "current": "mossesarts",
@@ -9588,6 +9790,10 @@
   "current": "Moxas189",
   "id": "2038631626532347904",
   "status": "ok"
+ },
+ "moxileir": {
+  "at": 1795514811,
+  "status": "gone"
  },
  "moxine_": {
   "at": 1795170838,
@@ -9700,7 +9906,7 @@
   "status": "ok"
  },
  "mura2v": {
-  "at": 1795480784,
+  "at": 1795540757,
   "status": "gone"
  },
  "murasakiuczq": {
@@ -10425,6 +10631,12 @@
   "id": "2966758520",
   "status": "ok"
  },
+ "noeul25410292": {
+  "at": 1795514811,
+  "current": "noeul25410292",
+  "id": "1502115322706673664",
+  "status": "ok"
+ },
  "noire6959": {
   "at": 1795170860,
   "current": "Noire6959",
@@ -10583,6 +10795,12 @@
   "id": "1382516738026184710",
   "status": "ok"
  },
+ "nur0kta": {
+  "at": 1795514811,
+  "current": "nur0kta",
+  "id": "851280184368021506",
+  "status": "ok"
+ },
  "nuruffle_": {
   "at": 1795170865,
   "current": "Nuruffle_",
@@ -10649,6 +10867,18 @@
   "at": 1795170866,
   "current": "o2ndx4979",
   "id": "1834225304983994368",
+  "status": "ok"
+ },
+ "o_a_gi": {
+  "at": 1795514812,
+  "current": "o_a_gi",
+  "id": "2098346594848616448",
+  "status": "ok"
+ },
+ "ob6a_a9": {
+  "at": 1795514812,
+  "current": "Ob6a_a9",
+  "id": "2095202326424539136",
   "status": "ok"
  },
  "obarokyung": {
@@ -11163,6 +11393,12 @@
   "id": "3236114276",
   "status": "ok"
  },
+ "pcq8q": {
+  "at": 1795514813,
+  "current": "pcq8q",
+  "id": "1737421184214634496",
+  "status": "ok"
+ },
  "pe_draws": {
   "at": 1795170881,
   "current": "pe_draws",
@@ -11282,7 +11518,7 @@
   "status": "ok"
  },
  "pikapoka00": {
-  "at": 1795480786,
+  "at": 1795540758,
   "status": "gone"
  },
  "pikekekeperch": {
@@ -11442,7 +11678,7 @@
   "status": "ok"
  },
  "pokapoka1009": {
-  "at": 1795480787,
+  "at": 1795540759,
   "status": "gone"
  },
  "polackdyn": {
@@ -11616,6 +11852,10 @@
   "current": "pumpkiiiiin_man",
   "id": "1363101029701541889",
   "status": "ok"
+ },
+ "puranpuman": {
+  "at": 1795514815,
+  "status": "gone"
  },
  "purpleeecat": {
   "at": 1795170894,
@@ -11848,7 +12088,7 @@
   "status": "ok"
  },
  "rakerra22": {
-  "at": 1795480787,
+  "at": 1795540759,
   "status": "gone"
  },
  "raku29_shi": {
@@ -12315,6 +12555,12 @@
   "id": "2065705841802792960",
   "status": "ok"
  },
+ "rimu_1112": {
+  "at": 1795514816,
+  "current": "rimu_1112",
+  "id": "1262148506984177665",
+  "status": "ok"
+ },
  "rimukoro": {
   "at": 1795170913,
   "current": "rimukoro",
@@ -12467,6 +12713,12 @@
   "at": 1795170917,
   "current": "rosumini",
   "id": "3578314157",
+  "status": "ok"
+ },
+ "rotersz": {
+  "at": 1795514816,
+  "current": "RotersZ",
+  "id": "1062733935128457217",
   "status": "ok"
  },
  "royalgmking": {
@@ -12685,6 +12937,10 @@
   "id": "1296239221473071104",
   "status": "ok"
  },
+ "sakuram0302": {
+  "at": 1795514816,
+  "status": "gone"
+ },
  "sakuramizuki_y": {
   "at": 1795170923,
   "current": "sakuramizuki_y",
@@ -12752,8 +13008,14 @@
   "status": "ok"
  },
  "sanyazhao3n": {
-  "at": 1795480787,
+  "at": 1795540760,
   "status": "gone"
+ },
+ "sari4o4": {
+  "at": 1795514817,
+  "current": "Sari4O4",
+  "id": "1033627382643453952",
+  "status": "ok"
  },
  "sarikarip": {
   "at": 1795170925,
@@ -12903,6 +13165,12 @@
   "id": "975238963194576897",
   "status": "ok"
  },
+ "seolnyang236318": {
+  "at": 1795514817,
+  "current": "seolnyang236318",
+  "id": "1752641384379760640",
+  "status": "ok"
+ },
  "seonah_illust": {
   "at": 1795170928,
   "current": "Seonah_illust",
@@ -12981,6 +13249,12 @@
   "id": "990982650780254208",
   "status": "ok"
  },
+ "shaythemutant": {
+  "at": 1795514817,
+  "current": "ShayTheMutant",
+  "id": "1215659109141356545",
+  "status": "ok"
+ },
  "shengtian00": {
   "at": 1795170930,
   "current": "shengtian00",
@@ -13020,6 +13294,10 @@
   "current": "shigokin",
   "id": "1628408221655535616",
   "status": "ok"
+ },
+ "shika_sahwa": {
+  "at": 1795514818,
+  "status": "gone"
  },
  "shiki1125": {
   "at": 1795170932,
@@ -13419,6 +13697,12 @@
   "id": "1924892903186563075",
   "status": "ok"
  },
+ "sleepycakepng": {
+  "at": 1795514818,
+  "current": "SleepyCAKEpng",
+  "id": "1199697249208549377",
+  "status": "ok"
+ },
  "slideyalt": {
   "at": 1795170943,
   "current": "SlideyAlt",
@@ -13535,6 +13819,12 @@
   "at": 1795170945,
   "current": "Sora_pesci",
   "id": "1560927151473704960",
+  "status": "ok"
+ },
+ "sorbetandgelato": {
+  "at": 1795514818,
+  "current": "SorbetandGelato",
+  "id": "1823392836567683072",
   "status": "ok"
  },
  "sorrowfulroses": {
@@ -13668,7 +13958,7 @@
   "status": "ok"
  },
  "stray_mayoigo": {
-  "at": 1795480786,
+  "at": 1795540759,
   "status": "gone"
  },
  "streakyhaunt": {
@@ -13711,6 +14001,12 @@
   "at": 1795170951,
   "current": "sugarbell_art",
   "id": "1302617252555034631",
+  "status": "ok"
+ },
+ "sugarradishtwo": {
+  "at": 1795514819,
+  "current": "SugarRadishTwo",
+  "id": "2064840174236741632",
   "status": "ok"
  },
  "suico_en": {
@@ -13858,7 +14154,7 @@
   "status": "ok"
  },
  "sydusartslinks": {
-  "at": 1795480787,
+  "at": 1795540760,
   "status": "gone"
  },
  "syhan__": {
@@ -13944,7 +14240,7 @@
   "status": "ok"
  },
  "tabedayotabe": {
-  "at": 1795480788,
+  "at": 1795540761,
   "status": "gone"
  },
  "tagtefy": {
@@ -14071,6 +14367,12 @@
   "id": "2105849218816737280",
   "status": "ok"
  },
+ "teaone_": {
+  "at": 1795514820,
+  "current": "teaone_",
+  "id": "1515997689267499009",
+  "status": "ok"
+ },
  "teateyexia41410": {
   "at": 1795170961,
   "current": "TeateyExia41410",
@@ -14139,6 +14441,12 @@
   "at": 1795170963,
   "current": "tentenchan2525",
   "id": "1320682934622273536",
+  "status": "ok"
+ },
+ "terekomuko67835": {
+  "at": 1795514820,
+  "current": "terekomuko67835",
+  "id": "1719567205439021056",
   "status": "ok"
  },
  "terigumi_": {
@@ -14346,6 +14654,10 @@
   "current": "TKennshou63",
   "id": "2012518090391605248",
   "status": "ok"
+ },
+ "tkomone": {
+  "at": 1795514820,
+  "status": "gone"
  },
  "tktktktknoko": {
   "at": 1795170969,
@@ -14959,6 +15271,12 @@
   "id": "2041515539248422912",
   "status": "ok"
  },
+ "veloci1313": {
+  "at": 1795514821,
+  "current": "Veloci1313",
+  "id": "1404676713737375750",
+  "status": "ok"
+ },
  "verca_wamtang": {
   "at": 1795170985,
   "current": "verca_wamtang",
@@ -15071,6 +15389,12 @@
   "at": 1795170988,
   "current": "VSmastery",
   "id": "1453059872925356039",
+  "status": "ok"
+ },
+ "vtuberyamada": {
+  "at": 1795514821,
+  "current": "vtuberYAMADA",
+  "id": "1404772809373409280",
   "status": "ok"
  },
  "vveyrav": {
@@ -15411,6 +15735,10 @@
   "id": "2100263755431227393",
   "status": "ok"
  },
+ "xhienarts_nsfw": {
+  "at": 1795514821,
+  "status": "gone"
+ },
  "xia_finger": {
   "at": 1795170997,
   "current": "xia_finger",
@@ -15665,6 +15993,12 @@
   "id": "1583698520766234626",
   "status": "ok"
  },
+ "yeraldreloaded": {
+  "at": 1795514822,
+  "current": "YeraldReloaded",
+  "id": "393586846",
+  "status": "ok"
+ },
  "yfivetacos": {
   "at": 1795171004,
   "current": "YfiveTacos",
@@ -15775,6 +16109,12 @@
   "at": 1795171007,
   "current": "yotsutsu428",
   "id": "1700969768742793216",
+  "status": "ok"
+ },
+ "you_j_you": {
+  "at": 1795514822,
+  "current": "you_J_you",
+  "id": "1946148621420040192",
   "status": "ok"
  },
  "you_sakura_ys": {
@@ -16009,6 +16349,12 @@
   "id": "1560327586236223488",
   "status": "ok"
  },
+ "zeine_art": {
+  "at": 1795514822,
+  "current": "Zeine_art",
+  "id": "2026734850192048128",
+  "status": "ok"
+ },
  "zeldazealot": {
   "at": 1795171014,
   "current": "ZeldaZealot",
@@ -16025,6 +16371,12 @@
   "at": 1795171014,
   "current": "zenyakisoba",
   "id": "2044769454807031808",
+  "status": "ok"
+ },
+ "zephyriaaa_": {
+  "at": 1795514823,
+  "current": "zephyriaaa_",
+  "id": "1771598396265988096",
   "status": "ok"
  },
  "zepnyss": {
