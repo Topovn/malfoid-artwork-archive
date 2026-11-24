@@ -132,14 +132,20 @@ def find_flags(img: Image.Image) -> list[list[float]]:
     return [[round(c, 4) for c in b] for b in boxes]
 
 
-def read_text(path: Path) -> list[tuple[str, list[float]]]:
-    """Every line of text Vision finds, with its box [x0, y0, x1, y1] as fractions from the top left."""
+def read_text(path: Path, detect_language: bool = False) -> list[tuple[str, list[float]]]:
+    """Every line of text Vision finds, with its box [x0, y0, x1, y1] as fractions from the top left.
+
+    By default the text is read as English; detect_language lets Vision pick the script per line instead, which reads
+    Japanese, Chinese and Korean but can misread stylised English.
+    """
     import Vision
     from Foundation import NSURL
 
     req = Vision.VNRecognizeTextRequest.alloc().init()
     req.setRecognitionLevel_(Vision.VNRequestTextRecognitionLevelAccurate)
     req.setUsesLanguageCorrection_(False)
+    if detect_language:
+        req.setAutomaticallyDetectsLanguage_(True)
     handler = Vision.VNImageRequestHandler.alloc().initWithURL_options_(NSURL.fileURLWithPath_(str(path)), None)
     ok, _ = handler.performRequests_error_([req], None)
     lines = []

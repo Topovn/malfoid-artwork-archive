@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-"""Delete the full-size originals of AI works and blocked artists from GitHub Releases.
+"""Delete the full-size originals of AI works, blocked artists and removed works from GitHub Releases.
 
 Works the owner moves into 'Malfoid AI/', and works by artists on the block list (see tools/detect_blocked.py),
 drop off both sites at the next build, but their originals stay on Releases, reachable by direct link.
 This deletes every release asset whose local file now sits in 'Malfoid AI/' or whose artist is blocked, and
 removes it from data/releases.json. Matching is by the filename the work was saved under.
+Works the owner deletes from the folders on purpose (a banned Danbooru tag, say) are named with --files, which then
+deletes only those.
 Deletion cannot be undone; if a work is moved back or its artist unblocked, the next upload_originals.py run
 uploads it again.
 
 Usage:
     python3 tools/prune_originals.py --dry-run   # list what would be deleted
     python3 tools/prune_originals.py             # delete it
+    python3 tools/prune_originals.py --files FILE ... [--dry-run]  # delete just these removed works' originals
 """
 
 from __future__ import annotations
@@ -29,23 +32,31 @@ from site_paths import blocked_handles  # noqa: E402
 from upload_originals import DEFAULT_REPO, LOCK, RELEASES, gh  # noqa: E402
 
 
-def prunable_assets() -> dict[str, dict]:
-    """Release records ({local filename: {"tag", "name"}}) of works now in Malfoid AI/ or by blocked artists."""
+def prunable_assets(removed: set[str] = frozenset()) -> dict[str, dict]:
+    """Release records ({local filename: {"tag", "name"}}): of the works named in removed if any are, otherwise of the
+    works now in Malfoid AI/ or by blocked artists."""
     if not RELEASES.exists():
         return {}
+    assets = json.loads(RELEASES.read_text())["assets"]
+    if removed:
+        return {f: e for f, e in sorted(assets.items()) if f in removed}
     ai_files = {p.name for p in AI_SRC.iterdir() if p.is_file()} if AI_SRC.is_dir() else set()
     blocked = blocked_handles()
-    assets = json.loads(RELEASES.read_text())["assets"]
     return {f: e for f, e in sorted(assets.items()) if f in ai_files or is_blocked(f, blocked)}
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="list the originals without deleting them")
+    ap.add_argument("--files", nargs="+", default=[], metavar="FILE", help="removed works whose originals go too")
     args = ap.parse_args()
 
-    found = prunable_assets()
-    print(f"AI or blocked works with originals on Releases: {len(found)}")
+    removed = {Path(f).name for f in args.files}
+    found = prunable_assets(removed)
+    missing = sorted(removed - set(found))
+    print(f"AI, blocked or removed works with originals on Releases: {len(found)}")
+    if missing:
+        print("Named works with no original on Releases:", *missing, sep="\n  ")
     for f, e in found.items():
         print(f"  {e['tag']}/{e['name']}")
     if args.dry_run or not found:

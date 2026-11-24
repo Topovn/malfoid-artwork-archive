@@ -9,7 +9,7 @@ Malfoid AI/ is never scanned by either build.
 
 Writes data/manifest.json and one WebP thumbnail per work into the chosen site folder.
 Works by blocked artists are skipped as if they weren't in the folder.
-Works by hidden artists (see tools/site_paths.py) stay out of it: the build also writes a full copy of the site's
+Works by hidden artists, and single hidden works (see tools/site_paths.py), stay out of it: the build also writes a full copy of the site's
 manifest, post texts and the hidden works' thumbnails to data/private/site/, which only the owner's
 local server shows.
 Thumbnails are only regenerated when the source file is newer, so reruns are cheap.
@@ -41,7 +41,7 @@ from PIL import Image, ImageOps
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import detect_comics  # noqa: E402
 from fetch_likes import SETTLE_DAYS  # noqa: E402
-from site_paths import FULL_SITES, blocked_handles, hidden_handles  # noqa: E402
+from site_paths import FULL_SITES, blocked_handles, hidden_handles, hidden_work_names  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_SITE = REPO / "docs"  # the main site; GitHub Pages publishes this folder
@@ -357,7 +357,9 @@ def main() -> int:
         """(saved handle, current handle if the account was renamed) of one work."""
         return work_handles(p.name, lost_meta.get(p.name, {}).get("artist_handle"))
 
-    hidden_files = {p.name for p, _ in files if any(h and h.lower() in hidden for h in artist(p))}
+    # Hidden from visitors: works by hidden artists, and single works the owner keeps off (data/private/hidden_works.json).
+    hidden_works = hidden_work_names()
+    hidden_files = {p.name for p, _ in files if any(h and h.lower() in hidden for h in artist(p)) or p.name in hidden_works}
 
     thumbs.mkdir(parents=True, exist_ok=True)
     full_thumbs.mkdir(parents=True, exist_ok=True)
@@ -466,7 +468,7 @@ def main() -> int:
         if p.name in released:
             item["u"] = f"{released[p.name]['tag']}/{released[p.name]['name']}"
         if p.name in hidden_files:
-            item["z"] = 1  # by a hidden artist: in the full copy only
+            item["z"] = 1  # by a hidden artist, or a hidden work: in the full copy only
         items.append(item)
 
     # Lost tweets were mostly deleted before their likes could be fetched. Give those a hidden estimate ("e"):

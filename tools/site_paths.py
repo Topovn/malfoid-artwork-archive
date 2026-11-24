@@ -9,6 +9,8 @@ reposting or using their art (see tools/fetch_bios.py). Their works are marked "
 thumbnails live only in the full copy, so visitors never see them. The site's numbers still count them (the manifests'
 "totals"). The public copy keeps the shared files (code, styles, icons, My Pick, early works); the full copy holds just
 the manifest, post texts and hidden thumbnails, and tools/serve.py fills in the rest from docs/.
+Single works can be hidden the same way: those listed in data/private/hidden_works.json, such as works whose image
+forbids using or reposting it (see tools/detect_image_notices.py).
 
 Blocked artists (data/private/blocklist.json, reviewed with tools/detect_blocked.py) go further: the build leaves
 their works out of both copies and out of the totals, as if the files weren't in the folders at all.
@@ -25,6 +27,7 @@ DATA = ROOT / "data"
 PRIVATE = DATA / "private"
 BIO_FLAGS = PRIVATE / "bio_flags.json"
 BLOCKLIST = PRIVATE / "blocklist.json"
+HIDDEN_WORKS = PRIVATE / "hidden_works.json"
 
 PUBLIC_SITES = {"main": ROOT / "docs", "adult": ROOT / "docs" / "h"}
 FULL_SITES = {"main": PRIVATE / "site", "adult": PRIVATE / "site" / "h"}
@@ -62,6 +65,30 @@ def hidden_handles() -> set[str]:
         sys.exit(f"{BIO_FLAGS.relative_to(ROOT)} is missing, so hidden artists can't be kept off the public sites. "
                  "Run tools/fetch_bios.py and review its bios first.")
     return {k.lower() for k, v in json.loads(BIO_FLAGS.read_text()).items() if v.get("flag")}
+
+
+def read_hidden_works() -> dict:
+    """Single works kept off the public sites: {"files": {filename: {"reason", "text"}}, "kept": [filenames shown anyway]}.
+
+    Refuses to go on without it, so a build on a machine without the file can never publish them.
+    """
+    if not HIDDEN_WORKS.exists():
+        sys.exit(f"{HIDDEN_WORKS.relative_to(ROOT)} is missing, so hidden works can't be kept off the public sites. "
+                 "Run tools/detect_image_notices.py first.")
+    record = json.loads(HIDDEN_WORKS.read_text())
+    return {"files": record.get("files", {}), "kept": record.get("kept", [])}
+
+
+def write_hidden_works(record: dict) -> None:
+    out = {"files": dict(sorted(record["files"].items(), key=lambda kv: kv[0].lower())), "kept": sorted(record["kept"])}
+    tmp = HIDDEN_WORKS.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n")
+    tmp.replace(HIDDEN_WORKS)
+
+
+def hidden_work_names() -> set[str]:
+    """Filenames of the single works kept off the public sites."""
+    return set(read_hidden_works()["files"])
 
 
 def read_blocklist() -> dict:
