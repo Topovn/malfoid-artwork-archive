@@ -71,13 +71,21 @@ VIDEO_EXTS = {"mp4", "mov", "webm"}
 ANIMATED_EXTS = {"gif"} | VIDEO_EXTS
 TWITTER_EPOCH_MS = 1288834974657
 
-# handle-tweetId-NN.ext, handle-tweetId.ext, or a bare handle.ext
-NAME_RE = re.compile(r"^(?P<handle>.+?)(?:-(?P<tweet>\d{15,20}))?(?:-(?P<idx>\d{1,3}))?$")
+# Stands in for the tweet ID in the filename of a lost tweet whose real ID is unknown: handle-404-NN.ext.
+# NN only tells the artist's unknown works apart. Such a work has no tweet ID, date or likes on the site.
+LOST_TWEET_ID = "404"
+
+# handle-tweetId-NN.ext, handle-404-NN.ext, handle-tweetId.ext, or a bare handle.ext
+NAME_RE = re.compile(
+    rf"^(?P<handle>.+?)(?:-(?P<tweet>\d{{15,20}}|{LOST_TWEET_ID}(?=-\d{{1,3}}$)))?(?:-(?P<idx>\d{{1,3}}))?$"
+)
 
 
 def parse_name(stem: str) -> tuple[str, str, int]:
     m = NAME_RE.match(stem)
     handle, tweet, idx = m.group("handle"), m.group("tweet") or "", m.group("idx")
+    if tweet == LOST_TWEET_ID:
+        tweet = ""
     return handle, tweet, int(idx) if idx else 1
 
 
