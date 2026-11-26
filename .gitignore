@@ -17,3 +17,4 @@ graphify-out/
 # Private exports and caches, never published.
 *.csv
 data/private/
+tools/private/
