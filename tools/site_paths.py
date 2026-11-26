@@ -86,11 +86,6 @@ def write_hidden_works(record: dict) -> None:
     tmp.replace(HIDDEN_WORKS)
 
 
-def hidden_work_names() -> set[str]:
-    """Filenames of the single works kept off the public sites."""
-    return set(read_hidden_works()["files"])
-
-
 def read_blocklist() -> dict:
     """The block list: {"artists": [handles], "cleared": [filenames reviewed as fine]}.
 

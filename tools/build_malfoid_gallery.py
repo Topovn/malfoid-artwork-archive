@@ -11,7 +11,7 @@ Writes data/manifest.json and one WebP thumbnail per work into the chosen site f
 Works by blocked artists are skipped as if they weren't in the folder.
 Works by hidden artists, and single hidden works (see tools/site_paths.py), stay out of it: the build also writes a full copy of the site's
 manifest, post texts and the hidden works' thumbnails to data/private/site/, which only the owner's
-local server shows.
+local server shows. A work in the hidden works file's "kept" list stays public even when its artist is hidden.
 Thumbnails are only regenerated when the source file is newer, so reruns are cheap.
 
 Usage:
@@ -41,7 +41,7 @@ from PIL import Image, ImageOps
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import detect_comics  # noqa: E402
 from fetch_likes import SETTLE_DAYS  # noqa: E402
-from site_paths import FULL_SITES, blocked_handles, hidden_handles, hidden_work_names  # noqa: E402
+from site_paths import FULL_SITES, blocked_handles, hidden_handles, read_hidden_works  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_SITE = REPO / "docs"  # the main site; GitHub Pages publishes this folder
@@ -366,8 +366,11 @@ def main() -> int:
         return work_handles(p.name, lost_meta.get(p.name, {}).get("artist_handle"))
 
     # Hidden from visitors: works by hidden artists, and single works the owner keeps off (data/private/hidden_works.json).
-    hidden_works = hidden_work_names()
-    hidden_files = {p.name for p, _ in files if any(h and h.lower() in hidden for h in artist(p)) or p.name in hidden_works}
+    # A work in that file's "kept" list is shown anyway, even when its artist is hidden.
+    record = read_hidden_works()
+    hidden_files = {p.name for p, _ in files
+                    if p.name not in record["kept"]
+                    and (any(h and h.lower() in hidden for h in artist(p)) or p.name in record["files"])}
 
     thumbs.mkdir(parents=True, exist_ok=True)
     full_thumbs.mkdir(parents=True, exist_ok=True)
