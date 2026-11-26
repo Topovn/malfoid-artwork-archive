@@ -83,7 +83,7 @@
     artistFollowers: $("#artist-followers"),
     artistComics: $("#artist-comics"),
     artistCount: $("#artist-count"),
-    artists: $("#artists"),
+    artists: $("#artist-list"),
     viewer: $("#viewer"),
     viewerMedia: $("#viewer-media"),
     viewerPos: $("#viewer-pos"),
@@ -108,10 +108,10 @@
   // The second site has only the Gallery and Artists tabs, opens on the Gallery,
   // and has no My Personal Favorite or Lost tweets filter.
   const ADULT_SITE = document.documentElement.dataset.site === "h";
-  const VIEWS = ADULT_SITE ? ["gallery", "artists"] : ["home", "random", "gallery", "timeline", "artists"];
+  const VIEWS = ADULT_SITE ? ["gallery", "artists"] : ["home", "random", "gallery", "timeline", "artists", "emotes"];
   const DEFAULT_VIEW = VIEWS[0]; // shown at the bare address; the second site then moves it to #gallery
   const MAIN_ONLY_KINDS = new Set(["pick"]);
-  const state = { q: "", artist: "", likes: "", date: "", followers: "", rating: "", kind: "", sort: "shuffle", seed: 0, week: "", page: 1, view: DEFAULT_VIEW };
+  const state = { q: "", artist: "", likes: "", date: "", followers: "", rating: "", kind: "", sort: "shuffle", seed: 0, week: "", page: 1, emotePage: 1, view: DEFAULT_VIEW };
   const PER_PAGE_OPTIONS = [50, 100, 150, 200, 250, 300];
   const DEFAULT_PER_PAGE = 100;
   // Gallery "Likes" filter: at least the first number and fewer than the second. Works without a count match none.
@@ -317,6 +317,11 @@
     const hasFilters = ["q", "artist", "likes", "date", "followers", "rating", "type", "sort", "page"].some((k) => p.has(k));
     state.view = legacyRandom ? "random" : VIEWS.includes(hash) ? hash : hasFilters ? "gallery" : DEFAULT_VIEW;
     if (state.view === "random" && !state.seed) state.seed = newSeed();
+    // The address's page number belongs to whichever view it names.
+    if (state.view === "emotes") {
+      state.emotePage = state.page;
+      state.page = 1;
+    }
     return p.get("work");
   }
 
@@ -338,6 +343,7 @@
       if (state.week) p.set("week", state.week);
       p.set("seed", state.seed);
     }
+    if (state.view === "emotes" && state.emotePage > 1) p.set("page", state.emotePage);
     if (work) p.set("work", work);
     const qs = p.toString();
     const hash = state.view === "home" ? "" : "#" + state.view;
@@ -496,10 +502,10 @@
     return out;
   }
 
-  function renderPager(pages) {
-    const hadFocus = el.pager.contains(document.activeElement);
-    el.pager.replaceChildren();
-    el.pager.hidden = pages <= 1;
+  function renderPager(pages, pager = el.pager, current = state.page) {
+    const hadFocus = pager.contains(document.activeElement);
+    pager.replaceChildren();
+    pager.hidden = pages <= 1;
     if (pages <= 1) return;
     const button = (label, page, aria) => {
       const b = document.createElement("button");
@@ -509,12 +515,12 @@
       if (aria) b.setAttribute("aria-label", aria);
       return b;
     };
-    const prev = button("‹ Previous", state.page - 1, "Previous page");
+    const prev = button("‹ Previous", current - 1, "Previous page");
     prev.className = "pager-step";
-    prev.disabled = state.page === 1;
+    prev.disabled = current === 1;
     const list = document.createElement("span");
     list.className = "pager-pages";
-    for (const n of pageNumbers(state.page, pages)) {
+    for (const n of pageNumbers(current, pages)) {
       if (n === null) {
         const gap = document.createElement("span");
         gap.className = "pager-gap";
@@ -523,14 +529,14 @@
         continue;
       }
       const b = button(String(n), n, `Page ${n}`);
-      if (n === state.page) b.setAttribute("aria-current", "page");
+      if (n === current) b.setAttribute("aria-current", "page");
       list.append(b);
     }
-    const next = button("Next ›", state.page + 1, "Next page");
+    const next = button("Next ›", current + 1, "Next page");
     next.className = "pager-step";
-    next.disabled = state.page === pages;
-    el.pager.append(prev, list, next);
-    if (hadFocus) el.pager.querySelector('[aria-current="page"]').focus({ preventScroll: true });
+    next.disabled = current === pages;
+    pager.append(prev, list, next);
+    if (hadFocus) pager.querySelector('[aria-current="page"]').focus({ preventScroll: true });
   }
 
   function goToPage(page) {
@@ -2585,8 +2591,8 @@
     name.textContent = "@" + a.handle;
     text.append(name);
     const stats = [];
-    if (a.followers != null) stats.push(`${fmtLikes(a.followers)} ${a.followers === 1 ? "follower" : "followers"}`);
-    if (a.likes > 0) stats.push(`♥ ${totalFmt.format(a.likes)}`);
+    if (a.followers != null) stats.push(`${fmtLikes(a.followers)}\u00a0${a.followers === 1 ? "follower" : "followers"}`);
+    if (a.likes > 0) stats.push(`♥\u00a0${totalFmt.format(a.likes)}`);
     if (stats.length) {
       const fo = document.createElement("span");
       fo.className = "artist-followers";
@@ -2611,32 +2617,148 @@
 
   // ---------- Views ----------
 
-  // On narrow screens the tabs scroll sideways; fade whichever edge has more tabs past it.
-  function markNavEdges() {
-    const nav = $(".nav");
-    nav.classList.toggle("more-left", nav.scrollLeft > 1);
-    nav.classList.toggle("more-right", nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1);
+  function setMoreMenu(open) {
+    $("#more-btn").setAttribute("aria-expanded", String(open));
+    $("#more-menu").hidden = !open;
+  }
+
+  // ---------- Emotes ----------
+
+  const EMOTES_PER_PAGE = 60;
+  let emotes = [];
+  let emoteReleaseBase = "";
+  let emoteFolder = "";
+  let emotesRequest = null;
+  let emoteIndex = 0;
+
+  const emoteThumb = (it) => `emotes/${encodeURIComponent(it.f.replace(/\.gif$/i, ".webp"))}`;
+  function emoteUrl(it) {
+    const local = CONFIG.preferLocalMedia && onLocalhost;
+    if (CONFIG.useReleases && emoteReleaseBase && it.u && !local) {
+      return emoteReleaseBase + it.u.split("/").map(encodeURIComponent).join("/");
+    }
+    return CONFIG.mediaBase + encodeURIComponent(emoteFolder) + "/" + encodeURIComponent(it.f);
+  }
+
+  function emoteImage(src, alt) {
+    const img = document.createElement("img");
+    img.alt = alt;
+    img.decoding = "async";
+    img.src = src;
+    return img;
+  }
+
+  // Lays the animation over the still, which hides once the GIF has loaded (they are transparent).
+  function playEmote(box, it) {
+    const img = emoteImage(emoteUrl(it), "");
+    img.className = "emote-anim";
+    // A GIF can finish loading after the pointer has left and it was taken out; the still must stay then.
+    img.addEventListener("load", () => img.parentNode === box && box.classList.add("is-playing"));
+    box.append(img);
+  }
+
+  function stopEmote(box) {
+    box.classList.remove("is-playing");
+    box.querySelector(".emote-anim")?.remove();
+  }
+
+  function renderEmotes() {
+    const pages = Math.max(1, Math.ceil(emotes.length / EMOTES_PER_PAGE));
+    state.emotePage = Math.min(Math.max(1, state.emotePage), pages);
+    const start = (state.emotePage - 1) * EMOTES_PER_PAGE;
+    $("#emote-list").replaceChildren(
+      ...emotes.slice(start, start + EMOTES_PER_PAGE).map((it, i) => {
+        const li = document.createElement("li");
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "emote";
+        b.setAttribute("aria-label", `Emote ${start + i + 1}`);
+        const still = emoteImage(emoteThumb(it), "");
+        still.loading = "lazy";
+        b.append(still);
+        b.addEventListener("pointerenter", (e) => e.pointerType === "mouse" && playEmote(b, it));
+        b.addEventListener("pointerleave", () => stopEmote(b));
+        b.addEventListener("click", () => openEmote(start + i));
+        li.append(b);
+        return li;
+      })
+    );
+    renderPager(pages, $("#emote-pager"), state.emotePage);
+  }
+
+  function loadEmotes() {
+    emotesRequest ||= fetch("data/emotes.json")
+      .then((res) => {
+        if (!res.ok) throw new Error(res.status + " " + res.statusText);
+        return res.json();
+      })
+      .then((data) => {
+        emotes = data.items;
+        emoteFolder = data.folder;
+        if (data.releaseBase && isSafeUrl(data.releaseBase)) emoteReleaseBase = data.releaseBase;
+        renderEmotes();
+      })
+      .catch((err) => {
+        emotesRequest = null; // the next visit to the page tries again
+        console.error(err);
+      });
+  }
+
+  function showEmote(index) {
+    emoteIndex = (index + emotes.length) % emotes.length;
+    const it = emotes[emoteIndex];
+    const stage = $("#emote-stage");
+    stage.classList.remove("is-playing");
+    stage.replaceChildren(emoteImage(emoteThumb(it), `Emote ${emoteIndex + 1}`));
+    playEmote(stage, it);
+    const link = $("#emote-download");
+    link.href = emoteUrl(it);
+    link.download = it.f;
+  }
+
+  // The viewer takes a history entry of its own, so a phone's Back closes it and stays on the page.
+  function openEmote(index) {
+    showEmote(index);
+    history.pushState({ emote: true }, "");
+    $("#emote-viewer").showModal();
+    $("#emote-viewer").focus();
+  }
+
+  // Home carries the stats line, whose "i" opens and closes its coverage note; the choice lasts for the browser tab's visit.
+  // Every other page drops the line and shows its note outright. The main site's Gallery, Artists and Random have none.
+  const hasNote = (view) => ADULT_SITE || !["gallery", "artists", "random"].includes(view);
+  const NOTE_CLOSED_KEY = "malfoid-note-closed-home";
+  let homeNoteClosed = false;
+  try {
+    homeNoteClosed = sessionStorage.getItem(NOTE_CLOSED_KEY) === "1";
+  } catch {
+    // Storage blocked: the choice lasts until the page is left.
+  }
+
+  function setNotes(open) {
+    $("#info-toggle").setAttribute("aria-expanded", String(open));
+    $("#hero-notes").classList.toggle("open", open);
   }
 
   function showView() {
+    el.heroMeta.hidden = state.view !== "home";
+    $("#hero-notes").hidden = !hasNote(state.view);
+    setNotes(hasNote(state.view) && !(state.view === "home" && homeNoteClosed));
     for (const v of VIEWS) $(`#view-${v}`).hidden = state.view !== v;
     // The Timeline gathers early works from every platform, so it has its own coverage note.
     $("#tl-coverage").hidden = state.view !== "timeline";
-    $("#x-coverage").hidden = state.view === "timeline";
+    $("#x-coverage").hidden = state.view === "timeline" || state.view === "emotes";
+    $("#emote-coverage").hidden = state.view !== "emotes";
     for (const a of document.querySelectorAll(".nav a[data-view]")) {
       if (a.dataset.view === state.view) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     }
-    // On narrow screens the tabs scroll sideways: keep the current one fully in view.
-    const nav = $(".nav");
-    const cur = nav.querySelector('[aria-current="page"]');
-    if (cur) {
-      const n = nav.getBoundingClientRect();
-      const c = cur.getBoundingClientRect();
-      if (c.right > n.right) nav.scrollLeft += c.right - n.right;
-      else if (c.left < n.left) nav.scrollLeft -= n.left - c.left;
+    $("#more-btn").classList.toggle("is-current", Boolean($('#more-menu [aria-current="page"]')));
+    setMoreMenu(false);
+    if (state.view === "emotes") {
+      if (emotes.length) renderEmotes();
+      else loadEmotes();
     }
-    markNavEdges();
     if (state.view === "gallery") grid.relayout();
     else grid.schedule(); // drops grid nodes while hidden
     if (state.view === "random") randomGrid.relayout();
@@ -2825,12 +2947,56 @@
   });
   // The search form never submits anywhere; Enter just keeps the live filter.
   $("#toolbar").addEventListener("submit", (e) => e.preventDefault());
-  $(".nav").addEventListener("scroll", markNavEdges, { passive: true });
-  window.addEventListener("resize", markNavEdges);
+  $("#more-btn").addEventListener("click", () => setMoreMenu($("#more-menu").hidden));
+  document.addEventListener("pointerdown", (e) => e.target.closest(".nav-more") || setMoreMenu(false));
+  $(".nav-more").addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || $("#more-menu").hidden) return;
+    setMoreMenu(false);
+    $("#more-btn").focus();
+  });
+  $(".nav-more").addEventListener("focusout", (e) => {
+    if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) setMoreMenu(false);
+  });
+
+  $("#emote-pager").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-page]");
+    if (!b || b.disabled) return;
+    state.emotePage = Number(b.dataset.page);
+    renderEmotes();
+    writeUrl(undefined, true);
+    window.scrollTo({ top: 0 });
+  });
+  const emoteViewer = $("#emote-viewer");
+  $("#emote-close").addEventListener("click", () => emoteViewer.close());
+  $("#emote-prev").addEventListener("click", () => showEmote(emoteIndex - 1));
+  $("#emote-next").addEventListener("click", () => showEmote(emoteIndex + 1));
+  // A click on the backdrop lands on the dialog itself.
+  emoteViewer.addEventListener("click", (e) => e.target === emoteViewer && emoteViewer.close());
+  emoteViewer.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") showEmote(emoteIndex - 1);
+    if (e.key === "ArrowRight") showEmote(emoteIndex + 1);
+  });
+  let emoteSwipeX = null;
+  $("#emote-stage").addEventListener("pointerdown", (e) => (emoteSwipeX = e.clientX));
+  $("#emote-stage").addEventListener("pointerup", (e) => {
+    const dx = emoteSwipeX === null ? 0 : e.clientX - emoteSwipeX;
+    emoteSwipeX = null;
+    if (Math.abs(dx) > 50) showEmote(emoteIndex + (dx < 0 ? 1 : -1));
+  });
+  emoteViewer.addEventListener("close", () => {
+    stopEmote($("#emote-stage"));
+    if (history.state?.emote) history.back();
+  });
+  window.addEventListener("popstate", () => emoteViewer.open && emoteViewer.close());
   $("#info-toggle").addEventListener("click", (e) => {
     const open = e.currentTarget.getAttribute("aria-expanded") !== "true";
-    e.currentTarget.setAttribute("aria-expanded", String(open));
-    $("#hero-notes").classList.toggle("open", open);
+    homeNoteClosed = !open;
+    try {
+      sessionStorage.setItem(NOTE_CLOSED_KEY, open ? "0" : "1");
+    } catch {
+      // Storage blocked: the choice lasts until the page is left.
+    }
+    setNotes(open);
   });
   el.kind.addEventListener("click", (e) => {
     const b = e.target.closest("button[role=radio]");
@@ -2908,6 +3074,7 @@
       data = await res.json();
     } catch (err) {
       el.heroMeta.textContent = "Couldn't load the archive index. Try reloading the page.";
+      el.heroMeta.hidden = false; // the error shows on every page
       console.error(err);
       return;
     }

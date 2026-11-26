@@ -13,6 +13,7 @@ Usage:
     python3 tools/upload_originals.py --only a.jpg b.mp4  # upload just these files
     python3 tools/upload_originals.py                   # upload everything missing
     python3 tools/upload_originals.py --audience adult  # the same for the second site
+    python3 tools/upload_originals.py --audience emotes # the Emotes page's GIFs (run tools/build_emotes.py first)
 
 Run tools/build_malfoid_gallery.py (with the same --audience) first so the manifest lists the current works.
 Both sites share the releases and data/releases.json, so a work moved between them is never uploaded twice.
@@ -33,10 +34,15 @@ import tempfile
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from build_emotes import EMOTES_SRC, MANIFEST as EMOTES_MANIFEST  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
-MANIFESTS = {"main": ROOT / "docs" / "data" / "manifest.json", "adult": ROOT / "docs" / "h" / "data" / "manifest.json"}
+MANIFESTS = {"main": ROOT / "docs" / "data" / "manifest.json", "adult": ROOT / "docs" / "h" / "data" / "manifest.json",
+             "emotes": EMOTES_MANIFEST}
 SOURCES = {"main": Path.home() / "Downloads/twitter_media_harvest/Malfoid",
-           "adult": Path.home() / "Downloads/twitter_media_harvest/Malfoid H"}
+           "adult": Path.home() / "Downloads/twitter_media_harvest/Malfoid H",
+           "emotes": EMOTES_SRC}
 RELEASES = ROOT / "data" / "releases.json"
 LOCK = ROOT / "data" / ".upload.lock"  # held while a run is active, so two runs never upload the same files
 DEFAULT_REPO = "Topovn/malfoid-artwork-archive"
@@ -87,15 +93,15 @@ def remote_assets(repo: str) -> dict[str, dict[str, int]]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--audience", choices=("main", "adult"), default="main")
+    ap.add_argument("--audience", choices=("main", "adult", "emotes"), default="main")
     ap.add_argument("--src", help="main-site source folder (default Malfoid/); the 18+ page always reads Malfoid H/")
     ap.add_argument("--repo", default=DEFAULT_REPO)
     ap.add_argument("--dry-run", action="store_true", help="print the plan without uploading")
     ap.add_argument("--limit", type=int, default=0, help="upload at most this many files")
     ap.add_argument("--only", nargs="+", metavar="FILE", help="restrict the run to these local filenames (for tests)")
     args = ap.parse_args()
-    if args.audience == "adult" and args.src:
-        sys.exit("The 18+ page always reads Malfoid H/; --src is only for the main site.")
+    if args.audience != "main" and args.src:
+        sys.exit("--src is only for the main site.")
     src = Path(args.src).expanduser() if args.src else SOURCES[args.audience]
 
     items = json.loads(MANIFESTS[args.audience].read_text())["items"]
@@ -133,7 +139,8 @@ def main() -> int:
         if path.stat().st_size > MAX_ASSET_BYTES:
             print(f"skip, over the 2 GiB asset limit: {path}")
             continue
-        local[it["f"]] = (path, safe_asset_name(it))
+        name = f"0-emote-{it['f']}" if args.audience == "emotes" else safe_asset_name(it)
+        local[it["f"]] = (path, name)
     names = [n for _, n in local.values()]
     dupes = {n for n in names if names.count(n) > 1}
     if dupes:
@@ -231,8 +238,11 @@ def main() -> int:
     print(f"Recorded {len(json.loads(RELEASES.read_text())['assets'])} uploaded files in {RELEASES.relative_to(ROOT)}.")
 
     print("Rebuilding the manifest...")
-    build = ["--audience", "adult"] if args.audience == "adult" else ["--src", str(src)]
-    subprocess.run([sys.executable, str(ROOT / "tools" / "build_malfoid_gallery.py"), *build], check=True)
+    if args.audience == "emotes":
+        build = ["build_emotes.py"]
+    else:
+        build = ["build_malfoid_gallery.py", *(["--audience", "adult"] if args.audience == "adult" else ["--src", str(src)])]
+    subprocess.run([sys.executable, str(ROOT / "tools" / build[0]), *build[1:]], check=True)
     return 0
 
 

@@ -21,10 +21,10 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=36">
+  <link rel="stylesheet" href="styles.css?v=38">
   <script src="theme.js?v=2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=41" defer></script>
+  <script src="app.js?v=43" defer></script>
 </head>
 <body>
 
@@ -48,10 +48,16 @@
       </div>
       <nav class="nav" aria-label="Sections">
         <a href="./" data-view="home" aria-current="page" data-main-only>Home</a>
-        <a href="#random" data-view="random" data-main-only>Random</a>
         <a href="#gallery" data-view="gallery">Gallery</a>
         <a href="#artists" data-view="artists">Artists</a>
-        <a href="#timeline" data-view="timeline" data-main-only>Timeline</a>
+        <div class="nav-more" data-main-only>
+          <button type="button" class="nav-more-btn" id="more-btn" aria-expanded="false" aria-controls="more-menu">More<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+          <div class="nav-menu" id="more-menu" hidden>
+            <a href="#timeline" data-view="timeline">Timeline</a>
+            <a href="#random" data-view="random">Random</a>
+            <a href="#emotes" data-view="emotes">Emotes</a>
+          </div>
+        </div>
       </nav>
       <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch theme">
         <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -68,6 +74,7 @@
         <div class="hero-notes-inner">
           <p class="hero-coverage" id="tl-coverage" hidden data-main-only><span>Below are all the works I can find predates Oct 2026, counting all the platforms, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed any, especially those predates September 23 2026<br>Before Malfoid became a thing, she appeared as genderbent Draco Malfoy in #drarry tag across platforms</span></p>
           <p class="hero-coverage" id="x-coverage" data-main-only><span>Covers hand-drawn artwork posted on Twitter (X) only. NO AI arts, 18+ ver exists if you can find it. Art on Pixiv, Instagram and other sites isn't tracked since I'm too lazy to manually tag<br>This is not every art out there on Twitter nor I have every pieces of every artists on this site, DM me <a href="https://x.com/Topovn" target="_blank" rel="noopener noreferrer">@Topovn</a> if I missed your art or you found any AI/18+ arts that doesn't belong here<br>Or if you want your artwork to be removed please DM me too</span></p>
+          <p class="hero-coverage" id="emote-coverage" hidden data-main-only><span><a href="https://www.reddit.com/user/CuteAssTigerENVtuber/" target="_blank" rel="noopener noreferrer">u/CuteAssTigerENVtuber</a> made these lovely Malfoid emotes to <a href="https://www.reddit.com/r/Malfoid/comments/1xplte7/comment/19t7jo4o5ppxf/?context=1&amp;screen_view_count=2" target="_blank" rel="noopener noreferrer">r/Malfoid</a>, feel free to download and use them</span></p>
           <p class="hero-coverage" id="h-coverage" data-adult-only><span>I don't actively save R18 artworks on Twitter nor moderate the quality of these artworks</span></p>
         </div>
       </div>
@@ -525,6 +532,11 @@
       </div>
     </section>
 
+    <section id="view-emotes" class="view" hidden data-main-only>
+      <ul id="emote-list" class="emotes" aria-label="Emotes"></ul>
+      <nav class="pager" id="emote-pager" aria-label="Emote pages" hidden></nav>
+    </section>
+
     <section id="view-artists" class="view" hidden>
       <div class="toolbar">
         <label class="field field-search">
@@ -565,7 +577,7 @@
         </label>
       </div>
       <p class="status-line" id="artist-count"></p>
-      <ul id="artists" class="artists"></ul>
+      <ul id="artist-list" class="artists"></ul>
     </section>
   </main>
 
@@ -575,6 +587,16 @@
     <p>All works belong to their original creators. Icon art by <a href="https://x.com/redteneri" target="_blank" rel="noopener noreferrer">@redteneri</a></p>
     <p>For more Malfoid fan-made websites, see <a href="https://malfoid.com/" target="_blank" rel="noopener noreferrer">Malfoid.com</a>, the <a href="https://rhedak.github.io/malfoid-gallery/malfoid-index/#" target="_blank" rel="noopener noreferrer">Malfoid Index</a>, <a href="https://malfoid.love/" target="_blank" rel="noopener noreferrer">Malfoid.love</a> and the <a href="https://www.reddit.com/r/Malfoid/" target="_blank" rel="noopener noreferrer">r/Malfoid</a> subreddit</p>
   </footer>
+
+  <dialog id="emote-viewer" class="emote-viewer" aria-label="Emote viewer" tabindex="-1" data-main-only>
+    <button class="emote-close" id="emote-close" type="button" aria-label="Close">✕</button>
+    <div class="emote-stage" id="emote-stage"></div>
+    <div class="emote-actions">
+      <button class="emote-step" id="emote-prev" type="button" aria-label="Previous emote">‹</button>
+      <a class="btn btn-primary" id="emote-download">Download</a>
+      <button class="emote-step" id="emote-next" type="button" aria-label="Next emote">›</button>
+    </div>
+  </dialog>
 
   <dialog id="viewer" class="viewer" aria-label="Work viewer" tabindex="-1">
     <div class="viewer-stage">
