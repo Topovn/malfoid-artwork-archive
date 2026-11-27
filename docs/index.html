@@ -589,13 +589,13 @@
   </footer>
 
   <dialog id="emote-viewer" class="emote-viewer" aria-label="Emote viewer" tabindex="-1" data-main-only>
-    <button class="emote-close" id="emote-close" type="button" aria-label="Close">✕</button>
-    <div class="emote-stage" id="emote-stage"></div>
-    <div class="emote-actions">
-      <button class="emote-step" id="emote-prev" type="button" aria-label="Previous emote">‹</button>
-      <a class="btn btn-primary" id="emote-download">Download</a>
-      <button class="emote-step" id="emote-next" type="button" aria-label="Next emote">›</button>
+    <button class="emote-close" id="emote-close" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <button class="emote-step" id="emote-prev" type="button" aria-label="Previous emote"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4 7 12l8 8"/></svg></button>
+    <div class="emote-card">
+      <div class="emote-stage" id="emote-stage"></div>
     </div>
+    <button class="emote-step" id="emote-next" type="button" aria-label="Next emote"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4 8 8-8 8"/></svg></button>
+    <a class="btn btn-primary emote-download" id="emote-download">Download</a>
   </dialog>
 
   <dialog id="viewer" class="viewer" aria-label="Work viewer" tabindex="-1">
