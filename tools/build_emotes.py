@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Build the main site's Emotes page data from the emotes folder inside Malfoid/.
 
-Writes docs/data/emotes.json and one still WebP thumbnail per GIF into docs/emotes/, and drops the thumbnails of
-removed GIFs. The page lists emotes in the order of the existing emotes.json (the artist's Discord order); new GIFs
+Writes docs/data/emotes.json, one still WebP thumbnail per GIF into docs/emotes/ and one animated WebP preview per GIF
+into docs/emotes/anim/ (the page plays these, served by GitHub Pages), and drops the files of removed GIFs. The page lists emotes in the order of the existing emotes.json (the artist's Discord order); new GIFs
 are added at the end in download order. The full GIFs go to GitHub Releases with `tools/upload_originals.py --audience emotes`, which reruns
 this build so the page links to them.
 
@@ -27,7 +27,10 @@ EMOTES_DIR = "_Emotes by u:CuteAssTigerENVtuber"
 EMOTES_SRC = MAIN_SRC / EMOTES_DIR
 MANIFEST = DEFAULT_SITE / "data" / "emotes.json"
 THUMBS = DEFAULT_SITE / "emotes"
+PREVIEWS = THUMBS / "anim"
 THUMB_SIZE = 320
+# Previews keep the GIF's size and every frame: scaling down saves almost nothing on this flat art.
+PREVIEW_QUALITY = 60
 # Some emotes start almost empty (the character slides in). Their first frame is replaced by the fullest one.
 MOSTLY_EMPTY = 0.6
 
@@ -51,27 +54,49 @@ def still_frame(src: Path) -> Image.Image:
     return frames[0] if coverage(frames[0]) >= MOSTLY_EMPTY * coverage(fullest) else fullest
 
 
+def is_current(dst: Path, src: Path) -> bool:
+    return dst.exists() and dst.stat().st_mtime >= src.stat().st_mtime
+
+
+def save_webp(im: Image.Image, dst: Path, **options) -> None:
+    tmp = dst.with_name(dst.name + ".tmp")
+    im.save(tmp, "WEBP", **options)
+    os.replace(tmp, dst)
+
+
 def make_still(src: Path) -> None:
     dst = THUMBS / f"{src.stem}.webp"
-    if dst.exists() and dst.stat().st_mtime >= src.stat().st_mtime:
+    if is_current(dst, src):
         return
     im = still_frame(src)
     im.thumbnail((THUMB_SIZE, THUMB_SIZE), Image.LANCZOS)
-    tmp = dst.with_name(dst.name + ".tmp")
-    im.save(tmp, "WEBP", quality=THUMB_QUALITY, method=5)
-    os.replace(tmp, dst)
+    save_webp(im, dst, quality=THUMB_QUALITY, method=5)
+
+
+def make_preview(src: Path) -> None:
+    dst = PREVIEWS / f"{src.stem}.webp"
+    if is_current(dst, src):
+        return
+    frames, durations = [], []
+    with Image.open(src) as im:
+        for frame in ImageSequence.Iterator(im):
+            frames.append(frame.convert("RGBA"))
+            durations.append(frame.info["duration"])
+    save_webp(frames[0], dst, save_all=True, append_images=frames[1:], duration=durations, loop=0,
+              quality=PREVIEW_QUALITY, method=4)
 
 
 def main() -> int:
     if not EMOTES_SRC.is_dir():
         sys.exit(f"Emotes folder not found: {EMOTES_SRC}")
     files = emote_files()
-    THUMBS.mkdir(parents=True, exist_ok=True)
+    PREVIEWS.mkdir(parents=True, exist_ok=True)
     with ProcessPoolExecutor() as pool:
         list(pool.map(make_still, files))
+        list(pool.map(make_preview, files))
 
     keep = {f"{p.stem}.webp" for p in files}
-    for old in THUMBS.glob("*.webp"):
+    for old in (*THUMBS.glob("*.webp"), *PREVIEWS.glob("*.webp")):
         if old.name not in keep:
             old.unlink()
 

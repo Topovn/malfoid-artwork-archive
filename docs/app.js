@@ -2631,7 +2631,9 @@
   let emotesRequest = null;
   let emoteIndex = 0;
 
-  const emoteThumb = (it) => `emotes/${encodeURIComponent(it.f.replace(/\.gif$/i, ".webp"))}`;
+  const emoteWebp = (it) => encodeURIComponent(it.f.replace(/\.gif$/i, ".webp"));
+  const emoteThumb = (it) => `emotes/${emoteWebp(it)}`;
+  const emotePreview = (it) => `emotes/anim/${emoteWebp(it)}`; // what plays; the GIF is the download
   function emoteUrl(it) {
     const local = CONFIG.preferLocalMedia && onLocalhost;
     if (CONFIG.useReleases && emoteReleaseBase && it.u && !local) {
@@ -2648,11 +2650,11 @@
     return img;
   }
 
-  // Lays the animation over the still, which hides once the GIF has loaded (they are transparent).
+  // Lays the animation over the still, which hides once the animation has loaded (they are transparent).
   function playEmote(box, it) {
-    const img = emoteImage(emoteUrl(it), "");
+    const img = emoteImage(emotePreview(it), "");
     img.className = "emote-anim";
-    // A GIF can finish loading after the pointer has left and it was taken out; the still must stay then.
+    // An animation can finish loading after the pointer has left and it was taken out; the still must stay then.
     img.addEventListener("load", () => img.parentNode === box && box.classList.add("is-playing"));
     box.append(img);
   }
@@ -2711,6 +2713,7 @@
     stage.classList.remove("is-playing");
     stage.replaceChildren(emoteImage(emoteThumb(it), `Emote ${emoteIndex + 1}`));
     playEmote(stage, it);
+    for (const step of [1, -1]) new Image().src = emotePreview(emotes[(emoteIndex + step + emotes.length) % emotes.length]);
     const link = $("#emote-download");
     link.href = emoteUrl(it);
     link.download = it.f;
